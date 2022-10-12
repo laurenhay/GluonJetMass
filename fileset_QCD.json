@@ -1,5 +1,5 @@
 {
-	"QCD_sim": {
+	"QCD_binned": {
 		"/QCD_Pt_170to300_TuneCP5_13TeV_pythia8/RunIISummer20UL16NanoAODv9-106X_mcRun2_asymptotic_v17-v1/NANOAODSIM": ["/store/mc/RunIISummer20UL16NanoAODv9/QCD_Pt_170to300_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/120000/036CB19C-978A-154F-94B2-EC0174E08F4A.root",
 			"/store/mc/RunIISummer20UL16NanoAODv9/QCD_Pt_170to300_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/120000/1B821F06-F51F-6345-B883-2D70D9783583.root",
 			"/store/mc/RunIISummer20UL16NanoAODv9/QCD_Pt_170to300_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/120000/23690CBF-49D1-7C44-B99F-AAF3918E211B.root",
@@ -1288,5 +1288,7 @@
 			"/store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/70000/437B1887-271A-6440-B87B-43E46556107D.root",
 			"/store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/70000/8D7B452F-62AF-6843-9979-7E21F00F4DFB.root"
 		]
-	}
+	},
+"QCD_flat": {
+}
 }
