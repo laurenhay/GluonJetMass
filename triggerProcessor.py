@@ -46,7 +46,6 @@ class triggerProcessor(processor.ProcessorABC):
             datastring = "JetHT"
         else:
             datastring = "QCDsim"
-        print("trigger")
         #### get HLT objects from events
         if year == 2016:
             # HLT_paths = ['AK8PFJet40', 'AK8PFJet60', 'AK8PFJet80', 'AK8PFJet140', 'AK8PFJet200', 'AK8PFJet260', 'AK8PFJet320', 'AK8PFJet400', 'AK8PFJet450', 'AK8PFJet500']
@@ -90,19 +89,19 @@ class triggerProcessor(processor.ProcessorABC):
     def postprocess(self, accumulator):
         return accumulator
     
-#### APPLY PRESCALES NOT WORKING YET    
+#### APPLY PRESCALES NOT WORKING YET
+#### applyPrescales should only be run on data
 class applyPrescales(processor.ProcessorABC):
-    def __init__(self, prescales):
-        self.prescales = prescales
+    def __init__(self, trigger, year, data = True):
+        self.data = data
+        self.trigger = trigger
+        self.year = year
         dataset_cat = hist.Cat("dataset", "Dataset")         
         HLT_cat = hist.Cat("HLT_cat", "")
-        if data:
-            pt_bin = hist.Bin("pt", "Jet pT (GeV)", 100, 0, 2400)
-        else: pt_bin = hist.Bin("pt", "Jet pT (GeV)", 100, 0, 3200)
+        pt_bin = hist.Bin("pt", "Jet pT (GeV)", 500, 0, 2400)
         self._histos = processor.dict_accumulator({
-            'hist_pt': hist.Hist("Events", dataset_cat, pt_bin),
-            'hist_pt_byHLTpath': hist.Hist("Events", dataset_cat, HLT_path, pt_bin),
-            'hist_pt_byHLTpath_removeDoubles': hist.Hist("Events", dataset_cat, HLT_path, pt_bin),
+            'hist_pt': hist.Hist("Events", dataset_cat, HLT_cat, pt_bin),
+            'hist_pt_byHLTpath': hist.Hist("Events", dataset_cat, HLT_cat, pt_bin),
             'cutflow':      processor.defaultdict_accumulator(int),
             })
     @property
@@ -110,17 +109,60 @@ class applyPrescales(processor.ProcessorABC):
         return self._histos
     def process(self, events):
         out = self.accumulator.identity()
+        trigger = self.trigger
+        if self.data:
+            datastring = "JetHT"
+        else:
+            datastring = "QCDsim"
+        if self.year == 2016:
+            trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500]
+            HLT_paths = [trigger + str(i) for i in trigThresh]
+            turnOnPt = [0., 128., 196., 262., 296., 364., 433., 524., 583., 642.]
+            prescales = [136006.59, 50007.75, 13163.18, 1501.12, 349.82, 61.17, 20.49, 6.99, 1.00, 1.00]
+        elif self.year == 2017:
+            trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
+            HLT_paths = [trigger + str(i) for i in trigThresh]
+            turnOnPt = [0., 89.,  160., 254., 309., 381., 454., 546., 608., 669., 731]
+            prescales = [86061.17,  36420.75,  9621.74, 1040.40, 189.54, 74.73, 29.49, 9.85, 3.97, 1.00, 1.00]
+        elif self.year == 2018:
+            trigThresh = [15, 25, 40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
+            HLT_paths = [trigger + str(i) for i in trigThresh]
+            prescales = [318346231.66, 318346231.66, 248642.75, 74330.16, 11616.52, 1231.88, 286.14, 125.78, 32.66, 15.83, 7.96,                1.00, 1.00]
+            turnOnPt = [0., 0., 0., 0., 164., 252., 305., 379., 451., 544., 609., 668., 727.]
+        ####require at least one jet in each event
+        events = events[ak.num(events.FatJet) >= 1]
+        ####sort 
+        for i in np.arange(len(HLT_paths))[::-1]:
+            path = HLT_paths[i]
+            print("Index i: ", i, " for path: ", path)
+            if path in events.HLT.fields:
+                pt0 = events.FatJet[:,0].pt
+                out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path]])
+                if i == (len(HLT_paths) - 1):
+                    print('last index')
+                    pt_cut = (pt0 >= turnOnPt[i]) & events.HLT[path]
+                    out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut])
+                else:
+                    pt_cut = (pt0 >= turnOnPt[i]) & (pt0 < turnOnPt[i+1]) & events.HLT[path]
+                    out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut])
         return out
     def postprocess(self, accumulator):
-        prescales = self.prescales
-        
         return accumulator
-            
+
+print("trying to print year of processor")
+print(applyPrescales(year = 2016, trigger = 'AK8PFJet', data = True).year)
+        
+def main():
+    #### Next run processor with futures executor on all test files
+    from dask.distributed import Client
+    from plugins import runCoffeaJob
+    #result = runCoffeaJob(triggerProcessor(year = 2016, trigger = 'AK8PFJet', data = True), jsonFile = "datasets_UL_NANOAOD.json", casa = True, dask = True, testing = False, year = 2016, data = True)
+    result = runCoffeaJob(triggerProcessor(year = 2017, trigger = 'AK8PFJet', data = False), jsonFile = "fileset_QCD.json", casa = True, dask = True, testing = False, year = 2017)
+    util.save(result, 'coffeaOutput/triggerAssignment_QCDsim_2017_test.coffea')
+    result = runCoffeaJob(applyPrescales(year = 2017, trigger = 'AK8PFJet', data = True), jsonFile = "datasets_UL_NANOAOD.json", casa = True, dask = True, testing = False, year = 2017, data = True)
+    util.save(result, 'coffeaOutput/applyPrescales_2017_all.coffea')
     
-#### Next run processor with futures executor on all test files
-from dask.distributed import Client
-from plugins import runCoffeaJob
-#switch to if name and arg parse instead of separate function?
-result = runCoffeaJob(triggerProcessor(year = 2017, trigger = 'AK8PFJet', data = True), jsonFile = "datasets_UL_NANOAOD.json", casa = True, dask = True, testing = False, year = 2017, data = True)
-# result = runCoffeaJob(triggerProcessor(year = 2018, trigger = 'AK8PFJet', data = False), jsonFile = "fileset_QCD.json", casa = True, dask = False, testing = True, year = 2018)
-util.save(result, 'coffeaOutput/DiJet_2017_JetHT_AK8prescale_result.coffea')
+
+if __name__ == '__main__':
+    # Execute when the module is not initialized from an import statement: i.e. called from terminal command line
+    main()

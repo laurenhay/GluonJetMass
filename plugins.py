@@ -20,7 +20,7 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
         qualifier = str(year)
     else: 
         inputs = 'QCD_binned'
-        qualifier = 'UL' + str(year).slice(-2)
+        qualifier = 'UL' + str(year)[-2]
         print(qualifier)
     df = pd.read_json(jsonFile) 
     dict = {}
