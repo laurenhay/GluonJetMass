@@ -1,41 +1,79 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # Dijet Selection Example Processor
-# 
-# We create a dijet selection that selects events that have at least 2 jets with: 
-# * $p_{T} > 200 GeV$
-# * $|\eta| < 2.5$
-# * "Loose" jet ID
-# 
-# The selection then imposes two topological selections : 
-# * $\Delta \phi > 2$
-# * $\frac{p_{T,1} - p_{T,2}}{p_{T,1} + p_{T,2}} < 0.3$
-
-# In[1]:
-
-
+# Can grab a file on cmslpc from 
+# /store/group/lpctlbsm/NanoAODJMAR_2019_V1/Production/CRAB/DYJetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8/DYJetsToLLM-50TuneCUETP8M113TeV-madgraphMLM-pythia8RunIISummer16MiniAODv3-PUMoriond17_ext2-v2/190513_171710/0000/*.root
 import awkward as ak
 import numpy as np
 import time
 import coffea
 import uproot
 import hist
-print(coffea.__version__)
+import vector
 from coffea import util, processor
 from coffea.nanoevents import NanoEventsFactory, NanoAODSchema, BaseSchema
 from collections import defaultdict
+import glob
+import pickle
+
+from dijetSelection import *
 
 
-# ## Run the processor over desired files  
-# In[ ]:   import time  
+def main(testing=False): 
 
-tstart = time.time()    
+    if not testing: 
+        nworkers = 8
+        chunksize = 1000000
+        maxchunks = None
+    else:
+        nworkers = 1
+        chunksize = 10000
+        maxchunks = 1
+    
+    eras = [
+        'UL16NanoAOD', 
+        'UL16NanoAODAPV', 
+        'UL17NanoAOD', 
+        'UL18NanoAOD'
+           ]
+    filestr = '/mnt/data/cms/store/mc/RunIISummer20%sv9/QCD_Pt-15to7000_TuneCP5_Flat2018_13TeV_pythia8/NANOAODSIM/*/*/*.root'
 
-fileset = {'JetHT': [ '/mnt/data/cms/store/data/Run2016B/JetHT/NANOAOD/ver1_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/40000/2B449ED9-2A70-6D4D-9AEB-B2870545D35B.root',] }
-   
-run = processor.Runner(     executor = processor.FuturesExecutor(compression=None, workers=4),     schema=NanoAODSchema,     chunksize=100_000,     # maxchunks=10,  # total 676 chunks ) 
+    fileset = {}
 
-output = run(     fileset,     "Events",     processor_instance=DijetHists(), )   
+    for era in eras: 
+        infiles = glob.glob(filestr % (era) )
 
- # In[ ]:
+        if testing: 
+            infiles = infiles[0:2]
+        if era not in fileset:
+            fileset[era] = []
+        fileset[era] = fileset[era] + [*infiles]
+
+
+    print("Processing files ")
+    for era,files in fileset.items():
+        print(era)
+        for file in files:
+            print(file)
+
+
+
+    tstart = time.time() 
+
+    run = processor.Runner(
+        executor = processor.FuturesExecutor(compression=None, workers=nworkers),
+        schema=NanoAODSchema,
+        chunksize=chunksize,
+        maxchunks=maxchunks
+    )
+
+    output = run(
+        fileset,
+        "Events",
+        processor_instance=DijetHists(),
+    )
+    
+    with open("jetmass_dijets.pkl", "wb") as f:
+        pickle.dump( output, f )
+
+
+    
+if __name__ == "__main__":
+    main()

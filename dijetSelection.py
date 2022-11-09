@@ -29,9 +29,6 @@ from collections import defaultdict
 
 # ## Create the coffea Processor
 
-# In[2]:
-
-
 class DijetHists(processor.ProcessorABC):
     def __init__(self, ptcut=200., etacut = 2.5):
         # should have separate lower ptcut for gen
