@@ -21,6 +21,7 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
     else: 
         inputs = 'QCD_binned'
         qualifier = 'UL' + str(year)[-2:]
+        print(qualifier)
     df = pd.read_json(jsonFile) 
     dict = {}
     for key in df[inputs].keys():
@@ -34,15 +35,15 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
 #initiate dask client and run coffea job
 from dask.distributed import Client
 
-def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, winterfell = False, testing = False, year = '', data = False):
+def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing = False, year = '', data = False, winterfell = False):
     #default is to run locally
     tstart = time.time()
     executor = processor.futures_executor
     if casa:
         redirector = 'root://xcache/'
     elif winterfell:
-        redirector = ''
-        dask = False
+        #### only data (not mc/sim) is on winterfell atm -- make sure using data json file and arguments
+        redirector = '/mnt/data/cms'
     else:
         redirector = 'root://cmsxrootd.fnal.gov/'
     exe_args = {"schema": NanoAODSchema, 'skipbadfiles': True,}
