@@ -20,13 +20,11 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
         qualifier = str(year)
     else: 
         inputs = 'QCD_binned'
-        qualifier = 'UL' + str(year)[-2]
-        print(qualifier)
+        qualifier = 'UL' + str(year)[-2:]
     df = pd.read_json(jsonFile) 
     dict = {}
     for key in df[inputs].keys():
         if qualifier in key:
-            print(key)
             if testing:
                 dict[key] = [redirector +  df[inputs][key][0]]
             else:
@@ -36,12 +34,15 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
 #initiate dask client and run coffea job
 from dask.distributed import Client
 
-def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing = False, year = '', data = False):
+def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, winterfell = False, testing = False, year = '', data = False):
     #default is to run locally
     tstart = time.time()
     executor = processor.futures_executor
     if casa:
         redirector = 'root://xcache/'
+    elif winterfell:
+        redirector = ''
+        dask = False
     else:
         redirector = 'root://cmsxrootd.fnal.gov/'
     exe_args = {"schema": NanoAODSchema, 'skipbadfiles': True,}
@@ -51,11 +52,10 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     if casa and dask:
         print("Running on coffea casa")
         from coffea_casa import CoffeaCasaCluster
-        from dask.distributed.diagnostics.plugin import UploadDirectory #do i need this?
-        # client = Client("tls://lauren-2emeryl-2ehay-40cern-2ech.dask.cmsaf-prod.flatiron.hollandhpc.org:8786")
-        cluster = CoffeaCasaCluster(cores=11, memory="100 GiB", death_timeout = 60)
-        cluster.adapt(minimum=2, maximum=14)
-        client = Client(cluster)
+        client = Client("tls://lauren-2emeryl-2ehay-40cern-2ech.dask.cmsaf-prod.flatiron.hollandhpc.org:8786")
+        # cluster = CoffeaCasaCluster(cores=11, memory="20 GiB", death_timeout = 60)
+        # cluster.adapt(minimum=2, maximum=14)
+        # client = Client(cluster)
         print(client)
         exe_args = {
             "client": client,
@@ -84,7 +84,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     else:
         print("Running locally")
     # samples = {'/JetHT/Run2018A-UL2018_MiniAODv2_NanoAODv9-v2/NANOAOD': ['root://xcache//store/data/Run2018A/JetHT/NANOAOD/UL2018_MiniAODv2_NanoAODv9-v2/100000/00AA9A90-57AA-D147-B4FA-54D6D8DA0D4A.root']}
-    # samples = {"/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/RunIISummer20UL17NanoAODv9-106X_mc2017_realistic_v9-v1/NANOAODSIM":["root://xcache//store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_470to600_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/130000/04101AE0-F4F7-364B-9089-BEE9156A0C69.root"]}
+    # samples = {'/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/RunIISummer20UL17NanoAODv9-106X_mc2017_realistic_v9-v1/NANOAODSIM': ['root://xcache//store/mc/RunIISummer20UL17NanoAODv9/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_mc2017_realistic_v9-v1/270000/00DD1153-F006-3446-ABBC-7CA23A020566.root']}
     print("Samples = ", samples, " executor = ", executor)
     result = processor.run_uproot_job(samples,
                                       "Events",
@@ -92,6 +92,22 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
                                       executor = executor,
                                       executor_args = exe_args,
                                      )
+    
+#         run = processor.Runner(
+#         executor = processor.FuturesExecutor(compression=None, workers=nworkers),
+#         schema=NanoAODSchema,
+#         chunksize=chunksize,
+#         maxchunks=maxchunks
+#     )
+
+#     result = run(
+#         fileset,
+#         "Events",
+#         processor_instance=QJetMassProcessor(),
+#     )
+    
+#     with open("qjetmass_zjets.pkl", "wb") as f:
+#         pickle.dump( output, f )
     elapsed = time.time() - tstart
     print(result)
     print("Time taken to run over samples ", elapsed)
