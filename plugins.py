@@ -72,6 +72,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     elif casa == False and dask:
         print("Running on LPC Condor")
         from lpcjobqueue import LPCCondorCluster
+        #### figure out what replaces the tmp directory
         cluster = LPCCondorCluster(shared_temp_directory="/tmp")
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
         cluster.adapt(minimum=1, maximum=10)

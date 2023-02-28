@@ -105,10 +105,11 @@ class triggerProcessor(processor.ProcessorABC):
 #### APPLY PRESCALES NOT WORKING YET
 #### applyPrescales should only be run on data
 class applyPrescales(processor.ProcessorABC):
-    def __init__(self, trigger, year, data = True):
+    def __init__(self, trigger, year, turnOnPts, data = True):
         self.data = data
         self.trigger = trigger
         self.year = year
+        self.turnOnPt = turnOnPts
         dataset_cat = hist.axis.StrCategory([],growth=True,name="dataset", label="Dataset")
         HLT_cat = hist.axis.StrCategory([], growth=True, name="HLT_cat",label="")
         #should i also have separate data and sim pt bins like above here?
@@ -131,7 +132,7 @@ class applyPrescales(processor.ProcessorABC):
         if self.year == 2016:
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500]
             HLT_paths = [trigger + str(i) for i in trigThresh]
-            turnOnPt = [0., 128., 196., 262., 296., 364., 433., 524., 583., 642.]
+            turnOnPt = self.turnOnPt
             prescales = [136006.59, 50007.75, 13163.18, 1501.12, 349.82, 61.17, 20.49, 6.99, 1.00, 1.00]
         elif self.year == 2017:
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
