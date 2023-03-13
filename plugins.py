@@ -17,19 +17,24 @@ def checkdir(directory):
 
 #reads in files and adds redirector, can specify year, default is all years
 def handleData(jsonFile, redirector, year = '', testing = True, data = False):
-    if data == True:
-        inputs = 'JetHT_data'
-        qualifier = str(year)
-    else: 
+    if (redirector == '/mnt/data/cms') and (data==False):
+        inputs = 'QCD_flat'
+        qualifier = 'UL' + str(year)[-2:]
+    elif (data==False): 
         inputs = 'QCD_binned'
         qualifier = 'UL' + str(year)[-2:]
         print(qualifier)
+    else:
+        inputs = 'JetHT_data'
+        qualifier = str(year)
     df = pd.read_json(jsonFile) 
     dict = {}
     for key in df[inputs].keys():
         if qualifier in key:
+            print("dataset = ", key)
             if testing:
                 dict[key] = [redirector +  df[inputs][key][0]]
+                print(redirector +  df[inputs][key][0])
             else:
                 dict[key] = [redirector + df[inputs][key][i] for i in range(len(df[inputs][key]))]
     return dict
@@ -98,22 +103,6 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
                                       executor = executor,
                                       executor_args = exe_args,
                                      )
-    
-#         run = processor.Runner(
-#         executor = processor.FuturesExecutor(compression=None, workers=nworkers),
-#         schema=NanoAODSchema,
-#         chunksize=chunksize,
-#         maxchunks=maxchunks
-#     )
-
-#     result = run(
-#         fileset,
-#         "Events",
-#         processor_instance=QJetMassProcessor(),
-#     )
-    
-#     with open("qjetmass_zjets.pkl", "wb") as f:
-#         pickle.dump( output, f )
     elapsed = time.time() - tstart
     print(result)
     print("Time taken to run over samples ", elapsed)

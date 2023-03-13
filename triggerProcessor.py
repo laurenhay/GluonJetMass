@@ -1,5 +1,4 @@
 #### based on the trigger emulation method spelled out here https://cms.cern.ch/iCMS/jsp/db_notes/noteInfo.jsp?cmsnoteid=CMS%20AN-2015/154
-### Define to accumulate histograms
 import awkward as ak
 import numpy as np
 from coffea import processor, util
@@ -24,13 +23,13 @@ class triggerProcessor(processor.ProcessorABC):
         if data:
             pt_bin = hist.axis.Regular(100, 0, 2400.,name="pt", label="Jet pT (GeV)")
         else: pt_bin = hist.axis.Regular(100, 0, 3200.,name="pt", label="Jet pT (GeV)")
-        self._histos = processor.dict_accumulator({
+        self._histos = {
             'hist_trigEff': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
             'hist_trigEff_ptCut': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
             'hist_trigRef': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
             'hist_pt': hist.Hist(dataset_cat, pt_bin, storage="weight", name="Events"),
             'cutflow':      processor.defaultdict_accumulator(int),
-            })
+            }
     
     @property
     def accumulator(self):
@@ -46,8 +45,6 @@ class triggerProcessor(processor.ProcessorABC):
         trigObj = events.TrigObj
         print("Trigger object id:", trigObj.id)
         trigObj = trigObj[trigObj.id == 1]
-        # deltaR  = events.FatJet[:, 0].delta_r(trigObj)
-        # trigObj = trigObj[deltaR < 0.15]
         events = events[ak.num(trigObj, axis = -1) != 0]
         trigObj = trigObj[ak.num(trigObj, axis = -1) != 0]
         year = self.year
@@ -76,26 +73,19 @@ class triggerProcessor(processor.ProcessorABC):
         efficiencies = {}
         for i in np.arange(len(HLT_paths)):
             path = HLT_paths[i]
-            print("index: ", i, " path: ", path)
+            print("index: ", i, " HLT path: ", path)
             if i > 0:
                 print("Number of events w/ trigger ", ak.count_nonzero(events.HLT[HLT_paths[i]]))
-                print("HLT path: ", path, " HLT values: ", events.HLT[HLT_paths[i]], " Number of Trues ", ak.count_nonzero(events.HLT[HLT_paths[i]]))
-                print("HLT path: ", HLT_paths[i-1], " HLT values: ", events.HLT[HLT_paths[i-1]], " Number of Trues ", ak.count_nonzero(events.HLT[HLT_paths[i-1]]))
-                
+                print("HLT ref path: ", HLT_paths[i-1], " Number of Trues ", ak.count_nonzero(events.HLT[HLT_paths[i-1]]))
+                #### choose jets belonging to ref trigger (i-1) and passing pt cut of trigger of trigger of interest (i)
                 efficiencies[path] = events.FatJet[:,0].pt[(events.HLT[HLT_paths[i-1]]) & (trigObj.pt[:,0] > trigThresh[i])]
-                
-                print()
                 #### trig eff
                 out['hist_trigEff_ptCut'].fill(dataset = datastring + str(year), HLT_cat = path, pt = efficiencies[path])
-                #### gives ratio of trigger paths (< 1)
+                #### gives ratio of trigger paths (do not add to 1)
                 out['hist_trigEff'].fill(dataset = datastring + str(year), HLT_cat = path, pt = events.FatJet[:,0].pt[(events.HLT[HLT_paths[i-1]]) & (events.HLT[HLT_paths[i]])])
                 out['hist_trigRef'].fill(dataset = datastring +  str(year), HLT_cat = path, pt = events.FatJet[:,0].pt[(events.HLT[HLT_paths[i-1]])])
                 out['hist_pt'].fill(dataset = datastring + str(year), pt = events.FatJet[:,0].pt)
-                
-       
-                ####if using new hist format
-                #hist_trigEff.fill(HLT_cat = path, jet_pt = events.FatJet[:,0].pt[(events.HLT[HLT_paths[i]])])
-                #hist_trigRef.fill(HLT_cat = path, jet_pt = events.FatJet[:,0].pt[(events.HLT[HLT_paths[i-1]])])
+
         print("Final efficiencies:", efficiencies)
         return out
     
@@ -110,55 +100,57 @@ class applyPrescales(processor.ProcessorABC):
         self.trigger = trigger
         self.year = year
         self.turnOnPt = turnOnPts
+        if data:
+            pt_bin = hist.axis.Regular(1000, 0, 2400.,name="pt", label="Jet pT (GeV)")
+        else: pt_bin = hist.axis.Regular(1000, 0, 3200.,name="pt", label="Jet pT (GeV)")
+#         pt_bin = hist.axis.Variable(pt_bins,name="pt", label="Jet pT (GeV)", underflow = True, overflow = True)
+#         pt_bins = turnOnPts[turnOnPts > 0]
+#         pt_bin = hist.axis.Variable(pt_bins,name="pt", label="Jet pT (GeV)", underflow = True, overflow = True)
         dataset_cat = hist.axis.StrCategory([],growth=True,name="dataset", label="Dataset")
         HLT_cat = hist.axis.StrCategory([], growth=True, name="HLT_cat",label="")
-        #should i also have separate data and sim pt bins like above here?
-        pt_bin = hist.axis.Regular(100, 0, 2400.,name="pt", label="Jet pT (GeV)")
-        self._histos = processor.dict_accumulator({
+        self._histos = {
             'hist_pt': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
             'hist_pt_byHLTpath': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
             'cutflow':      processor.defaultdict_accumulator(int),
-            })
+            }
     @property
     def accumulator(self):
         return self._histos
     def process(self, events):
         out = self._histos
         trigger = self.trigger
+        turnOnPt = self.turnOnPt
         if self.data:
             datastring = "JetHT"
         else:
             datastring = "QCDsim"
         if self.year == 2016:
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500]
-            HLT_paths = [trigger + str(i) for i in trigThresh]
-            turnOnPt = self.turnOnPt
             prescales = [136006.59, 50007.75, 13163.18, 1501.12, 349.82, 61.17, 20.49, 6.99, 1.00, 1.00]
         elif self.year == 2017:
-            trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
-            HLT_paths = [trigger + str(i) for i in trigThresh]
-            turnOnPt = [0., 89.,  160., 254., 309., 381., 454., 546., 608., 669., 731]
+            trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]       
             prescales = [86061.17,  36420.75,  9621.74, 1040.40, 189.54, 74.73, 29.49, 9.85, 3.97, 1.00, 1.00]
         elif self.year == 2018:
             trigThresh = [15, 25, 40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
-            HLT_paths = [trigger + str(i) for i in trigThresh]
             prescales = [318346231.66, 318346231.66, 248642.75, 74330.16, 11616.52, 1231.88, 286.14, 125.78, 32.66, 15.83, 7.96,                1.00, 1.00]
-            turnOnPt = [0., 0., 0., 0., 164., 252., 305., 379., 451., 544., 609., 668., 727.]
         ####require at least one jet in each event
+        HLT_paths = [trigger + str(i) for i in trigThresh]
         events = events[ak.num(events.FatJet) >= 1]
         ####sort 
         for i in np.arange(len(HLT_paths))[::-1]:
             path = HLT_paths[i]
-            print("Index i: ", i, " for path: ", path)
+#             print("Index i: ", i, " for path: ", path)
             if path in events.HLT.fields:
                 pt0 = events.FatJet[:,0].pt
                 out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path]])
                 if i == (len(HLT_paths) - 1):
                     print('last index')
                     pt_cut = (pt0 >= turnOnPt[i]) & events.HLT[path]
+#                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
                     out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut])
                 else:
                     pt_cut = (pt0 >= turnOnPt[i]) & (pt0 < turnOnPt[i+1]) & events.HLT[path]
+#                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
                     out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut])
         return out
     def postprocess(self, accumulator):
@@ -168,22 +160,18 @@ def main():
     #### Next run processor with futures executor on all test files
     from dask.distributed import Client
     from plugins import runCoffeaJob
-    #result = runCoffeaJob(triggerProcessor(year = 2016, trigger = 'AK8PFJet', data = True), jsonFile = "datasets_UL_NANOAOD.json", casa = True, dask = True, testing = False, year = 2016, data = True)
-    # result = runCoffeaJob(triggerProcessor(year = 2018, trigger = 'AK8PFJet', data = False), jsonFile = "fileset_QCD.json", casa = False, dask = False, testing = True, year = 2018, winterfell = True)
-    # result = runCoffeaJob(triggerProcessor(year = 2016, trigger = 'AK8PFJet', data = True), jsonFile = "datasets_UL_NANOAOD.json", casa = True, dask = True, testing = False, year = 2016, data = True)
-    # util.save(result, 'coffeaOutput/triggerAssignment_JetHT_2016_NewHist.coffea')
     in_year = 2016
     data_bool = False
     processor = triggerProcessor(year = in_year, trigger = 'AK8PFJet', data = data_bool)
     datastring = "JetHT" if processor.data == True else "QCDsim"
     filename = "datasets_UL_NANOAOD.json" if processor.data == True else "fileset_QCD.json"
-    result = runCoffeaJob(processor, jsonFile = filename, casa = True, dask = True, testing = False, year = processor.year, data = processor.data)
-    util.save(result, 'coffeaOutput/triggerAssignment_{}_{}_{}_NewHist.coffea'.format(datastring, processor.year, processor.trigger))
+    result = runCoffeaJob(processor, jsonFile = filename, casa = True, dask = True, testing = False, year = processor.year, data =     processor.data)
+    util.save(result, 'coffeaOutput/triggerAssignment_{}_{}_{}_NewHist.coffea'.format(datastring, processor.year,                     processor.trigger))
     processor = applyPrescales(year = in_year, trigger = 'AK8PFJet', data = data_bool)
     dataname = "JetHT" if processor.data == True else "QCDsim"
     filename = "datasets_UL_NANOAOD.json" if processor.data == True else "fileset_QCD.json"
-    result = runCoffeaJob(processor, jsonFile = filename, casa = True, dask = False, testing = True, year = processor.year, data = processor.data)
-    util.save(result, 'coffeaOutput/applyPrescales_{}_{}_{}_test_NewHist.coffea'.format(datastring, processor.year, processor.trigger))
+    result = runCoffeaJob(processor, jsonFile = filename, casa = True, dask = False, testing = True, year = processor.year, data =     processor.data)
+    util.save(result, 'coffeaOutput/applyPrescales_{}_{}_{}_test_NewHist.coffea'.format(datastring, processor.year,                   processor.trigger))
     
 
 if __name__ == '__main__':
