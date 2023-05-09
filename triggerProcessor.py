@@ -3,6 +3,7 @@ import awkward as ak
 import numpy as np
 from coffea import processor, util
 import hist
+import pandas
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -95,11 +96,12 @@ class triggerProcessor(processor.ProcessorABC):
 #### APPLY PRESCALES NOT WORKING YET
 #### applyPrescales should only be run on data
 class applyPrescales(processor.ProcessorABC):
-    def __init__(self, trigger, year, turnOnPts, data = True):
+    def __init__(self, trigger, year, turnOnPts, data = True, byRun = True):
         self.data = data
         self.trigger = trigger
         self.year = year
         self.turnOnPt = turnOnPts
+        self.byRun = byRun
         if data:
             pt_bin = hist.axis.Regular(1000, 0, 2400.,name="pt", label="Jet pT (GeV)")
         else: pt_bin = hist.axis.Regular(1000, 0, 3200.,name="pt", label="Jet pT (GeV)")
@@ -120,38 +122,84 @@ class applyPrescales(processor.ProcessorABC):
         out = self._histos
         trigger = self.trigger
         turnOnPt = self.turnOnPt
+        byRun = self.byRun
         if self.data:
             datastring = "JetHT"
         else:
             datastring = "QCDsim"
         if self.year == 2016:
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500]
-            prescales = [136006.59, 50007.75, 13163.18, 1501.12, 349.82, 61.17, 20.49, 6.99, 1.00, 1.00]
+            if byRun == False:
+                prescales = [136006.59, 50007.75, 13163.18, 1501.12, 349.82, 61.17, 20.49, 6.99, 1.00, 1.00]
+            else:
+                goldenJSON = "Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt"
         elif self.year == 2017:
-            trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]       
-            prescales = [86061.17,  36420.75,  9621.74, 1040.40, 189.54, 74.73, 29.49, 9.85, 3.97, 1.00, 1.00]
+            trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]  
+            if byRun ==False:
+                prescales = [86061.17,  36420.75,  9621.74, 1040.40, 189.54, 74.73, 29.49, 9.85, 3.97, 1.00, 1.00]
+            else:
+                goldenJSON = "Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt"
         elif self.year == 2018:
             trigThresh = [15, 25, 40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
-            prescales = [318346231.66, 318346231.66, 248642.75, 74330.16, 11616.52, 1231.88, 286.14, 125.78, 32.66, 15.83, 7.96,                1.00, 1.00]
+            if byRun == False:
+                prescales = [318346231.66, 318346231.66, 248642.75, 74330.16, 11616.52, 1231.88, 286.14, 125.78, 32.66, 15.83,                     7.96, 1.00, 1.00]
+            else:
+                goldenJSON = "Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt"
         ####require at least one jet in each event
         HLT_paths = [trigger + str(i) for i in trigThresh]
         events = events[ak.num(events.FatJet) >= 1]
+        print("Event metadata: ", events.metadata)
+        print("Event fields: ", events.fields)
         ####sort 
-        for i in np.arange(len(HLT_paths))[::-1]:
-            path = HLT_paths[i]
-#             print("Index i: ", i, " for path: ", path)
-            if path in events.HLT.fields:
-                pt0 = events.FatJet[:,0].pt
-                out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path]])
-                if i == (len(HLT_paths) - 1):
-                    print('last index')
-                    pt_cut = (pt0 >= turnOnPt[i]) & events.HLT[path]
-#                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
-                    out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut])
-                else:
-                    pt_cut = (pt0 >= turnOnPt[i]) & (pt0 < turnOnPt[i+1]) & events.HLT[path]
-#                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
-                    out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut])
+        if byRun == False:
+            for i in np.arange(len(HLT_paths))[::-1]:
+                path = HLT_paths[i]
+    #             print("Index i: ", i, " for path: ", path)
+                if path in events.HLT.fields:
+                    pt0 = events.FatJet[:,0].pt
+                    out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path]])
+                    if i == (len(HLT_paths) - 1):
+                        print('last index')
+                        pt_cut = (pt0 >= turnOnPt[i]) & events.HLT[path]
+    #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
+                        out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut])
+                    else:
+                        pt_cut = (pt0 >= turnOnPt[i]) & (pt0 < turnOnPt[i+1]) & events.HLT[path]
+    #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
+                        out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut])
+        else:
+            cert_jsonData = pandas.read_json(goldenJSON, orient = 'index')
+            #print("Cert ", year, " data: \n", cert_jsonData)                                                                     
+            #allRuns_AK8HLT.csv is the result csv of running 'brilcalc trg --prescale --hltpath "HLT_AK8PFJet*" --output-style                 csv'
+            ps_csvData = pandas.read_csv("allRunsAK8HLT_skimmed.csv")
+            for i in np.arange(len(HLT_paths))[::-1]:
+                path = HLT_paths[i]
+                print("Index i: ", i, " for path: ", path)
+                if path in events.HLT.fields:
+                    pt0 = events.FatJet[:,0].pt
+                    runs = events.run
+                    fields = events.fields
+                    print("Lumi block:", events[events.run == runs[0]].luminosityBlock, "for event ", runs[0])
+                    print("Event run:", runs[0])
+                    weights = np.ones_like(runs)
+                    ### here we will use correctionlib to assign weights
+                    print("any run:", np.any(ps_csvData['# run'].to_numpy()))
+                    weights = np.where(weights == np.any(ps_csvData['# run'].to_numpy()), ps_csvData[ps_csvData['hltpath/prescval'].str.contains(path)][ps_csvData['# run'] == weights, 0])
+                    ps_runs = ps_csvData[ps_csvData['hltpath/prescval'].str.contains(path)]['# run']
+                    print("Event runs: ", len(runs))
+                    print("prescale runs:", len(ps_runs))
+                    prescales = ps_csvData['totprescval'][ps_csvData['hltpath/prescval'].str.contains(path)]
+                    print("prescales:", prescales)
+                    out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path] & runs])
+                    if i == (len(HLT_paths) - 1):
+                        print('last index')
+                        pt_cut = (pt0 >= turnOnPt[i]) & events.HLT[path]
+    #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
+                        out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut], weight = weights)
+                    else:
+                        pt_cut = (pt0 >= turnOnPt[i]) & (pt0 < turnOnPt[i+1]) & events.HLT[path]
+    #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
+                        out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut], weight = weights)
         return out
     def postprocess(self, accumulator):
         return accumulator

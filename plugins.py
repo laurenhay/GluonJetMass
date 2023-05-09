@@ -34,7 +34,6 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
             print("dataset = ", key)
             if testing:
                 dict[key] = [redirector +  df[inputs][key][0]]
-                print(redirector +  df[inputs][key][0])
             else:
                 dict[key] = [redirector + df[inputs][key][i] for i in range(len(df[inputs][key]))]
     return dict
