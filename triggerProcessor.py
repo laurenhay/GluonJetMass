@@ -4,6 +4,8 @@ import numpy as np
 from coffea import processor, util
 import hist
 import pandas
+import correctionlib
+from utils import getLumiMask
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -148,8 +150,6 @@ class applyPrescales(processor.ProcessorABC):
         ####require at least one jet in each event
         HLT_paths = [trigger + str(i) for i in trigThresh]
         events = events[ak.num(events.FatJet) >= 1]
-        print("Event metadata: ", events.metadata)
-        print("Event fields: ", events.fields)
         ####sort 
         if byRun == False:
             for i in np.arange(len(HLT_paths))[::-1]:
@@ -167,35 +167,34 @@ class applyPrescales(processor.ProcessorABC):
                         pt_cut = (pt0 >= turnOnPt[i]) & (pt0 < turnOnPt[i+1]) & events.HLT[path]
     #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
                         out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut])
-        else:
-            cert_jsonData = pandas.read_json(goldenJSON, orient = 'index')
-            #print("Cert ", year, " data: \n", cert_jsonData)                                                                     
-            #allRuns_AK8HLT.csv is the result csv of running 'brilcalc trg --prescale --hltpath "HLT_AK8PFJet*" --output-style                 csv'
-            ps_csvData = pandas.read_csv("allRunsAK8HLT_skimmed.csv")
+        else:                                                    
+            ### allRuns_AK8HLT.csv is the result csv of running 'brilcalc trg --prescale --hltpath "HLT_AK8PFJet*" --output-style                 csv' and is used to create the ps_weight_JSON files
+            pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_"+str(self.year)+".json")
+            print("PS keys: ", pseval.values())
+            lumi_mask = getLumiMask(self.year)(events.run, events.luminosityBlock)
+            print("Lumi Mask length: ", len(lumi_mask))
+            print("Length of events before lumi mask: ", len(events))
+            events = events[lumi_mask]
+            print("Length of events before lumi mask: ", len(events))
+            print("Casting spells: ", events.luminosityBlock)
+            print("Casting spells: ", ak.values_astype(events.luminosityBlock, np.float32))
             for i in np.arange(len(HLT_paths))[::-1]:
                 path = HLT_paths[i]
                 print("Index i: ", i, " for path: ", path)
                 if path in events.HLT.fields:
                     pt0 = events.FatJet[:,0].pt
-                    runs = events.run
-                    fields = events.fields
-                    print("Lumi block:", events[events.run == runs[0]].luminosityBlock, "for event ", runs[0])
-                    print("Event run:", runs[0])
-                    weights = np.ones_like(runs)
+                    print("Lumi block:", events.luminosityBlock[0], "for event run", events.run[0])
+                    weights = np.ones_like(events.run)
                     ### here we will use correctionlib to assign weights
-                    print("any run:", np.any(ps_csvData['# run'].to_numpy()))
-                    weights = np.where(weights == np.any(ps_csvData['# run'].to_numpy()), ps_csvData[ps_csvData['hltpath/prescval'].str.contains(path)][ps_csvData['# run'] == weights, 0])
-                    ps_runs = ps_csvData[ps_csvData['hltpath/prescval'].str.contains(path)]['# run']
-                    print("Event runs: ", len(runs))
-                    print("prescale runs:", len(ps_runs))
-                    prescales = ps_csvData['totprescval'][ps_csvData['hltpath/prescval'].str.contains(path)]
-                    print("prescales:", prescales)
-                    out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path] & runs])
+                    out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path]])
+                    print("Example prescale: ", pseval['prescaleWeight'].evaluate([281693, 281693, 281976, 281976], path, [1100., 1535., 1645., 2079.]))
                     if i == (len(HLT_paths) - 1):
                         print('last index')
-                        pt_cut = (pt0 >= turnOnPt[i]) & events.HLT[path]
+                        events = events[(pt0 >= turnOnPt[i]) & events.HLT[path]]
+                        pt0 = events.FatJet[:,0].pt
     #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
-                        out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut], weight = weights)
+                        out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0, 
+                                                      weight = pseval['prescaleWeight'].evaluate(events.run, path, ak.values_astype(events.luminosityBlock, np.float32)))
                     else:
                         pt_cut = (pt0 >= turnOnPt[i]) & (pt0 < turnOnPt[i+1]) & events.HLT[path]
     #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
