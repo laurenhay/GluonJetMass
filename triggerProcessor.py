@@ -57,16 +57,13 @@ class triggerProcessor(processor.ProcessorABC):
         else:
             datastring = "QCDsim"
         #### get HLT objects from events
-        if year == 2016:
-            # HLT_paths = ['AK8PFJet40', 'AK8PFJet60', 'AK8PFJet80', 'AK8PFJet140', 'AK8PFJet200', 'AK8PFJet260', 'AK8PFJet320', 'AK8PFJet400', 'AK8PFJet450', 'AK8PFJet500']
+        if year == '2016' or year == '2016APV':
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500]
             HLT_paths = [trigger + str(i) for i in trigThresh]
-        elif year == 2017:
-            # HLT_paths = ['AK8PFJet40', 'AK8PFJet60', 'AK8PFJet80', 'AK8PFJet140', 'AK8PFJet200', 'AK8PFJet260', 'AK8PFJet320', 'AK8PFJet400', 'AK8PFJet450', 'AK8PFJet500', 'AK8PFJet550']
+        elif year == '2017':
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
             HLT_paths = [trigger + str(i) for i in trigThresh]
-        elif year == 2018:
-            # HLT_paths = ['AK8PFJet15', 'AK8PFJet25', 'AK8PFJet40', 'AK8PFJet60', 'AK8PFJet80', 'AK8PFJet140', 'AK8PFJet200', 'AK8PFJet260', 'AK8PFJet320', 'AK8PFJet400', 'AK8PFJet450', 'AK8PFJet500', 'AK8PFJet550']
+        elif year == '2018':
             trigThresh = [15, 25, 40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
             HLT_paths = [trigger + str(i) for i in trigThresh]
         else:
@@ -95,21 +92,16 @@ class triggerProcessor(processor.ProcessorABC):
     def postprocess(self, accumulator):
         return accumulator
     
-#### APPLY PRESCALES NOT WORKING YET
-#### applyPrescales should only be run on data
+#### applyPrescales should only be run on data --> why??
 class applyPrescales(processor.ProcessorABC):
-    def __init__(self, trigger, year, turnOnPts, data = True, byRun = True):
+    def __init__(self, trigger, year, turnOnPts, data = True):
         self.data = data
         self.trigger = trigger
         self.year = year
         self.turnOnPt = turnOnPts
-        self.byRun = byRun
         if data:
             pt_bin = hist.axis.Regular(1000, 0, 2400.,name="pt", label="Jet pT (GeV)")
         else: pt_bin = hist.axis.Regular(1000, 0, 3200.,name="pt", label="Jet pT (GeV)")
-#         pt_bin = hist.axis.Variable(pt_bins,name="pt", label="Jet pT (GeV)", underflow = True, overflow = True)
-#         pt_bins = turnOnPts[turnOnPts > 0]
-#         pt_bin = hist.axis.Variable(pt_bins,name="pt", label="Jet pT (GeV)", underflow = True, overflow = True)
         dataset_cat = hist.axis.StrCategory([],growth=True,name="dataset", label="Dataset")
         HLT_cat = hist.axis.StrCategory([], growth=True, name="HLT_cat",label="")
         self._histos = {
@@ -124,81 +116,47 @@ class applyPrescales(processor.ProcessorABC):
         out = self._histos
         trigger = self.trigger
         turnOnPt = self.turnOnPt
-        byRun = self.byRun
         if self.data:
             datastring = "JetHT"
         else:
             datastring = "QCDsim"
-        if self.year == 2016:
+        if self.year == '2016' or self.year == '2016APV':
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500]
-            if byRun == False:
-                prescales = [136006.59, 50007.75, 13163.18, 1501.12, 349.82, 61.17, 20.49, 6.99, 1.00, 1.00]
-            else:
-                goldenJSON = "Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt"
-        elif self.year == 2017:
+            pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_2016.json")
+        elif self.year == '2017':
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]  
-            if byRun ==False:
-                prescales = [86061.17,  36420.75,  9621.74, 1040.40, 189.54, 74.73, 29.49, 9.85, 3.97, 1.00, 1.00]
-            else:
-                goldenJSON = "Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt"
-        elif self.year == 2018:
+            pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_"+self.year+".json")
+        elif self.year == '2018':
             trigThresh = [15, 25, 40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
-            if byRun == False:
-                prescales = [318346231.66, 318346231.66, 248642.75, 74330.16, 11616.52, 1231.88, 286.14, 125.78, 32.66, 15.83,                     7.96, 1.00, 1.00]
-            else:
-                goldenJSON = "Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt"
-        ####require at least one jet in each event
+            pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_"+self.year+".json")
+        #### require at least one jet in each event
         HLT_paths = [trigger + str(i) for i in trigThresh]
-        events = events[ak.num(events.FatJet) >= 1]
-        ####sort 
-        if byRun == False:
-            for i in np.arange(len(HLT_paths))[::-1]:
-                path = HLT_paths[i]
-    #             print("Index i: ", i, " for path: ", path)
-                if path in events.HLT.fields:
-                    pt0 = events.FatJet[:,0].pt
-                    out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path]])
-                    if i == (len(HLT_paths) - 1):
-                        print('last index')
-                        pt_cut = (pt0 >= turnOnPt[i]) & events.HLT[path]
-    #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
-                        out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut])
-                    else:
-                        pt_cut = (pt0 >= turnOnPt[i]) & (pt0 < turnOnPt[i+1]) & events.HLT[path]
-    #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
-                        out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut])
-        else:                                                    
-            ### allRuns_AK8HLT.csv is the result csv of running 'brilcalc trg --prescale --hltpath "HLT_AK8PFJet*" --output-style                 csv' and is used to create the ps_weight_JSON files
-            pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_"+str(self.year)+".json")
-            print("PS keys: ", pseval.values())
-            lumi_mask = getLumiMask(self.year)(events.run, events.luminosityBlock)
-            print("Lumi Mask length: ", len(lumi_mask))
-            print("Length of events before lumi mask: ", len(events))
-            events = events[lumi_mask]
-            print("Length of events before lumi mask: ", len(events))
-            print("Casting spells: ", events.luminosityBlock)
-            print("Casting spells: ", ak.values_astype(events.luminosityBlock, np.float32))
-            for i in np.arange(len(HLT_paths))[::-1]:
-                path = HLT_paths[i]
-                print("Index i: ", i, " for path: ", path)
-                if path in events.HLT.fields:
-                    pt0 = events.FatJet[:,0].pt
-                    print("Lumi block:", events.luminosityBlock[0], "for event run", events.run[0])
-                    weights = np.ones_like(events.run)
-                    ### here we will use correctionlib to assign weights
-                    out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path]])
-                    print("Example prescale: ", pseval['prescaleWeight'].evaluate([281693, 281693, 281976, 281976], path, [1100., 1535., 1645., 2079.]))
-                    if i == (len(HLT_paths) - 1):
-                        print('last index')
-                        events = events[(pt0 >= turnOnPt[i]) & events.HLT[path]]
-                        pt0 = events.FatJet[:,0].pt
-    #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
-                        out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0, 
-                                                      weight = pseval['prescaleWeight'].evaluate(events.run, path, ak.values_astype(events.luminosityBlock, np.float32)))
-                    else:
-                        pt_cut = (pt0 >= turnOnPt[i]) & (pt0 < turnOnPt[i+1]) & events.HLT[path]
-    #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0[pt_cut]))
-                        out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0[pt_cut], weight = weights)
+        events = events[ak.num(events.FatJet) >= 1]                                           
+        ### allRuns_AK8HLT.csv is the result csv of running 'brilcalc trg --prescale --hltpath "HLT_AK8PFJet*" --output-style                 csv' and is used to create the ps_weight_JSON files
+        lumi_mask = getLumiMask(self.year)(events.run, events.luminosityBlock)
+#        print("Length of events before lumi mask: ", len(events))
+        events = events[lumi_mask]
+#         print("Length of events before lumi mask: ", len(events))
+        for i in np.arange(len(HLT_paths))[::-1]:
+            path = HLT_paths[i]
+#             print("Index i: ", i, " for path: ", path)
+            if path in events.HLT.fields:
+                pt0 = events.FatJet[:,0].pt
+#                 print(len(pt0), "leading pts: ", pt0, "for events", len(events))
+                #### here we will use correctionlib to assign weights
+                out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path]])
+                if i == (len(HLT_paths) - 1):
+#                     print('last index')
+                    events_cut = events[((pt0 >= turnOnPt[i]) & events.HLT[path])]
+                    pt0 = events_cut.FatJet[:,0].pt
+#                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0))
+                    out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0, 
+                                                      weight = pseval['prescaleWeight'].evaluate(ak.to_numpy(events_cut.run), path, ak.to_numpy(ak.values_astype(events_cut.luminosityBlock, np.float32))))
+                else:
+                    events_cut = events[((pt0 >= turnOnPt[i]) & (pt0 < turnOnPt[i+1]) & events.HLT[path])]
+                    pt0 = events_cut.FatJet[:,0].pt
+#                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0))
+                    out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0, weight =                                                                         pseval['prescaleWeight'].evaluate(ak.to_numpy(events_cut.run), path,                                                               ak.to_numpy(ak.values_astype(events_cut.luminosityBlock, np.float32))))
         return out
     def postprocess(self, accumulator):
         return accumulator
@@ -207,7 +165,7 @@ def main():
     #### Next run processor with futures executor on all test files
     from dask.distributed import Client
     from plugins import runCoffeaJob
-    in_year = 2016
+    in_year = '2016'
     data_bool = False
     processor = triggerProcessor(year = in_year, trigger = 'AK8PFJet', data = data_bool)
     datastring = "JetHT" if processor.data == True else "QCDsim"

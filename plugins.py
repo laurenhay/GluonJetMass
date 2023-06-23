@@ -17,25 +17,47 @@ def checkdir(directory):
 
 #reads in files and adds redirector, can specify year, default is all years
 def handleData(jsonFile, redirector, year = '', testing = True, data = False):
-    if (redirector == '/mnt/data/cms') and (data==False):
-        inputs = 'QCD_flat'
-        qualifier = 'UL' + str(year)[-2:]
-    elif (data==False): 
-        inputs = 'QCD_binned'
-        qualifier = 'UL' + str(year)[-2:]
-        print(qualifier)
-    else:
-        inputs = 'JetHT_data'
-        qualifier = str(year)
-    df = pd.read_json(jsonFile) 
+    eras_data = {'2016':   'UL2016',
+                 '2016APV':'HIPM_UL2016', 
+                 '2017':   'UL2017',
+                 '2018':   'UL2018'
+                    }
+    eras_mc = {'2016':'UL16', 
+               '2017':'UL17NanoAODv9', 
+               '2018':'UL18NanoAODv9'
+              }
     dict = {}
+    qualifiers = []
+    if data:
+        inputs = 'JetHT_data'
+        if year == '2016' or year == '2016APV' or year == '2016APV' or year == '2017':
+            qualifiers.append(eras_data[year])
+        else:
+            for era in list(eras_data.values()):
+                print("Era: ", era)
+                qualifiers.append(era)
+    else:
+        if (redirector == '/mnt/data/cms'):
+            jsonFile = "QCD_flat_files.json"
+            inputs = 'QCD_flat'
+        else:
+            jsonFile = "fileset_QCD.json"
+            inputs = 'QCD_binned'
+        if year == '2016' or year == '2016APV' or year == '2017':
+            qualifier.add(eras_mc[year])
+        else:
+            for era in list(eras_mc.values()):
+                print("Era: ", era)
+                qualifiers.append(era)
+    df = pd.read_json(jsonFile) 
     for key in df[inputs].keys():
-        if qualifier in key:
-            print("dataset = ", key)
-            if testing:
-                dict[key] = [redirector +  df[inputs][key][0]]
-            else:
-                dict[key] = [redirector + df[inputs][key][i] for i in range(len(df[inputs][key]))]
+        for qualifier in qualifiers:
+            if qualifier in key:
+                print("dataset = ", key)
+                if testing:
+                    dict[key] = [redirector +  df[inputs][key][0]]
+                else:
+                    dict[key] = [redirector + df[inputs][key][i] for i in range(len(df[inputs][key]))]
     return dict
 
 #initiate dask client and run coffea job

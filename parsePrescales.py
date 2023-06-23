@@ -33,20 +33,8 @@ golden_runs = cert_jsonData.iloc[:,0].keys().to_list()
 #### run,cmsls,prescidx,totprescval,hltpath/prescval,logic,l1bit/prescval                                                          
 ps_csvData = pandas.read_csv("allRunsAK8HLT_skimmed.csv")
 #### Removing "None" values from ps data
-print(ps_csvData[ps_csvData['# run'].isin(golden_runs)])
+#print(ps_csvData[ps_csvData['# run'].isin(golden_runs)])
 ps_csvData = ps_csvData[ps_csvData['cmsls']!='None']
-ps_csvData = ps_csvData[ps_csvData['cmsls']!='None']
-#print("Prescale csv data: \n")
-#print("PS columns: ", ps_csvData.columns)
-#print('String contains:', ps_csvData[ps_csvData['hltpath/prescval'].str.contains('HLT_AK8PFJet400')])
-#print('String contains: \n')
-#runs = [362628, 362485, 274953, 274949]
-#print(np.any(ps_csvData['# run']==run for run in runs))
-#ps = ps_csvData[ps_csvData['hltpath/prescval'].str.contains('HLT_AK8PFJet400_v')][ps_csvData['# run']==np.any(runs)]['totprescval'].to_numpy()
-#print(ps)
-#print(len(ps_csvData['totprescval'][ps_csvData['hltpath/prescval'].str.contains('AK8PFJet40_v')]))
-#print(ps_csvData[ps_csvData['hltpath/prescval'].str.contains('HLT_AK8PFJet400_v')][ps_csvData['# run']==274953])
-
 
 ### convert ps csv into correctionlib json following along from github.com/cms-nanoAOD/correctionlib/blob/master/data/conversion.py
 def get_ps(ps):
@@ -79,7 +67,7 @@ def build_lumibins(ps):
 
 def build_paths(ps, HLT_paths):
     print("Run: ", ps["# run"].iloc[0], type(ps["# run"].iloc[0]))
-    #paths are unique bc of hltpath/lumi --> make array of path name separate
+    #####  paths are unique bc of hltpath/lumi --> must make array of path name separate as done above
     paths = HLT_paths
     print("Type of path key: ", type(paths[0])) 
     return cs.Category.parse_obj({
