@@ -74,7 +74,7 @@ class triggerProcessor(processor.ProcessorABC):
         for i in np.arange(len(HLT_paths)):
             path = HLT_paths[i]
             print("index: ", i, " HLT path: ", path)
-            if i > 0:
+            if (path in events.HLT.fields) and (i > 0):
                 print("Number of events w/ trigger ", ak.count_nonzero(events.HLT[HLT_paths[i]]))
                 print("HLT ref path: ", HLT_paths[i-1], " Number of Trues ", ak.count_nonzero(events.HLT[HLT_paths[i-1]]))
                 #### choose jets belonging to ref trigger (i-1) and passing pt cut of trigger of trigger of interest (i)
@@ -85,7 +85,6 @@ class triggerProcessor(processor.ProcessorABC):
                 out['hist_trigEff'].fill(dataset = datastring + str(year), HLT_cat = path, pt = events.FatJet[:,0].pt[(events.HLT[HLT_paths[i-1]]) & (events.HLT[HLT_paths[i]])])
                 out['hist_trigRef'].fill(dataset = datastring +  str(year), HLT_cat = path, pt = events.FatJet[:,0].pt[(events.HLT[HLT_paths[i-1]])])
                 out['hist_pt'].fill(dataset = datastring + str(year), pt = events.FatJet[:,0].pt)
-
         print("Final efficiencies:", efficiencies)
         return out
     
@@ -147,16 +146,16 @@ class applyPrescales(processor.ProcessorABC):
                 out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path]])
                 if i == (len(HLT_paths) - 1):
 #                     print('last index')
-                    events_cut = events[((pt0 >= turnOnPt[i]) & events.HLT[path])]
+                    events_cut = events[((pt0 > turnOnPt[i]) & events.HLT[path])]
                     pt0 = events_cut.FatJet[:,0].pt
 #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0))
                     out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0, 
-                                                      weight = pseval['prescaleWeight'].evaluate(ak.to_numpy(events_cut.run), path, ak.to_numpy(ak.values_astype(events_cut.luminosityBlock, np.float32))))
+                                                      weight = pseval['prescaleWeight'].evaluate(ak.to_numpy(events_cut.run), path, ak.to_numpy(ak.values_astype(events[events_cut].luminosityBlock, np.float32))))
                 else:
-                    events_cut = events[((pt0 >= turnOnPt[i]) & (pt0 < turnOnPt[i+1]) & events.HLT[path])]
+                    events_cut = events[((pt0 > turnOnPt[i]) & (pt0 <= turnOnPt[i+1]) & events.HLT[path])]
                     pt0 = events_cut.FatJet[:,0].pt
 #                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0))
-                    out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0, weight =                                                                         pseval['prescaleWeight'].evaluate(ak.to_numpy(events_cut.run), path,                                                               ak.to_numpy(ak.values_astype(events_cut.luminosityBlock, np.float32))))
+                    out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0, weight =                                                                         pseval['prescaleWeight'].evaluate(ak.to_numpy(events_cut.run), path,                                                               ak.to_numpy(ak.values_astype(events[events_cut].luminosityBlock, np.float32))))
         return out
     def postprocess(self, accumulator):
         return accumulator
