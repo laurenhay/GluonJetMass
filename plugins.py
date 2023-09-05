@@ -17,7 +17,7 @@ def checkdir(directory):
 
 #reads in files and adds redirector, can specify year, default is all years
 def handleData(jsonFile, redirector, year = '', testing = True, data = False):
-    eras_data = {'2016':   'UL2016',
+    eras_data = {'2016':   '-UL2016',
                  '2016APV':'HIPM_UL2016', 
                  '2017':   'UL2017',
                  '2018':   'UL2018'
@@ -30,7 +30,7 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
     qualifiers = []
     if data:
         inputs = 'JetHT_data'
-        if year == '2016' or year == '2016APV' or year == '2016APV' or year == '2017':
+        if year == '2016' or year == '2016APV' or year == '2018' or year == '2017':
             qualifiers.append(eras_data[year])
         else:
             for era in list(eras_data.values()):
@@ -43,7 +43,7 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
         else:
             jsonFile = "fileset_QCD.json"
             inputs = 'QCD_binned'
-        if year == '2016' or year == '2016APV' or year == '2017':
+        if year == '2016' or year == '2016APV' or year == '2017' or year == '2018':
             qualifier.add(eras_mc[year])
         else:
             for era in list(eras_mc.values()):

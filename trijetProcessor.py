@@ -106,9 +106,9 @@ class makeTrijetHists(processor.ProcessorABC):
         parton_cat = hist.axis.StrCategory([],growth=True,name="partonFlav", label="Parton Flavour")
         
         #### if using specific bin edges use hist.axis.Variable() instead
-        mass_bin =  hist.axis.Variable([0,5,10,20,40,60,80,100,150,200,250,300,350,1000], name="mreco", label=r"m_{RECO} (GeV)")
+        mass_bin =  hist.axis.Variable([0,5,10,20,40,60,80,100,150,200,250,1000], name="mreco", label=r"m_{RECO} (GeV)")
         mass_gen_bin = hist.axis.Variable([0,2.5,5,7.5,10,15,20,30,40,50,60,70,80,90,
-                                           100,125,150,175,200,225,250,275,300,325,350,1000], name="mgen", label=r"m_{GEN} (GeV)")
+                                           100,125,150,175,200,225,250,1000], name="mgen", label=r"m_{GEN} (GeV)")
         pt_bin = hist.axis.Variable([200,280,360,450,520,630,690,750,800,1300,13000], name="ptreco", label=r"p_{T,RECO} (GeV)")   
         pt_gen_bin = hist.axis.Variable([200,280,360,450,520,630,690,750,800,1300,13000], name="ptgen", label=r"p_{T,GEN} (GeV)") 
 #         mass_bin = hist.axis.Regular(60, 0, 1000.,name="mreco", label="Jet Mass (GeV)")
@@ -182,11 +182,11 @@ class makeTrijetHists(processor.ProcessorABC):
         out = self._histos
         dataset = events.metadata['dataset']
         filename = events.metadata['filename']
-        
+        print(dataset)
         #####################################
         #### Find the IOV from the dataset name
         #####################################
-        IOV = ('2016APV' if ( any(re.findall(r'APV',  dataset)) or any(re.findall(r'UL2016APV', dataset)))
+        IOV = ('2016APV' if ( any(re.findall(r'HIPM',  dataset)))
                else '2018'    if ( any(re.findall(r'UL18', dataset)) or any(re.findall(r'UL2018',    dataset)))
                else '2017'    if ( any(re.findall(r'UL17', dataset)) or any(re.findall(r'UL2017',    dataset)))
                else '2016')
@@ -206,8 +206,10 @@ class makeTrijetHists(processor.ProcessorABC):
             era = fname_toks[ fname_toks.index("data") + 1]
             print("IOV ", IOV, ", era ", era)
             # apply lumimask and require at least one jet to apply jet trigger prescales
+            print("Event runs: ", events.run)
             lumi_mask = getLumiMask(IOV)(events.run, events.luminosityBlock)
             events = events[lumi_mask & (ak.num(events.FatJet) >= 1)]
+            print("Event runs: ", events.run)
             trigsel, psweights = applyPrescales(events, year = IOV)
             weights=psweights
             print("Trigger: len of events ", len(events), "len of weights ", len(trigsel))
@@ -370,8 +372,6 @@ class makeTrijetHists(processor.ProcessorABC):
             jet1_other = jet1[(np.abs(genjet1.partonFlavour) > 5) & (np.abs(genjet1.partonFlavour) != 21)]
 
             print("Check for none values", ak.any(ak.is_none(jet3_g.mass), axis = -1))
-
-            print("Gluon purity of third jet for basic selection: ", len(jet3_g)/len(jet3))
 
 
             out['jet_mass'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Gluon",  mgen = jet1_g.mass,
