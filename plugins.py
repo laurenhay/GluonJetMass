@@ -103,6 +103,10 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
         cluster.adapt(minimum=1, maximum=10)
         client = Client(cluster)
+        client.upload_file('plugins.py')
+        client.upload_file('utils.py')
+        client.upload_file('trijetProcessor.py') #upload additional files to the client
+        client.upload_file('jetProcessors.py')
         exe_args = {
             "client": client,
             'skipbadfiles':True,
