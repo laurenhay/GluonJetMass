@@ -154,6 +154,8 @@ class makeTrijetHists(processor.ProcessorABC):
         'jet_dr_reco_to_gen_subjet': hist.Hist(dataset_cat, dr_axis, storage="weight", label="Counts"),
         'jet_sd_mass_reco':          hist.Hist(dataset_cat, jet_cat, parton_cat, mass_bin, storage="weight", name="Events"),
         'jet_sd_mass_gen':           hist.Hist(dataset_cat, jet_cat, parton_cat, mass_bin, storage="weight", name="Events"),
+        'misses_g':       hist.Hist(dataset_cat, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
+        'fakes_g':        hist.Hist(dataset_cat, pt_bin, mass_bin, storage="weight", name="Events"),
         'misses':       hist.Hist(dataset_cat, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
         'fakes':        hist.Hist(dataset_cat, pt_bin, mass_bin, storage="weight", name="Events"),
          
@@ -220,17 +222,19 @@ class makeTrijetHists(processor.ProcessorABC):
         #### Need to add PU reweighting for if do_gen
         #### Remove event with very large gen weights???
         sel = PackedSelection()
-        sel.add("npv", events.PV.npvsGood>0)
+        print("NPVs ",events.PV.fields)
+        # sel.add("npv", events.PV.npvsGood>0)
 
         #####################################
         #### Gen Jet Selection
         ####################################       
         if self.do_gen:
-            sel.add("threeGenJets", ak.num(events.GenJetAK8) >= 3)
+            # sel.add("threeGenJets", ak.num(events.GenJetAK8) >= 3)
             pt_cut_gen = ak.all(events.GenJetAK8.pt > 140., axis = -1) ### 70% of reco pt cut
             eta_cut_gen = ak.all(np.abs(events.GenJetAK8.eta) < self.etacut, axis = -1)
-            sel.add("ptEtaCutGen", (pt_cut_gen & eta_cut_gen))
-            kinesel = sel.all("threeGenJets", "ptEtaCutGen")
+            # sel.add("ptEtaCutGen", (pt_cut_gen & eta_cut_gen))
+            # kinesel = sel.all("threeGenJets", "ptEtaCutGen")
+            kinesel = (pt_cut_gen & eta_cut_gen & (ak.num(events.GenJetAK8) >=3))
             out["njet_gen"].fill(dataset=dataset, n=ak.num(events.GenJetAK8[eta_cut_gen & pt_cut_gen]), 
                                  weight = weights[eta_cut_gen & pt_cut_gen] )
             print("Initial # of events:  ", len(events.GenJetAK8))
@@ -257,10 +261,16 @@ class makeTrijetHists(processor.ProcessorABC):
             events = events[(dphimin_gen < 1.0) & (asymm_gen < 0.3)]
             weights = weights[(dphimin_gen < 1.0) & (asymm_gen < 0.3)]
             print("Number of matched trijet events after topological selection ", len(events.GenJetAK8), '\n')
+            gensubjets = events.SubGenJetAK8
+            groomed_genjet = get_gen_sd_mass_jet(events.GenJetAK8, gensubjets)
             matches = ak.all(events.GenJetAK8.delta_r(events.GenJetAK8.nearest(events.FatJet)) < 0.15, axis = -1)
+            # matches_g = ak.all(groomed_genjet.delta_r(groomed_genjet.nearest(events.FatJet)) < 0.15, axis = -1)
             misses = ~matches
-            out["misses"].fill(dataset=dataset, ptgen = ak.flatten(events[misses].GenJetAK8.pt), 
-                                    mgen = ak.flatten(events[misses].GenJetAK8.mass))
+            # misses_g = ~matches_g
+            # out["misses"].fill(dataset=dataset, ptgen = ak.flatten(events[misses].GenJetAK8[:,2].pt), 
+            #                         mgen = ak.flatten(events[misses].GenJetAK8[:,2].mass))
+            # out["misses_g"].fill(dataset=dataset, ptgen = ak.flatten(events[misses_g].GenJetAK8[:,2].pt), 
+            #                         mgen = ak.flatten(groomed_genjet[misses_g][:,2].mass))
             events = events[matches]
             weights = weights[matches]
             print("Gen jet fields: ", events.GenJetAK8.fields)
