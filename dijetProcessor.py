@@ -281,6 +281,8 @@ class makeDijetHists(processor.ProcessorABC):
         jets = events.FatJet[:,:2]
         jet1 = events.FatJet[:,0]
         jet2 = events.FatJet[:,1]
+        genjet1 = events.GenJetAK8[:,0]
+        genjet2 = events.GenJetAK8[:,1]
         dphi12 = (np.abs(jet1.delta_phi(jet2)) > 2.)
         asymm = np.abs(jet1.pt - jet2.pt)/(jet1.pt + jet2.pt)
         asymm_reco_sel = asymm < 0.3
@@ -288,6 +290,7 @@ class makeDijetHists(processor.ProcessorABC):
 #         sel.add("reco_asymm_sel", asymm < 0.3)
         events = events[asymm_reco_sel & dphi12]
         weights = weights[asymm_reco_sel & dphi12]
+        dijet_weights = np.repeat(weights, 2)
         print("Reco kine/topo sel: len of events ", len(events), "len of weights ", len(weights))
         #### Reco event topology selection
 
@@ -304,9 +307,13 @@ class makeDijetHists(processor.ProcessorABC):
         ####  Final RECO plots
         FatJet = events.FatJet
         FatJet["p4"] = ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-        dijets = FatJet[:,0].p4+FatJet[:,1].p4
-        out["jet_pt_mass_reco_u"].fill( dataset=dataset, ptreco=dijets.pt, mreco=dijets.mass, weight=weights )
-        out["jet_pt_mass_reco_g"].fill( dataset=dataset, ptreco=dijets.pt, mreco=dijets.msoftdrop, weight=weights )
+        dijet_invmass = (FatJet[:,0].p4+FatJet[:,1].p4).mass
+        print("FatJet: ", FatJet[:,:2].pt)
+        print("Fatjet flattened along axis 0: ", ak.flatten(FatJet[:,:2], axis=1).pt)
+        dijet = ak.flatten(FatJet[:,:2], axis=1)
+        print("Length of FatJet after falttenting: ", len(FatJet))
+        out["jet_pt_mass_reco_u"].fill( dataset=dataset, ptreco=dijet.pt, mreco=dijet.mass, weight=dijet_weights )
+        out["jet_pt_mass_reco_g"].fill( dataset=dataset, ptreco=dijet.pt, mreco=dijet.msoftdrop, weight=dijet_weights )
         
         #### match jets
         if self.do_gen:
@@ -316,62 +323,64 @@ class makeDijetHists(processor.ProcessorABC):
             matched_reco = ~fakes
             events = events[matched_reco]
             weights = weights[matched_reco]
-            jets = events.FatJet[:,:2]
+            FatJet = events.FatJet
+            FatJet["p4"] = ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
             print("Lenght of events ", len(events), "length of weights ", len(weights))
-            jet1 = events.FatJet[:,0]
-            jet2 = events.FatJet[:,1]
             #### Get gen subjets and sd gen jets
-            genjets = events.GenJetAK8[:,0:2]
-            gensubjets = events.SubGenJetAK8
-            print("Length of gen subjets: ", gensubjets)
-            groomed_genjets0 = get_gen_sd_mass_jet(genjets[:,0], gensubjets)
-            groomed_genjets1 = get_gen_sd_mass_jet(genjets[:,1], gensubjets)
-            print("Groomed gen jets: ", groomed_genjets0, type(groomed_genjets0), ak.count(groomed_genjets0, axis = -1))
-            groomed_gen_dijets = groomed_genjets0+groomed_genjets1 
-            dijets = jet1+jet2
-            dijet_msd = events.FatJet[:,0].msoftdrop + events.FatJet[:,1].msoftdrop
-            genjet1 = events.GenJetAK8[:,0]
-            genjet2 = events.GenJetAK8[:,1]
-            gen_dijets = genjet1+genjet2
+            GenJet = events.GenJetAK8
+            GenJet['p4']= ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+            print("Length of gen subjets: ", len(events.SubGenJetAK8))
+            groomed_genjet0 = get_gen_sd_mass_jet(events.GenJetAK8[:,0], events.SubGenJetAK8)
+            groomed_genjet1 = get_gen_sd_mass_jet(events.GenJetAK8[:,1], events.SubGenJetAK8)
+            print("Groomed gen jets: ", groomed_genjet0, type(groomed_genjet0), ak.count(groomed_genjet0, axis = -1))
+            groomed_gen_dijet = ak.concatenate([groomed_genjet0, groomed_genjet1], axis=0) 
+            print("Groomed gen dijets: ", groomed_gen_dijet, type(groomed_gen_dijet), ak.count(groomed_gen_dijet, axis = -1))
+            print("Length of FatJet: ", len(FatJet))
+            dijet = ak.flatten(FatJet[:,:2], axis =1)
+            dijet_weights = np.repeat(weights, 2)
+            print("Length of FatJet after falttenting: ", len(FatJet))
+            dijet_invMass = (FatJet[:,0]+FatJet[:,1]).mass
+            gen_dijet = ak.flatten(GenJet[:,:2], axis=1)
+            gen_dijet_invMass = (GenJet[:,0]+GenJet[:,1]).mass
             #### Gen jet and subjet plots
-            out["jet_pt_gen"].fill(dataset=dataset,ptgen=dijets.pt, weight=weights)
+            out["jet_pt_gen"].fill(dataset=dataset,ptgen=dijet.pt, weight=dijet_weights)
             out["jet_dr_gen_subjet"].fill(dataset=dataset,
-                                             dr=gensubjets[:,0].delta_r(dijets),
+                                             dr=events.SubGenJetAK8[:,0].delta_r(FatJet[:,0]),
                                              weight=weights)
             #### Plots to check matching
-            out["fakes"].fill(dataset = dataset, ptreco = ak.flatten(events[fakes].FatJet.pt),
-                                   mreco = ak.flatten(events[fakes].FatJet.mass))
+            out["fakes"].fill(dataset = dataset, ptreco = ak.flatten(events[fakes].FatJet[:,:2].pt),
+                                   mreco = ak.flatten(events[fakes].FatJet[:,:2].mass))
             print("Number of matched dijet events", len(events))
             out['cutflow']['matched'] += (len(events))
 #            print("Check for none values", ak.any(ak.is_none(dijetEvents, axis = -1)))
             #### dimensions of matched jets are weird -- fix
 
             #### Final plots
-            out['jet_pt_mass_u_gen'].fill( dataset=dataset, ptgen=gen_dijets.pt, mgen=gen_dijets.mass, weight=weights )
-            out['jet_pt_mass_g_gen'].fill( dataset=dataset, ptgen=groomed_gen_dijets.pt, mgen=groomed_gen_dijets.mass, weight=weights )
+            out['jet_pt_mass_u_gen'].fill( dataset=dataset, ptgen=gen_dijet.pt, mgen=gen_dijet.mass, weight=dijet_weights )
+            out['jet_pt_mass_g_gen'].fill( dataset=dataset, ptgen=groomed_gen_dijet.pt, mgen=groomed_gen_dijet.mass, weight=dijet_weights )
             
-            out["dijet_dr_reco_to_gen"].fill(dataset=dataset, dr=dijets.delta_r(gen_dijets), weight=weights)
+            out["dijet_dr_reco_to_gen"].fill(dataset=dataset, dr=dijet.delta_r(gen_dijet), weight=dijet_weights)
             
         
-            out["jet_pt_reco_over_gen"].fill(dataset=dataset, frac=dijets.pt/gen_dijets.pt, weight=weights)
+            out["jet_pt_reco_over_gen"].fill(dataset=dataset, frac=dijet.pt/gen_dijet.pt, weight=dijet_weights)
             out["jet_m_pt_u_reco_over_gen"].fill(dataset=dataset, 
-                                                     ptgen=gen_dijets.pt, mgen = gen_dijets.mass, 
-                                                     frac=dijets.mass/gen_dijets.mass, weight=weights)
+                                                     ptgen=gen_dijet.pt, mgen = gen_dijet.mass, 
+                                                     frac=dijet.mass/gen_dijet.mass, weight=dijet_weights)
             out["jet_m_pt_g_reco_over_gen"].fill(dataset=dataset, 
-                                                     ptgen=groomed_gen_dijets.pt, mgen=groomed_gen_dijets.mass,
-                                                     frac=dijet_msd/groomed_gen_dijets.mass, weight=weights)
+                                                     ptgen=groomed_gen_dijet.pt, mgen=groomed_gen_dijet.mass,
+                                                     frac=dijet.msoftdrop/groomed_gen_dijet.mass, weight=dijet_weights)
 
 
             out["response_matrix_u"].fill( dataset=dataset, 
-                                               ptreco=dijets.pt, ptgen=gen_dijets.pt,
-                                               mreco=dijets.mass, mgen=gen_dijets.mass )
+                                               ptreco=dijet.pt, ptgen=gen_dijet.pt,
+                                               mreco=dijet.mass, mgen=gen_dijet.mass )
             out["response_matrix_g"].fill( dataset=dataset, 
-                                               ptreco=dijets.pt, ptgen=gen_dijets.pt,
-                                               mreco=dijet_msd, mgen=groomed_gen_dijets.mass )
+                                               ptreco=dijet.pt, ptgen=gen_dijet.pt,
+                                               mreco=dijet.msoftdrop, mgen=groomed_gen_dijet.mass )
             
 
             #weird = (reco_jet.msoftdrop/groomed_gen_jet.mass > 2.0) & (reco_jet.msoftdrop > 10.)
-            weird = (np.abs(dijet_msd - groomed_gen_dijets.mass) > 20.0) & (dijet_msd > 10.)
+            weird = (np.abs(dijet.msoftdrop - groomed_gen_dijet.mass) > 20.0) & (dijet.msoftdrop > 10.)
             
             #### FIX
 #             recosubjets = events.SubJet           
@@ -498,7 +507,7 @@ class makeDijetHists(processor.ProcessorABC):
             out['jet_eta'].fill(dataset=dataset, jetNumb = "jet2", partonFlav = "Other",  eta = np.abs(jet2_other.eta),
                                  #weight = trijetEvents.Generator.weight
                                 )
-            out['cutflow']['nGluonJets'] += (len(ak.flatten(jets[np.abs(genjets.partonFlavour) == 21].pt, axis=-1)))
+            out['cutflow']['nGluonJets'] += (len(ak.flatten(dijet[np.abs(gen_dijet.partonFlavour) == 21].pt, axis=-1)))
             out['cutflow']['nJets'] += (len(ak.flatten(jets.pt, axis=-1)))
         out['cutflow']['chunks'] += 1
         return out
