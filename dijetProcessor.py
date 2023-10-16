@@ -164,7 +164,7 @@ class makeDijetHists(processor.ProcessorABC):
         out = self._histos
         dataset = events.metadata['dataset']
         filename = events.metadata['filename']
-        
+        print("Filename: ", filename)
         #####################################
         #### Find the IOV from the dataset name
         #####################################
@@ -187,8 +187,10 @@ class makeDijetHists(processor.ProcessorABC):
             era = fname_toks[ fname_toks.index("data") + 1]
             print("IOV ", IOV, ", era ", era)
             # apply lumimask and require at least one jet to apply jet trigger prescales
+            print("apply lumimask")
             lumi_mask = getLumiMask(IOV)(events.run, events.luminosityBlock)
             events = events[lumi_mask & (ak.num(events.FatJet) >= 1)]
+            print("call applyprescales")
             trigsel, psweights = applyPrescales(events, year = IOV)
             weights=psweights
             print("Trigger: len of events ", len(events), "len of weights ", len(trigsel))
@@ -278,11 +280,8 @@ class makeDijetHists(processor.ProcessorABC):
 #         print("FatJet fields ", fatJets.fields, "\n")
         
         #### get dphi and pt asymm selections
-        jets = events.FatJet[:,:2]
         jet1 = events.FatJet[:,0]
         jet2 = events.FatJet[:,1]
-        genjet1 = events.GenJetAK8[:,0]
-        genjet2 = events.GenJetAK8[:,1]
         dphi12 = (np.abs(jet1.delta_phi(jet2)) > 2.)
         asymm = np.abs(jet1.pt - jet2.pt)/(jet1.pt + jet2.pt)
         asymm_reco_sel = asymm < 0.3
@@ -318,6 +317,8 @@ class makeDijetHists(processor.ProcessorABC):
         #### match jets
         if self.do_gen:
             fakes = ak.any(ak.is_none(events.FatJet.matched_gen, axis = -1), axis = -1)
+            out["fakes"].fill(dataset = dataset, ptreco = ak.flatten(events[fakes].FatJet[:,:2].pt),
+                              mreco = ak.flatten(events[fakes].FatJet[:,:2].mass))
             #fakes = reco but no gen
             print("Number of fake jets ", len(fakes), " number of events ", len(events))
             matched_reco = ~fakes
@@ -348,8 +349,6 @@ class makeDijetHists(processor.ProcessorABC):
                                              dr=events.SubGenJetAK8[:,0].delta_r(FatJet[:,0]),
                                              weight=weights)
             #### Plots to check matching
-            out["fakes"].fill(dataset = dataset, ptreco = ak.flatten(events[fakes].FatJet[:,:2].pt),
-                                   mreco = ak.flatten(events[fakes].FatJet[:,:2].mass))
             print("Number of matched dijet events", len(events))
             out['cutflow']['matched'] += (len(events))
 #            print("Check for none values", ak.any(ak.is_none(dijetEvents, axis = -1)))
@@ -360,15 +359,6 @@ class makeDijetHists(processor.ProcessorABC):
             out['jet_pt_mass_g_gen'].fill( dataset=dataset, ptgen=groomed_gen_dijet.pt, mgen=groomed_gen_dijet.mass, weight=dijet_weights )
             
             out["dijet_dr_reco_to_gen"].fill(dataset=dataset, dr=dijet.delta_r(gen_dijet), weight=dijet_weights)
-            
-        
-            out["jet_pt_reco_over_gen"].fill(dataset=dataset, frac=dijet.pt/gen_dijet.pt, weight=dijet_weights)
-            out["jet_m_pt_u_reco_over_gen"].fill(dataset=dataset, 
-                                                     ptgen=gen_dijet.pt, mgen = gen_dijet.mass, 
-                                                     frac=dijet.mass/gen_dijet.mass, weight=dijet_weights)
-            out["jet_m_pt_g_reco_over_gen"].fill(dataset=dataset, 
-                                                     ptgen=groomed_gen_dijet.pt, mgen=groomed_gen_dijet.mass,
-                                                     frac=dijet.msoftdrop/groomed_gen_dijet.mass, weight=dijet_weights)
 
 
             out["response_matrix_u"].fill( dataset=dataset, 
@@ -399,7 +389,10 @@ class makeDijetHists(processor.ProcessorABC):
 #                                                      weight=weights[~ak.is_none(drsub1) & ~ak.is_none(drsub2)])
 
             #flavour --> 21 is gluon
-
+            genjet1 = events.GenJetAK8[:,0]
+            genjet2 = events.GenJetAK8[:,1]
+            jet1 = events.FatJet[:,0]
+            jet2 = events.FatJet[:,1]
             jet2_g     = jet2[np.abs(genjet2.partonFlavour) == 21]
             jet2_uds   = jet2[np.abs(genjet2.partonFlavour) < 4]
             jet2_c     = jet2[np.abs(genjet2.partonFlavour) == 4]
@@ -508,7 +501,7 @@ class makeDijetHists(processor.ProcessorABC):
                                  #weight = trijetEvents.Generator.weight
                                 )
             out['cutflow']['nGluonJets'] += (len(ak.flatten(dijet[np.abs(gen_dijet.partonFlavour) == 21].pt, axis=-1)))
-            out['cutflow']['nJets'] += (len(ak.flatten(jets.pt, axis=-1)))
+            out['cutflow']['nJets'] += (len(ak.flatten(jet1.pt, axis=-1)))
         out['cutflow']['chunks'] += 1
         return out
     
