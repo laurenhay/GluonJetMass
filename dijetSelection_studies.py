@@ -19,7 +19,7 @@ environmentGroup.add_argument('--winterfell', action='store_true', help='Get ava
 
 parser.add_argument('--data', action='store_true', help="Run on data") 
 parser.add_argument('--dask', action='store_true', help='Run on dask')
-parser.add_argument('--runProcessor', type=bool, help='Run processor; if True run the processor; if False, only make plots', default='True')
+parser.add_argument('--run', type=bool, help='Run processor; if True run the processor; if False, only make plots', default='True')
 parser.add_argument('--testing', action='store_true', help='Testing; run on only a subset of data')
 
 arg = parser.parse_args()
@@ -34,14 +34,9 @@ from plugins import *
 from dijetProcessor import makeDijetHists
 import pickle
 
-print("Test that xrootd is working:")
-events = NanoEventsFactory.from_root('root://cmsxrootd.fnal.gov//store/data/Run2018B/JetHT/NANOAOD/UL2018_MiniAODv2_NanoAODv9-v1/120000/02113304-6253-8A41-88DB-C3077FA2AC47.root', schemaclass=NanoAODSchema).events()
-#events = NanoEventsFactory.from_root('root://xcache//store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/120000/6BEB9A7B-150C-7440-96D8-17A3D87F3225.root', schemaclass=NanoAODSchema).events()
-print(events.fields)
-
 #### WE'RE MISSING 2016B ver2 -- AK8 PF HLT is missing need to use AK4 trigger isntead
 ### Run coffea processor and make plots
-run_bool = arg.runProcessor
+run_bool = arg.run
 data_bool = arg.data
 processor = makeDijetHists(data = data_bool)
 datastring = "JetHT" if processor.do_gen == False else "QCDsim"
@@ -67,7 +62,7 @@ else:
 #Make plots
 import matplotlib.pyplot as plt
 os_path = 'plots/selectionStudies/dijet/'
-
+result=result[0]
 plt.rcParams["figure.figsize"] = (10,10)
 fig, axs = plt.subplots(2, 2)
 fig.suptitle('Ungroomed (top) and groomed (bottom) reco jets')

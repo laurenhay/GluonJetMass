@@ -82,7 +82,7 @@ class makeDijetHists(processor.ProcessorABC):
     With "do_gen == True", will perform GEN selection and create response matrices. 
     Will always plot RECO level quantities. 
     '''
-    def __init__(self, ptcut = 30., etacut = 2.5, data = False):
+    def __init__(self, ptcut = 200., etacut = 2.5, data = False):
         # should have separate **lower** ptcut for gen
         self.do_gen = not data
         self.ptcut = ptcut
@@ -91,10 +91,10 @@ class makeDijetHists(processor.ProcessorABC):
         dataset_cat = hist.axis.StrCategory([],growth=True,name="dataset", label="Dataset")
         jet_cat = hist.axis.StrCategory([], growth=True, name="jetNumb", label="Jet")
         parton_cat = hist.axis.StrCategory([], growth=True,name="partonFlav", label="Parton Flavour")
-        
-        #### if using specific bin edges use hist.axis.Variable() instead
-        mass_gen_bin =  hist.axis.Variable([0,1,5,10,20,40,60,80,100,150,200,250,1000], name="mgen", label=r"m_{GEN} (GeV)")                         
-        mass_bin = hist.axis.Variable([0,1,3,5,7.5,10,15,20,30,40,50,60,70,80,90,100,125,150,175,200,225,250,1000], name="mreco", label=r"m_{RECO} (GeV)")
+        mgen_bin_edges = np.array([0,1,5,10,20,40,60,80,100,150,200,250,1000])
+        mreco_bin_edges = np.sort(np.append(mgen_bin_edges,[(mgen_bin_edges[i]+mgen_bin_edges[i+1])/2 for i in range(len(mgen_bin_edges)-1)]))
+        mass_gen_bin =  hist.axis.Variable(mgen_bin_edges, name="mgen", label=r"m_{GEN} (GeV)")                         
+        mass_bin = hist.axis.Variable(mreco_bin_edges, name="mreco", label=r"m_{RECO} (GeV)")
         pt_bin = hist.axis.Variable([200,280,360,450,520,630,690,750,800,1300,13000], name="ptreco", label=r"p_{T,RECO} (GeV)")        
         pt_gen_bin = hist.axis.Variable([200,280,360,450,520,630,690,750,800,1300,13000], name="ptgen", label=r"p_{T,GEN} (GeV)") 
         eta_bin = hist.axis.Regular(25, 0., 2.5, name="eta", label="Eta")

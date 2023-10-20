@@ -106,8 +106,11 @@ class makeTrijetHists(processor.ProcessorABC):
         parton_cat = hist.axis.StrCategory([],growth=True,name="partonFlav", label="Parton Flavour")
         
         #### if using specific bin edges use hist.axis.Variable() instead
-        mass_gen_bin =  hist.axis.Variable([0,1,5,10,20,40,60,80,100,150,200,250,1000], name="mgen", label=r"m_{GEN} (GeV)")
-        mass_bin = hist.axis.Variable([0,1,3,5,7.5,10,15,20,30,40,50,60,70,80,90,100,125,150,175,200,225,250,1000], name="mreco", label=r"m_{RECO} (GeV)")
+        mgen_bin_edges = np.array([0,1,5,10,20,40,60,80,100,150,200,250,1000])
+        mreco_bin_edges = np.sort(np.append(mgen_bin_edges,[(mgen_bin_edges[i]+mgen_bin_edges[i+1])/2 for i in range(len(mgen_bin_edges)-1)]))
+        print("mreco bins: ", mreco_bin_edges)
+        mass_gen_bin =  hist.axis.Variable(mgen_bin_edges, name="mgen", label=r"m_{GEN} (GeV)")                         
+        mass_bin = hist.axis.Variable(mreco_bin_edges, name="mreco", label=r"m_{RECO} (GeV)")
         pt_bin = hist.axis.Variable([200,280,360,450,520,630,690,750,800,1300,13000], name="ptreco", label=r"p_{T,RECO} (GeV)")   
         pt_gen_bin = hist.axis.Variable([200,280,360,450,520,630,690,750,800,1300,13000], name="ptgen", label=r"p_{T,GEN} (GeV)") 
 #         mass_bin = hist.axis.Regular(60, 0, 1000.,name="mreco", label="Jet Mass (GeV)")
@@ -199,7 +202,10 @@ class makeTrijetHists(processor.ProcessorABC):
         weights = np.ones(len(events)) 
         print("Lenght of events ", len(events), "length of weights ", len(weights))
         if (self.do_gen):
-            era = None   
+            era = None
+            print(events.Generator.fields)
+            print(events.Generator.weight)
+            print(events.genWeight)
         else:
             firstidx = filename.find( "store/data/" )
             fname2 = filename[firstidx:]
@@ -221,7 +227,7 @@ class makeTrijetHists(processor.ProcessorABC):
         #### Need to add PU reweighting for if do_gen
         #### Remove event with very large gen weights???
         sel = PackedSelection()
-        print("NPVs ",events.PV.fields)
+        # print("NPVs ",events.PV.fields)
         # sel.add("npv", events.PV.npvsGood>0)
 
         #####################################
