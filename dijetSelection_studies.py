@@ -47,9 +47,9 @@ elif processor.do_gen==True:
 else:
     filename = "datasets_UL_NANOAOD.json"
 if arg.testing:
-    fname = 'coffeaOutput/dijetHistsTest_{}_{}_{}_NewHist.pkl'.format(datastring, processor.ptcut, processor.etacut)
+    fname = 'coffeaOutput/dijetHistsTest_{}_pt{}_eta{}.pkl'.format(datastring, processor.ptcut, processor.etacut)
 else:
-    fname = 'coffeaOutput/dijetHists_{}_{}_{}_NewHist.pkl'.format(datastring, processor.ptcut, processor.etacut)
+    fname = 'coffeaOutput/dijetHists_{}_pt{}_eta{}.pkl'.format(datastring, processor.ptcut, processor.etacut)
 
 if run_bool:
     result = runCoffeaJob(processor, jsonFile = filename, casa = arg.casa, winterfell = arg.winterfell, testing = arg.testing, dask = arg.dask, data = not processor.do_gen)

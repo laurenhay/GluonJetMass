@@ -55,7 +55,7 @@ def get_dphi( coll0, coll1 ):
     return ak.firsts((combs['1'])).ak.firsts(dphi)
 
 
-bTag_options = ['bbloose', 'bloose', 'bbmed', 'bmed']
+#bTag_options = ['bbloose', 'bloose', 'bbmed', 'bmed']
 def applyBTag(events, btag):
     print('btag input: ', btag, '\n')
     if (btag == 'bbloose'):
@@ -203,9 +203,11 @@ class makeTrijetHists(processor.ProcessorABC):
         print("Lenght of events ", len(events), "length of weights ", len(weights))
         if (self.do_gen):
             era = None
-            print(events.Generator.fields)
             print(events.Generator.weight)
-            print(events.genWeight)
+            print(ak.sum(events.Generator.weight!=1))
+            print(ak.sum(events.genWeight!=1))
+            print("Gen weights: ", weights)
+                
         else:
             firstidx = filename.find( "store/data/" )
             fname2 = filename[firstidx:]
@@ -272,8 +274,8 @@ class makeTrijetHists(processor.ProcessorABC):
             # matches_g = ak.all(groomed_genjet.delta_r(groomed_genjet.nearest(events.FatJet)) < 0.15, axis = -1)
             misses = ~matches
             # misses_g = ~matches_g
-            # out["misses"].fill(dataset=dataset, ptgen = ak.flatten(events[misses].GenJetAK8[:,2].pt), 
-            #                         mgen = ak.flatten(events[misses].GenJetAK8[:,2].mass))
+            out["misses"].fill(dataset=dataset, ptgen = events[misses].GenJetAK8[:,2].pt, 
+                                    mgen = events[misses].GenJetAK8[:,2].mass)
             # out["misses_g"].fill(dataset=dataset, ptgen = ak.flatten(events[misses_g].GenJetAK8[:,2].pt), 
             #                         mgen = ak.flatten(groomed_genjet[misses_g][:,2].mass))
             events = events[matches]

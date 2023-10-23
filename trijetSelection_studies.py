@@ -22,6 +22,8 @@ environmentGroup.add_argument('--casa', action='store_true', help='Use Coffea-Ca
 environmentGroup.add_argument('--lpc', action='store_true', help='Use CMSLPC redirector: root://cmsxrootd.fnal.gov/')
 environmentGroup.add_argument('--winterfell', action='store_true', help='Get available files from UB Winterfell /mnt/data/cms')
 
+parser.add_argument('--btag', choices=['bbloose', 'bloose', 'bbmed', 'bmed', None], default="bbloose", help="Run on data") 
+
 parser.add_argument('--data', action='store_true', help="Run on data") 
 parser.add_argument('--dask', action='store_true', help='Run on dask')
 parser.add_argument('--runProcessor', type=bool, help='Run processor; if True run the processor; if False, only make plots', default='True')
@@ -38,7 +40,8 @@ if not np.any(environments): #if user forgets to assign something here
 ### Run coffea processor and make plots
 run_bool = arg.runProcessor
 data_bool = arg.data
-processor = makeTrijetHists(data = data_bool)
+btag_str = arg.btag
+processor = makeTrijetHists(data = data_bool, btag = btag_str)
 datastring = "JetHT" if processor.do_gen == False else "QCDsim"
 if processor.do_gen==True and arg.winterfell:
     filename = "QCD_flat_files.json"
@@ -46,7 +49,11 @@ elif processor.do_gen==True:
     filename = "fileset_QCD.json"
 else:
     filename = "datasets_UL_NANOAOD.json"
-fname = 'coffeaOutput/dijetHistsTest_{}_{}_{}_NewHist.pkl'.format(datastring, processor.ptcut, processor.etacut)
+    
+if arg.testing:
+    fname = 'coffeaOutput/trijetHistsTest_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
+else:
+    fname = 'coffeaOutput/trijetHists_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
 
 if run_bool:
     result = runCoffeaJob(processor, jsonFile = filename, casa = arg.casa, winterfell = arg.winterfell, testing = arg.testing, dask = arg.dask, data = not processor.do_gen)
