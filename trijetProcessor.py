@@ -203,10 +203,8 @@ class makeTrijetHists(processor.ProcessorABC):
         print("Lenght of events ", len(events), "length of weights ", len(weights))
         if (self.do_gen):
             era = None
-            print(events.Generator.weight)
-            print(ak.sum(events.Generator.weight!=1))
-            print(ak.sum(events.genWeight!=1))
-            print("Gen weights: ", weights)
+            print("XS weight: ", getXSweight(dataset, IOV))
+            weights = weights * getXSweight(dataset, IOV)
                 
         else:
             firstidx = filename.find( "store/data/" )

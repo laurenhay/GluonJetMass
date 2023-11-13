@@ -49,6 +49,70 @@ turnOnPts_JetHT = {'2016': {'AK8PFJet40':  0.,
                             'AK8PFJet550': 796.7749788024963}
             }
 
+xsdb_2017= { 'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 104000.0,
+'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 6806.0,
+'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 552.0,
+'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 154.6,
+'QCD_Pt_800to1000_TuneCP5_13TeV_pythia8' : 26.15,
+'QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8' : 0.03567,
+'QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8' : 0.6419,
+'QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8' : 0.0877,
+'QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8' : 0.005241,
+'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' : 0.0001346
+ }
+# in fb^-1 taken from https://twiki.cern.ch/twiki/bin/viewauth/CMS/PdmVAnalysisSummaryTable
+lumi = {'2018' : 59.74,
+        '2017': 41.48,
+        '2016': 36.33 
+       }
+
+num_gen = { '2016': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 29758000,
+'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 29758000,
+'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 52408000,
+'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 64584000,
+'QCD_Pt_800to1000_TuneCP5_13TeV_pythia8' : 37698000,
+'QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8' : 19892000,
+'QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8' : 10722000,
+'QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8' : 5236000,
+'QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8' : 2848000,
+'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' : 996000},
+           '2017': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 29491000,
+'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 55358000,
+'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 50475000,
+'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 66419000,
+'QCD_Pt_800to1000_TuneCP5_13TeV_pythia8' : 36890000,
+'QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8' : 19461000,
+'QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8' : 10994000,
+'QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8' : 5168000,
+'QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8' : 2997000,
+'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' : 1000000},
+           '2018': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 29478000,
+'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 57868000,
+'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 52448000,
+'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 66914000,
+'QCD_Pt_800to1000_TuneCP5_13TeV_pythia8' : 36830000,
+'QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8' : 19664000,
+'QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8' : 10982000,
+'QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8' : 5491000,
+'QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8' : 2931000,
+'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' : 1000000}
+}
+        
+
+
+def getXSweight(dataset, IOV):
+    print("Dataset: ", dataset)
+    for year in np.array(list(lumi.keys())):
+        if year in IOV:
+            lum = lumi[year]
+            print("Lumi ", lum, " for year ", year)
+            for process in np.array(list(xsdb_2017.keys())):
+                if process in dataset:
+                    xs = xsdb_2017[process]
+                    print("Number of gen events for year: ", num_gen[year][process])
+                    weight = xs * lum * 1000 / num_gen[year][process]
+                    return weight
+
 
 def getLumiMask(year):
 

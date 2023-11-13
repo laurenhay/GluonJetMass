@@ -179,7 +179,8 @@ class makeDijetHists(processor.ProcessorABC):
         weights = np.ones(len(events)) 
         print("Lenght of events ", len(events), "length of weights ", len(weights))
         if (self.do_gen):
-            era = None   
+            era = None 
+            weights = weights * getXSweight(dataset, IOV)
         else:
             firstidx = filename.find( "store/data/" )
             fname2 = filename[firstidx:]

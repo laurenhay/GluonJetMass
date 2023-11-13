@@ -70,7 +70,7 @@ result['jet_pt_mass_reco_u'][{'dataset':sum}].project('ptreco').plot1d(ax=axs[0,
 result['jet_pt_mass_reco_u'][{'dataset':sum}].project('mreco').plot1d(ax=axs[0,1])
 result['jet_pt_mass_reco_g'][{'dataset':sum}].project('ptreco').plot1d(ax=axs[1,0])
 result['jet_pt_mass_reco_g'][{'dataset':sum}].project('mreco').plot1d(ax=axs[1,1])
-plt.savefig(os_path+'/pt_m_reco_u_g.png')
+plt.savefig(os_path+'pt_m_reco_u_g.png')
 
 if not data:
     plt.rcParams["figure.figsize"] = (20,15)
@@ -80,7 +80,7 @@ if not data:
     result['jet_pt_mass_gen_u'][{'dataset':sum}].project('mgen').plot1d(ax=axs[0,1])
     result['jet_pt_mass_gen_g'][{'dataset':sum}].project('ptgen').plot1d(ax=axs[1,0])
     result['jet_pt_mass_gen_g'][{'dataset':sum}].project('mgen').plot1d(ax=axs[1,1])
-    plt.savefig(os_path+"/pt_m_gen_u_g.png")
+    plt.savefig(os_path+"pt_m_gen_u_g.png")
 
     response_matrix_u_values = result['response_matrix_u'].project("ptreco", "mreco", "ptgen", "mgen").values()
     response_matrix_g_values = result['response_matrix_g'].project("ptreco", "mreco", "ptgen", "mgen").values()
