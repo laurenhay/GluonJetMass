@@ -268,7 +268,7 @@ class makeTrijetHists(processor.ProcessorABC):
             print("Number of matched trijet events after topological selection ", len(events.GenJetAK8), '\n')
             gensubjets = events.SubGenJetAK8
             groomed_genjet = get_gen_sd_mass_jet(events.GenJetAK8, gensubjets)
-            matches = ak.all(events.GenJetAK8.delta_r(events.GenJetAK8.nearest(events.FatJet)) < 0.15, axis = -1)
+            matches = ak.all(events.GenJetAK8.delta_r(events.GenJetAK8.nearest(events.FatJet)) < 0.2, axis = -1)
             # matches_g = ak.all(groomed_genjet.delta_r(groomed_genjet.nearest(events.FatJet)) < 0.15, axis = -1)
             misses = ~matches
             # misses_g = ~matches_g

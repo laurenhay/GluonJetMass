@@ -50,10 +50,14 @@ elif processor.do_gen==True:
 else:
     filename = "datasets_UL_NANOAOD.json"
     
-if arg.testing:
-    fname = 'coffeaOutput/trijetHistsTest_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
-else:
+if arg.testing and not data:
+    fname = 'coffeaOutput/trijetHistsTest_wXSscaling_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
+elif arg.testing and data:
+    fname = 'coffeaOutput/trijetHistsTest{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
+elif not arg.testing and data:
     fname = 'coffeaOutput/trijetHists_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
+else:
+    fname = 'coffeaOutput/trijetHists_wXSscaling_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
 
 if run_bool:
     result = runCoffeaJob(processor, jsonFile = filename, casa = arg.casa, winterfell = arg.winterfell, testing = arg.testing, dask = arg.dask, data = not processor.do_gen)

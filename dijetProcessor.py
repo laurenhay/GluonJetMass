@@ -165,6 +165,7 @@ class makeDijetHists(processor.ProcessorABC):
         dataset = events.metadata['dataset']
         filename = events.metadata['filename']
         print("Filename: ", filename)
+        print("dataset: ", dataset)
         #####################################
         #### Find the IOV from the dataset name
         #####################################
@@ -180,6 +181,7 @@ class makeDijetHists(processor.ProcessorABC):
         print("Lenght of events ", len(events), "length of weights ", len(weights))
         if (self.do_gen):
             era = None 
+            print("Do XS scaling")
             weights = weights * getXSweight(dataset, IOV)
         else:
             firstidx = filename.find( "store/data/" )
@@ -187,7 +189,7 @@ class makeDijetHists(processor.ProcessorABC):
             fname_toks = fname2.split("/")
             era = fname_toks[ fname_toks.index("data") + 1]
             print("IOV ", IOV, ", era ", era)
-            # apply lumimask and require at least one jet to apply jet trigger prescales
+            #apply lumimask and require at least one jet to apply jet trigger prescales
             print("apply lumimask")
             lumi_mask = getLumiMask(IOV)(events.run, events.luminosityBlock)
             events = events[lumi_mask & (ak.num(events.FatJet) >= 1)]
@@ -252,7 +254,7 @@ class makeDijetHists(processor.ProcessorABC):
             weights = weights[dphi12_gen_sel & asymm_gen_sel]
             print("After topo sel: len of events ", len(events), "len of weights ", len(weights))
             #misses = gen but no reco
-            matches = ak.all(events.GenJetAK8.delta_r(events.GenJetAK8.nearest(events.FatJet)) < 0.15, axis = -1)
+            matches = ak.all(events.GenJetAK8.delta_r(events.GenJetAK8.nearest(events.FatJet)) < 0.2, axis = -1)
             misses = ~matches
             out["misses"].fill(dataset=dataset, ptgen = ak.flatten(events[misses].GenJetAK8.pt), 
                                     mgen = ak.flatten(events[misses].GenJetAK8.mass))

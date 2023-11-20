@@ -76,13 +76,24 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         redirector = 'root://cmsxrootd.fnal.gov/'
     exe_args = {"schema": NanoAODSchema, 'skipbadfiles': True,}
     samples = handleData(jsonFile, redirector, year = year, testing = testing, data = data)
+    #single files for testing
+    # samples = {'/JetHT/Run2017D-UL2017_MiniAODv2_NanoAODv9-v1/NANOAOD': [redirector+'/store/data/Run2017D/JetHT/NANOAOD/UL2017_MiniAODv2_NanoAODv9-v1/120000/4A70E050-A8B9-FA46-92C3-4A85F22FB255.root']}
+    # samples = {'/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/RunIISummer20UL17NanoAODv9-106X_mc2017_realistic_v9-v1/NANOAODSIM': [redirector+'/store/mc/RunIISummer20UL17NanoAODv9/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_mc2017_realistic_v9-v1/270000/00DD1153-F006-3446-ABBC-7CA23A020566.root']}
+#    print("Samples = ", samples, " executor = ", executor)
     client = None
     cluster = None
     if casa and dask:
         print("Running on coffea casa")
         from coffea_casa import CoffeaCasaCluster
         client = Client("tls://lauren-2emeryl-2ehay-40cern-2ech.dask.cmsaf-prod.flatiron.hollandhpc.org:8786")
-        client.register_worker_plugin(UploadDirectory("/home/cms-jovyan/GluonJetMass", restart=True, update_path=True), nanny=True)
+#        client.register_worker_plugin(UploadDirectory("/home/cms-jovyan/GluonJetMass", restart=True, update_path=True), nanny=True)
+        client.upload_file('plugins.py')
+        client.upload_file('utils.py')
+        client.upload_file('trijetProcessor.py') #upload additional files to the client                                                                      
+        client.upload_file('dijetProcessor.py')
+        client.upload_file('Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt')
+        client.upload_file("Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt")
+        client.upload_file("Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt")
         print(client.run(os.listdir, "dask-worker-space") )
         # cluster = CoffeaCasaCluster(cores=11, memory="20 GiB", death_timeout = 60)
         # cluster.adapt(minimum=2, maximum=14)
@@ -90,43 +101,46 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         print(client)
         exe_args = {
             "client": client,
-            'skipbadfiles':True,
+            "status":False,
+            "skipbadfiles":True,
             "schema": NanoAODSchema,
             "align_clusters": True,
         }
         executor = processor.dask_executor
+        result = processor.run_uproot_job(samples,
+                                          "Events",
+                                          processor_instance = processor_inst,
+                                          executor = executor,
+                                          executor_args = exe_args,
+                                     )
     elif casa == False and dask:
         print("Running on LPC Condor")
         from lpcjobqueue import LPCCondorCluster
-        #### figure out what replaces the tmp directory
-        cluster = LPCCondorCluster(shared_temp_directory="/tmp")
+        #### make list of files and directories to upload to dask
+        upload_to_dask = ['correctionFiles', 'plugins.py', 'utils.py', 'trijetProcessor.py', 'dijetProcessor.py']
+        cluster = LPCCondorCluster(memory='3 GiB', transfer_input_files=upload_to_dask)
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
         cluster.adapt(minimum=1, maximum=10)
-        client = Client(cluster)
-        client.upload_file('plugins.py')
-        client.upload_file('utils.py')
-        client.upload_file('trijetProcessor.py') #upload additional files to the client
-        client.upload_file('dijetProcessor.py')
-        exe_args = {
-            "client": client,
-            'skipbadfiles':True,
-            "savemetrics": True,
-            "schema": NanoAODSchema,
-            "align_clusters": True,
-        }
+        with Client(cluster) as client:
+            run_instance = processor.Runner(
+                            executor=processor.DaskExecutor(client=client, retries=5),#, status=False),
+                            schema=NanoAODSchema,
+                            savemetrics=True,
+                            skipbadfiles=True,
+                            # chunksize=10000,
+                            # maxchunks=10,
+                        )
+            result, metrics = run_instance(samples,
+                                           "Events",
+                                           processor_instance = processor_inst,)
 #         print("Waiting for at least one worker...")
-        client.wait_for_workers(1)
-        executor = processor.dask_executor
     else:
         print("Running locally")
-    # samples = {'/JetHT/Run2018A-UL2018_MiniAODv2_NanoAODv9-v2/NANOAOD': ['root://xcache//store/data/Run2018A/JetHT/NANOAOD/UL2018_MiniAODv2_NanoAODv9-v2/100000/00AA9A90-57AA-D147-B4FA-54D6D8DA0D4A.root']}
-    # samples = {'/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/RunIISummer20UL17NanoAODv9-106X_mc2017_realistic_v9-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL17NanoAODv9/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_mc2017_realistic_v9-v1/270000/00DD1153-F006-3446-ABBC-7CA23A020566.root']}
-    print("Samples = ", samples, " executor = ", executor)
-    result = processor.run_uproot_job(samples,
-                                      "Events",
-                                      processor_instance = processor_inst,
-                                      executor = executor,
-                                      executor_args = exe_args,
+        result = processor.run_uproot_job(samples,
+                                          "Events",
+                                          processor_instance = processor_inst,
+                                          executor = executor,
+                                          executor_args = exe_args,
                                      )
     elapsed = time.time() - tstart
     print(result)

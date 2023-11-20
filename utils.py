@@ -116,10 +116,10 @@ def getXSweight(dataset, IOV):
 
 def getLumiMask(year):
 
-    files = { '2016APV': "Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt",
-              '2016': "Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt",
-              '2017': "Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt",
-              '2018': "Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt"
+    files = { '2016APV': "correctionFiles/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt",
+              '2016': "correctionFiles/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt",
+              '2017': "correctionFiles/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt",
+              '2018': "correctionFiles/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt"
             }
 
     mask = LumiMask(files[year])
@@ -131,13 +131,13 @@ def applyPrescales(events, year, trigger = "AK8PFJet", turnOnPts = turnOnPts_Jet
     print("Trigger year ", year)
     if year == '2016' or year == '2016APV':
         trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500]
-        pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_2016.json")
+        pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_2016.json")
     elif year == '2017':
         trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]  
-        pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_"+year+".json")
+        pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_"+year+".json")
     elif year == '2018':
         trigThresh = [15, 25, 40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
-        pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_"+year+".json")
+        pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_"+year+".json")
     turnOnPts = np.array(list(turnOnPts[year].values()))
     HLT_paths = [trigger + str(i) for i in trigThresh]
     events_mask = np.full(len(events), False)

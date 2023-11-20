@@ -46,10 +46,14 @@ elif processor.do_gen==True:
     filename = "fileset_QCD.json"
 else:
     filename = "datasets_UL_NANOAOD.json"
-if arg.testing:
-    fname = 'coffeaOutput/dijetHistsTest_{}_pt{}_eta{}.pkl'.format(datastring, processor.ptcut, processor.etacut)
+if arg.testing and not data:
+    fname = 'coffeaOutput/dijetHistsTest_wXSscaling_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
+elif arg.testing and data:
+    fname = 'coffeaOutput/dijetHistsTest{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
+elif not arg.testing and data:
+    fname = 'coffeaOutput/dijetHists_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
 else:
-    fname = 'coffeaOutput/dijetHists_{}_pt{}_eta{}.pkl'.format(datastring, processor.ptcut, processor.etacut)
+    fname = 'coffeaOutput/dijetHists_wXSscaling_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
 
 if run_bool:
     result = runCoffeaJob(processor, jsonFile = filename, casa = arg.casa, winterfell = arg.winterfell, testing = arg.testing, dask = arg.dask, data = not processor.do_gen)
@@ -72,7 +76,7 @@ result['jet_pt_mass_reco_g'][{'dataset':sum}].project('ptreco').plot1d(ax=axs[1,
 result['jet_pt_mass_reco_g'][{'dataset':sum}].project('mreco').plot1d(ax=axs[1,1])
 plt.savefig(os_path+'pt_m_reco_u_g.png')
 
-if not data:
+if not data_bool:
     plt.rcParams["figure.figsize"] = (20,15)
     fig, axs = plt.subplots(2, 2)
     fig.suptitle('Ungroomed (top) and groomed (bottom) reco jets')
