@@ -214,15 +214,15 @@ class makeTrijetHists(processor.ProcessorABC):
             print("IOV ", IOV, ", era ", era)
             # apply lumimask and require at least one jet to apply jet trigger prescales
             print("Event runs: ", events.run)
-            lumi_mask = getLumiMask(IOV)(events.run, events.luminosityBlock)
-            events = events[lumi_mask & (ak.num(events.FatJet) >= 1)]
+            # lumi_mask = getLumiMask(IOV)(events.run, events.luminosityBlock)
+            # events = events[lumi_mask & (ak.num(events.FatJet) >= 1)]
             print("Event runs: ", events.run)
-            trigsel, psweights = applyPrescales(events, year = IOV)
-            weights=psweights
-            print("Trigger: len of events ", len(events), "len of weights ", len(trigsel))
-            print(weights)
-            events = events[trigsel]
-            weights = weights[trigsel]
+            # trigsel, psweights = applyPrescales(events, year = IOV)
+            # weights=psweights
+            # print("Trigger: len of events ", len(events), "len of weights ", len(trigsel))
+            # print(weights)
+            # events = events[trigsel]
+            # weights = weights[trigsel]
         
         #### Need to add PU reweighting for if do_gen
         #### Remove event with very large gen weights???

@@ -14,7 +14,6 @@ from plugins import handleData
 print(coffea.__version__)
 from coffea import util, processor
 from coffea.nanoevents import NanoEventsFactory, NanoAODSchema
-from coffea.analysis_tools import PackedSelection
 from collections import defaultdict
 from utils import *
 import hist
@@ -82,11 +81,12 @@ class makeDijetHists(processor.ProcessorABC):
     With "do_gen == True", will perform GEN selection and create response matrices. 
     Will always plot RECO level quantities. 
     '''
-    def __init__(self, ptcut = 200., etacut = 2.5, data = False):
+    def __init__(self, ptcut = 200., ycut = 2.5, data = False, systematics = ['nominal']):
         # should have separate **lower** ptcut for gen
         self.do_gen = not data
         self.ptcut = ptcut
-        self.etacut = etacut
+        self.ycut = ycut #rapidity
+        self.systematics = systematics
         print("Data: ", data, " gen ", self.do_gen)
         dataset_cat = hist.axis.StrCategory([],growth=True,name="dataset", label="Dataset")
         jet_cat = hist.axis.StrCategory([], growth=True, name="jetNumb", label="Jet")
@@ -97,7 +97,8 @@ class makeDijetHists(processor.ProcessorABC):
         mass_bin = hist.axis.Variable(mreco_bin_edges, name="mreco", label=r"m_{RECO} (GeV)")
         pt_bin = hist.axis.Variable([200,280,360,450,520,630,690,750,800,1300,13000], name="ptreco", label=r"p_{T,RECO} (GeV)")        
         pt_gen_bin = hist.axis.Variable([200,280,360,450,520,630,690,750,800,1300,13000], name="ptgen", label=r"p_{T,GEN} (GeV)") 
-        eta_bin = hist.axis.Regular(25, 0., 2.5, name="eta", label="Eta")
+        y_bin = hist.axis.Regular(25, 0., 2.5, name="rapidity", label=r"$y$")
+        eta_bin = hist.axis.Regular(25, 0., 2.5, name="eta", label=r"$\eta$")
         frac_axis = hist.axis.Regular(10, 0.0, 1., name="frac", label="Fraction")
         n_axis = hist.axis.Regular(5, 0, 5, name="n", label=r"Number")
         dr_axis = hist.axis.Regular(150, 0, 6.0, name="dr", label=r"$\Delta R$")
@@ -107,6 +108,7 @@ class makeDijetHists(processor.ProcessorABC):
             #### Old histos
             'jet_mass':             hist.Hist(dataset_cat, jet_cat, parton_cat, mass_bin, storage="weight", name="Events"),
             'jet_pt':             hist.Hist(dataset_cat, jet_cat, parton_cat, pt_bin, storage="weight", name="Events"),
+            'jet_rap':            hist.Hist(dataset_cat, jet_cat, parton_cat, y_bin, storage="weight", name="Events"),
             'jet_eta':            hist.Hist(dataset_cat, jet_cat, parton_cat, eta_bin, storage="weight", name="Events"),
             
             #### Plots of things during the selection process / for debugging
@@ -204,10 +206,6 @@ class makeDijetHists(processor.ProcessorABC):
         #### Need to add PU reweighting for if do_gen
         #### Remove event with very large gen weights???
         
-        #####################################
-        ### Use cofffea PackedSelection to apply cuts
-        #####################################
-        sel = PackedSelection()
         
         #### NPV selection
         print("Npvs ", events.PV.fields)
@@ -220,8 +218,10 @@ class makeDijetHists(processor.ProcessorABC):
         if (self.do_gen):
             print("DOING GEN")
             #### Select events with at least 2 jets
+            GenJetAK8 = events.GenJetAK8
+            GenJetAK8['p4']= ak.with_name(events.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
             pt_cut_gen = ak.all(events.GenJetAK8.pt > 140., axis = -1) ### 70% of reco pt cut
-            eta_cut_gen = ak.all(np.abs(events.GenJetAK8.eta) < self.etacut, axis = -1)
+            eta_cut_gen = ak.all(np.abs(getRapidity(GenJetAK8.p4)) < self.ycut, axis = -1)
             out["njet_gen"].fill(dataset=dataset, n=ak.num(events.GenJetAK8[eta_cut_gen & pt_cut_gen]), 
                                  weight = weights[eta_cut_gen & pt_cut_gen] )
             print("Initial # of events:  ", len(events.GenJetAK8))
@@ -276,7 +276,9 @@ class makeDijetHists(processor.ProcessorABC):
         print("Reco sel: len of events ", len(events), "len of weights ", len(weights))   
         #### Apply pt and eta cuts
         pt_cut_reco = ak.all(events.FatJet.pt > self.ptcut, axis = -1)
-        eta_cut_reco = ak.all(np.abs(events.FatJet.eta) < self.etacut, axis = -1)
+        FatJet = events.FatJet
+        FatJet["p4"] = ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+        eta_cut_reco = ak.all(np.abs(getRapidity(FatJet.p4)) < self.ycut, axis = -1)
 #         sel.add("reco_pt_eta_cut", eta_cut_reco & pt_cut_reco)
   
         
@@ -309,7 +311,7 @@ class makeDijetHists(processor.ProcessorABC):
         ####  Final RECO plots
         FatJet = events.FatJet
         FatJet["p4"] = ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-        dijet_invmass = (FatJet[:,0].p4+FatJet[:,1].p4).mass
+        # dijet_invmass = (FatJet[:,0].p4+FatJet[:,1].p4).mass
         print("FatJet: ", FatJet[:,:2].pt)
         print("Fatjet flattened along axis 0: ", ak.flatten(FatJet[:,:2], axis=1).pt)
         dijet = ak.flatten(FatJet[:,:2], axis=1)
@@ -327,12 +329,8 @@ class makeDijetHists(processor.ProcessorABC):
             matched_reco = ~fakes
             events = events[matched_reco]
             weights = weights[matched_reco]
-            FatJet = events.FatJet
-            FatJet["p4"] = ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
             print("Lenght of events ", len(events), "length of weights ", len(weights))
             #### Get gen subjets and sd gen jets
-            GenJet = events.GenJetAK8
-            GenJet['p4']= ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
             print("Length of gen subjets: ", len(events.SubGenJetAK8))
             groomed_genjet0 = get_gen_sd_mass_jet(events.GenJetAK8[:,0], events.SubGenJetAK8)
             groomed_genjet1 = get_gen_sd_mass_jet(events.GenJetAK8[:,1], events.SubGenJetAK8)
@@ -340,16 +338,16 @@ class makeDijetHists(processor.ProcessorABC):
             groomed_gen_dijet = ak.concatenate([groomed_genjet0, groomed_genjet1], axis=0) 
             print("Groomed gen dijets: ", groomed_gen_dijet, type(groomed_gen_dijet), ak.count(groomed_gen_dijet, axis = -1))
             print("Length of FatJet: ", len(FatJet))
-            dijet = ak.flatten(FatJet[:,:2], axis =1)
+            dijet = ak.flatten(events.FatJet[:,:2], axis =1)
             dijet_weights = np.repeat(weights, 2)
             print("Length of FatJet after falttenting: ", len(FatJet))
-            dijet_invMass = (FatJet[:,0]+FatJet[:,1]).mass
-            gen_dijet = ak.flatten(GenJet[:,:2], axis=1)
-            gen_dijet_invMass = (GenJet[:,0]+GenJet[:,1]).mass
+            # dijet_invMass = (events.FatJet[:,0]+events.FatJet[:,1]).mass
+            gen_dijet = ak.flatten(events.GenJetAK8[:,:2], axis=1)
+            # gen_dijet_invMass = (events.GenJetAK8[:,0]+events.GenJetAK8[:,1]).mass
             #### Gen jet and subjet plots
             out["jet_pt_gen"].fill(dataset=dataset,ptgen=dijet.pt, weight=dijet_weights)
             out["jet_dr_gen_subjet"].fill(dataset=dataset,
-                                             dr=events.SubGenJetAK8[:,0].delta_r(FatJet[:,0]),
+                                             dr=events.SubGenJetAK8[:,0].delta_r(events.FatJet[:,0]),
                                              weight=weights)
             #### Plots to check matching
             print("Number of matched dijet events", len(events))
@@ -532,7 +530,7 @@ def main():
     from plugins import runCoffeaJob
     processor = makeDijetHists()
     result = runCoffeaJob(processor, jsonFile = "QCD_flat_files.json", winterfell = True, testing = True, data = False)
-    util.save(result, "coffeaOutput/dijet_pT" + str(processor.ptcut) + "_eta" + str(processor.etacut) + "_result_test.coffea")
+    util.save(result, "coffeaOutput/dijet_pT" + str(processor.ptcut) + "_rapidity" + str(processor.ycut) + "_result_test.coffea")
     
 
 if __name__ == '__main__':

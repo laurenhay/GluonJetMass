@@ -99,7 +99,9 @@ num_gen = { '2016': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 29758000,
 }
         
 
-
+def getRapidity(p4):
+    return 0.5 * np.log(( p4.energy + p4.pz ) / ( p4.energy - p4.pz ))
+    
 def getXSweight(dataset, IOV):
     print("Dataset: ", dataset)
     for year in np.array(list(lumi.keys())):
