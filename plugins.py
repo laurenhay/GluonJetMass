@@ -89,6 +89,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         # client.register_worker_plugin(UploadDirectory("/home/cms-jovyan/GluonJetMass", restart=True, update_path=True), nanny=True)
         client.upload_file("plugins.py")
         client.upload_file("utils.py")
+        client.upload_file("corrections.py")
         client.upload_file("trijetProcessor.py") #upload additional files to the client                               
         client.upload_file("dijetProcessor.py")
         client.upload_file("correctionFiles/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt")

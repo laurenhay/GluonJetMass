@@ -94,9 +94,9 @@ def applyBTag(events, btag):
 #              b_med(apply medium bTag to only the hardest jet), bb_med (apply medium bTag to leading two jets)
 
 class makeTrijetHists(processor.ProcessorABC):
-    def __init__(self, ptcut = 200., etacut = 2.4, btag = 'null', data = 'False'):
+    def __init__(self, ptcut = 200., ycut = 2.5, btag = 'null', data = 'False'):
         self.ptcut = ptcut
-        self.etacut = etacut
+        self.ycut = ycut
         self.btag = btag
         self.do_gen = not data
         print("Data: ", data, " gen ", self.do_gen)
@@ -117,7 +117,8 @@ class makeTrijetHists(processor.ProcessorABC):
 #         mass_gen_bin = hist.axis.Regular(60, 0, 1000., name="mgen", label="Gen Jet Mass (GeV)")
 #         pt_bin = hist.axis.Regular(60, 0, 3000., name="ptreco",label= "Jet pT (GeV)")
 #         pt_gen_bin = hist.axis.Regular(60, 0, 3000., name="ptgen",label= "Gen Jet pT (GeV)")
-        eta_bin = hist.axis.Regular(10, -2.5, 2.5, name = "eta", label="Eta")
+        y_bin = hist.axis.Regular(25, 0., 2.5, name="rapidity", label=r"$y$")
+        eta_bin = hist.axis.Regular(25, 0., 2.5, name="eta", label=r"$\eta$")
         frac_axis = hist.axis.Regular(10, 0.0, 1., name="frac", label="Fraction")
         n_axis = hist.axis.Regular(5, 0, 5, name="n", label=r"Number")
         dr_axis = hist.axis.Regular(150, 0, 6.0, name="dr", label=r"$\Delta R$")
@@ -142,11 +143,13 @@ class makeTrijetHists(processor.ProcessorABC):
             
         'jet_dr_reco_gen':           hist.Hist(dataset_cat, dr_axis, storage="weight", label="Counts"),
         'jet_mass_reco_over_gen':    hist.Hist(dataset_cat, frac_axis, storage="weight", label="Counts"),
-        'jet_pt_reco':               hist.Hist(dataset_cat, jet_cat, parton_cat, pt_bin, storage="weight", name="Events"),
-        'jet_pt_gen':                hist.Hist(dataset_cat, jet_cat, pt_bin, storage="weight", name="Events"),
+        'jet_pt_reco':               hist.Hist(dataset_cat, pt_bin, storage="weight", name="Events"),
+        'jet_pt_gen':                hist.Hist(dataset_cat, pt_bin, storage="weight", name="Events"),
         'jet_pt_reco_over_gen':      hist.Hist(dataset_cat, frac_axis, storage="weight", label="Counts"),
-        'jet_eta_reco':              hist.Hist(dataset_cat, jet_cat, parton_cat, eta_bin, storage="weight", name="Events"),
-        'jet_eta_gen':               hist.Hist(dataset_cat, jet_cat, eta_bin, storage="weight",name="Events"),
+        'jet_eta_reco':              hist.Hist(dataset_cat, eta_bin, storage="weight", name="Events"),
+        'jet_eta_gen':               hist.Hist(dataset_cat, eta_bin, storage="weight",name="Events"),
+        'jet_rap_reco':              hist.Hist(dataset_cat, y_bin, storage="weight", name="Events"),
+        'jet_rap_gen':               hist.Hist(dataset_cat, y_bin, storage="weight",name="Events"),
         #'jet_dr_gen':                hist.Hist(dataset_cat, dr_axis, storage="weight", label="Counts"),
         #'jet_dr_reco':               hist.Hist(dataset_cat, dr_axis, storage="weight", label="Counts"),
         'jet_dphi_reco':             hist.Hist(dataset_cat, dphi_axis, storage="weight", label="Counts"),
@@ -177,6 +180,10 @@ class makeTrijetHists(processor.ProcessorABC):
         #### Plots for the analysis in the proper binning
         'response_matrix_u':    hist.Hist(dataset_cat, pt_bin, mass_bin, pt_gen_bin, mass_gen_bin, storage="weight",                                                         label="Counts"),
         'response_matrix_g':     hist.Hist(dataset_cat, pt_bin, mass_bin, pt_gen_bin, mass_gen_bin, storage="weight",                                                         label="Counts"),
+        # accumulators
+        'cutflow': processor.defaultdict_accumulator(int),
+        'weights': processor.defaultdict_accumulator(float),
+        'systematics': processor.defaultdict_accumulator(float),
         }
     
     @property
@@ -236,12 +243,16 @@ class makeTrijetHists(processor.ProcessorABC):
         if self.do_gen:
             # sel.add("threeGenJets", ak.num(events.GenJetAK8) >= 3)
             pt_cut_gen = ak.all(events.GenJetAK8.pt > 140., axis = -1) ### 70% of reco pt cut
-            eta_cut_gen = ak.all(np.abs(events.GenJetAK8.eta) < self.etacut, axis = -1)
+            GenJetAK8 = events.GenJetAK8
+            GenJetAK8['p4']= ak.with_name(events.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+            out["jet_eta_gen"].fill(dataset=dataset, eta = events.GenJetAK8[:,0].eta, weight=weights)
+            out["jet_rap_gen"].fill(dataset=dataset, rapidity=np.abs(getRapidity(GenJetAK8[:,0].p4)), weight = weights)
+            rap_cut_gen = ak.all(np.abs(getRapidity(GenJetAK8.p4)) < self.ycut, axis = -1)
             # sel.add("ptEtaCutGen", (pt_cut_gen & eta_cut_gen))
             # kinesel = sel.all("threeGenJets", "ptEtaCutGen")
-            kinesel = (pt_cut_gen & eta_cut_gen & (ak.num(events.GenJetAK8) >=3))
-            out["njet_gen"].fill(dataset=dataset, n=ak.num(events.GenJetAK8[eta_cut_gen & pt_cut_gen]), 
-                                 weight = weights[eta_cut_gen & pt_cut_gen] )
+            kinesel = (pt_cut_gen & rap_cut_gen & (ak.num(events.GenJetAK8) >=3))
+            out["njet_gen"].fill(dataset=dataset, n=ak.num(events.GenJetAK8[rap_cut_gen & pt_cut_gen]), 
+                                 weight = weights[rap_cut_gen & pt_cut_gen] )
             print("Initial # of events:  ", len(events.GenJetAK8))
                              
             #### Get leading 3 jets
@@ -292,10 +303,14 @@ class makeTrijetHists(processor.ProcessorABC):
         #         sel.add("threeRecoJets", ak.num(events.FatJet) >= 3)
         
         pt_cut = (ak.all(events.FatJet.pt > self.ptcut, axis = -1))
-        eta_cut = (ak.all(np.abs(events.FatJet.eta) < self.etacut, axis = -1))
-        weights = weights[(ak.num(events.FatJet) >= 3) & pt_cut & eta_cut]
-        events = events[(ak.num(events.FatJet) >= 3) & pt_cut & eta_cut]
+        FatJet = events.FatJet
+        FatJet["p4"] = ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+        rap_cut = ak.all(np.abs(getRapidity(FatJet.p4)) < self.ycut, axis = -1)
+        weights = weights[(ak.num(events.FatJet) >= 3) & pt_cut & rap_cut]
+        events = events[(ak.num(events.FatJet) >= 3) & pt_cut & rap_cut]
         out["njet_reco"].fill(dataset=dataset, n=ak.num(events.FatJet), weight = weights)
+        out["jet_eta_reco"].fill(dataset=dataset, eta = events.FatJet.eta, weight=weights)
+        out["jet_rap_reco"].fill(dataset=dataset, rapidity=np.abs(getRapidity(FatJet.p4)), weight = weights)
         print("Initial number of reco trijet events ", len(events.FatJet), '\n')
         jet1 = events.FatJet[:, 0]
         jet2 = events.FatJet[:, 1]

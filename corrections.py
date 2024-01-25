@@ -43,7 +43,7 @@ def GetPUSF(events, IOV):
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/TTbarDileptonProcessor.py#L38
     ## json files from: https://gitlab.cern.ch/cms-nanoAOD/jsonpog-integration/-/tree/master/POG/LUM
         
-    fname = "data/corrections/puWeights/{0}_UL/puWeights.json.gz".format(IOV)
+    fname = "correctionFiles/puWeights/{0}_UL/puWeights.json.gz".format(IOV)
     hname = {
         "2016APV": "Collisions16_UltraLegacy_goldenJSON",
         "2016"   : "Collisions16_UltraLegacy_goldenJSON",
@@ -57,3 +57,162 @@ def GetPUSF(events, IOV):
     puNom = evaluator[hname[str(IOV)]].evaluate(np.array(events.Pileup.nTrueInt), "nominal")
 
     return [puNom, puUp, puDown]
+def GetJetCorrections(FatJets, events, IOV, isData=False):
+    #### I haven't had any issues where i need an "upload directory" like here
+    # uploadDir = 'srv/' for lpcjobqueue shell or TTbarAllHadUproot/ for coffea casa
+    # uploadDir = os.getcwd().replace('/','') + '/'
+    # if 'TTbarAllHadUproot' in uploadDir: 
+    #     uploadDir = 'TTbarAllHadUproot/'
+    # elif 'jovyan' in uploadDir:
+    #     uploadDir = 'TTbarAllHadUproot/'
+    # else:
+    #     uploadDir = 'srv/'
+
+    # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/jmeCorrections.py
+    
+    jer_tag=None
+    if (IOV=='2018'):
+        jec_tag="Summer19UL18_V5_MC"
+        jec_tag_data={
+            "RunA": "Summer19UL18_RunA_V5_DATA",
+            "RunB": "Summer19UL18_RunB_V5_DATA",
+            "RunC": "Summer19UL18_RunC_V5_DATA",
+            "RunD": "Summer19UL18_RunD_V5_DATA",
+        }
+        jer_tag = "Summer19UL18_JRV2_MC"
+    elif (IOV=='2017'):
+        jec_tag="Summer19UL17_V5_MC"
+        jec_tag_data={
+            "RunB": "Summer19UL17_RunB_V5_DATA",
+            "RunC": "Summer19UL17_RunC_V5_DATA",
+            "RunD": "Summer19UL17_RunD_V5_DATA",
+            "RunE": "Summer19UL17_RunE_V5_DATA",
+            "RunF": "Summer19UL17_RunF_V5_DATA",
+        }
+        jer_tag = "Summer19UL17_JRV2_MC"
+    elif (IOV=='2016'):
+        jec_tag="Summer19UL16_V7_MC"
+        jec_tag_data={
+            "RunF": "Summer19UL16_RunFGH_V7_DATA",
+            "RunG": "Summer19UL16_RunFGH_V7_DATA",
+            "RunH": "Summer19UL16_RunFGH_V7_DATA",
+        }
+        jer_tag = "Summer20UL16_JRV3_MC"
+    elif (IOV=='2016APV'):
+        jec_tag="Summer19UL16_V7_MC"
+        ## HIPM/APV     : B_ver1, B_ver2, C, D, E, F
+        ## non HIPM/APV : F, G, H
+
+        jec_tag_data={
+            "RunB_ver1": "Summer19UL16APV_RunBCD_V7_DATA",
+            "RunB_ver2": "Summer19UL16APV_RunBCD_V7_DATA",
+            "RunC": "Summer19UL16APV_RunBCD_V7_DATA",
+            "RunD": "Summer19UL16APV_RunBCD_V7_DATA",
+            "RunE": "Summer19UL16APV_RunEF_V7_DATA",
+            "RunF": "Summer19UL16APV_RunEF_V7_DATA",
+        }
+        jer_tag = "Summer20UL16APV_JRV3_MC"
+    else:
+        raise ValueError(f"Error: Unknown year \"{IOV}\".")
+
+
+
+    ext = extractor()
+    if not isData:
+    #For MC
+        ext.add_weight_sets([
+            '* * '+'/correctionFiles/JEC/{0}/{0}_L1FastJet_AK8PFPuppi.jec.txt'.format(jec_tag),
+            '* * '+'/correctionFiles/JEC/{0}/{0}_L2Relative_AK8PFPuppi.jec.txt'.format(jec_tag),
+            '* * '+'/correctionFiles/JEC/{0}/{0}_L3Absolute_AK8PFPuppi.jec.txt'.format(jec_tag),
+            '* * '+'/correctionFiles/JEC/{0}/{0}_UncertaintySources_AK8PFPuppi.junc.txt'.format(jec_tag),
+            '* * '+'/correctionFiles/JEC/{0}/{0}_Uncertainty_AK8PFPuppi.junc.txt'.format(jec_tag),
+        ])
+        #### if there an AK8 version for this one? also shouldn't we be using PUPPI?
+        if jer_tag:
+            ext.add_weight_sets([
+            '* * '+'/correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag),
+            '* * '+'/correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)])
+
+
+    else:       
+        #For data, make sure we don't duplicat
+        tags_done = []
+        for run, tag in jec_tag_data.items():
+            if not (tag in tags_done):
+                ext.add_weight_sets([
+                '* * '+'/correctionFiles/JEC/{0}/{0}_L1FastJet_AK8PFPuppi.jec.txt'.format(tag),
+                '* * '+'/correctionFiles/JEC/{0}/{0}_L2Relative_AK8PFPuppi.jec.txt'.format(tag),
+                '* * '+'/correctionFiles/JEC/{0}/{0}_L3Absolute_AK8PFPuppi.jec.txt'.format(tag),
+                '* * '+'/correctionFiles/JEC/{0}/{0}_L2L3Residual_AK8PFPuppi.jec.txt'.format(tag),
+                ])
+                tags_done += [tag]
+
+    ext.finalize()
+
+
+
+
+
+    evaluator = ext.make_evaluator()
+
+
+
+    if (not isData):
+        jec_names = [
+            '{0}_L1FastJet_AK8PFPuppi'.format(jec_tag),
+            '{0}_L2Relative_AK8PPuppi'.format(jec_tag),
+            '{0}_L3Absolute_AK8PFPuppi'.format(jec_tag),
+            '{0}_Uncertainty_AK8PFPuppi'.format(jec_tag)]
+
+        if jer_tag: 
+            jec_names.extend(['{0}_PtResolution_AK8PFPuppi'.format(jer_tag),
+                              '{0}_SF_AK8PFPuppi'.format(jer_tag)])
+
+    else:
+        jec_names={}
+        for run, tag in jec_tag_data.items():
+            jec_names[run] = [
+                '{0}_L1FastJet_AK8PFPuppi'.format(tag),
+                '{0}_L3Absolute_AK8PFPuppi'.format(tag),
+                '{0}_L2Relative_AK8PFPuppi'.format(tag),
+                '{0}_L2L3Residual_AK8PFPuppi'.format(tag),]
+
+
+
+    if not isData:
+        jec_inputs = {name: evaluator[name] for name in jec_names}
+    else:
+        jec_names_data = []
+        for era in self.eras:
+            jec_names_data += jec_names[f'Run{era}']
+
+        jec_inputs = {name: evaluator[name] for name in jec_names_data}
+
+
+
+
+    jec_stack = JECStack(jec_inputs)
+
+
+    FatJets['pt_raw'] = (1 - FatJets['rawFactor']) * FatJets['pt']
+    FatJets['mass_raw'] = (1 - FatJets['rawFactor']) * FatJets['mass']
+    FatJets['rho'] = ak.broadcast_arrays(events.fixedGridRhoFastjetAll, FatJets.pt)[0]
+
+    name_map = jec_stack.blank_name_map
+    name_map['JetPt'] = 'pt'
+    name_map['JetMass'] = 'mass'
+    name_map['JetEta'] = 'eta'
+    name_map['JetA'] = 'area'
+    name_map['ptGenJet'] = 'pt_gen'
+    name_map['ptRaw'] = 'pt_raw'
+    name_map['massRaw'] = 'mass_raw'
+    name_map['Rho'] = 'rho'
+
+
+
+    events_cache = events.caches[0]
+
+    jet_factory = CorrectedJetsFactory(name_map, jec_stack)
+    corrected_jets = jet_factory.build(FatJets, lazy_cache=events_cache)
+
+    return corrected_jets
