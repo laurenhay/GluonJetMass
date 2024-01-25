@@ -6,6 +6,7 @@ from coffea.jetmet_tools import FactorizedJetCorrector, JetCorrectionUncertainty
 from coffea.jetmet_tools import JECStack, CorrectedJetsFactory
 from coffea.lookup_tools import extractor
 import copy
+import os
 
 #based heavily on https://github.com/b2g-nano/TTbarAllHadUproot/blob/optimize/python/corrections.py and https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/corrections.py?ref_type=heads and https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/jmeCorrections.py?ref_type=heads
 
@@ -69,7 +70,7 @@ def GetJetCorrections(FatJets, events, IOV, isData=False):
     #     uploadDir = 'srv/'
 
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/jmeCorrections.py
-    
+    print("Running Jet corrections")
     jer_tag=None
     if (IOV=='2018'):
         jec_tag="Summer19UL18_V5_MC"
@@ -113,26 +114,29 @@ def GetJetCorrections(FatJets, events, IOV, isData=False):
         }
         jer_tag = "Summer20UL16APV_JRV3_MC"
     else:
-        raise ValueError(f"Error: Unknown year \"{IOV}\".")
+        print(f"Error: Unknown year \"{IOV}\".")
 
 
-
+    print("extracting corrections from files for " + jec_tag)
     ext = extractor()
     if not isData:
     #For MC
         ext.add_weight_sets([
-            '* * '+'/correctionFiles/JEC/{0}/{0}_L1FastJet_AK8PFPuppi.jec.txt'.format(jec_tag),
-            '* * '+'/correctionFiles/JEC/{0}/{0}_L2Relative_AK8PFPuppi.jec.txt'.format(jec_tag),
-            '* * '+'/correctionFiles/JEC/{0}/{0}_L3Absolute_AK8PFPuppi.jec.txt'.format(jec_tag),
-            '* * '+'/correctionFiles/JEC/{0}/{0}_UncertaintySources_AK8PFPuppi.junc.txt'.format(jec_tag),
-            '* * '+'/correctionFiles/JEC/{0}/{0}_Uncertainty_AK8PFPuppi.junc.txt'.format(jec_tag),
+            '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_AK8PFPuppi.jec.txt'.format(jec_tag),
+            '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_AK8PFPuppi.jec.txt'.format(jec_tag),
+            '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_AK8PFPuppi.jec.txt'.format(jec_tag),
+            '* * '+'correctionFiles/JEC/{0}/{0}_UncertaintySources_AK8PFPuppi.junc.txt'.format(jec_tag),
+            '* * '+'correctionFiles/JEC/{0}/{0}_Uncertainty_AK8PFPuppi.junc.txt'.format(jec_tag),
         ])
-        #### if there an AK8 version for this one? also shouldn't we be using PUPPI?
+        print("Added JEC files successfully")
+        #### Do AK98PUPPI jer files exist??
         if jer_tag:
+            print("JER tag: ", jer_tag)
+            print("File "+'correctionFiles/JER/{0}/{0}_PtResolution_AK4PFchs.jr.txt'.format(jer_tag)+" exists: ", os.path.exists('correctionFiles/JER/{0}/{0}_PtResolution_AK4PFchs.jr.txt'.format(jer_tag)))
             ext.add_weight_sets([
-            '* * '+'/correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag),
-            '* * '+'/correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)])
-
+            '* * '+'correctionFiles/JER/{0}/{0}_PtResolution_AK4PFchs.jr.txt'.format(jer_tag),
+            '* * '+'correctionFiles/JER/{0}/{0}_SF_AK4PFchs.jersf.txt'.format(jer_tag)])
+        print("Added JER files successfully")
 
     else:       
         #For data, make sure we don't duplicat
@@ -140,17 +144,16 @@ def GetJetCorrections(FatJets, events, IOV, isData=False):
         for run, tag in jec_tag_data.items():
             if not (tag in tags_done):
                 ext.add_weight_sets([
-                '* * '+'/correctionFiles/JEC/{0}/{0}_L1FastJet_AK8PFPuppi.jec.txt'.format(tag),
-                '* * '+'/correctionFiles/JEC/{0}/{0}_L2Relative_AK8PFPuppi.jec.txt'.format(tag),
-                '* * '+'/correctionFiles/JEC/{0}/{0}_L3Absolute_AK8PFPuppi.jec.txt'.format(tag),
-                '* * '+'/correctionFiles/JEC/{0}/{0}_L2L3Residual_AK8PFPuppi.jec.txt'.format(tag),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_AK8PFPuppi.jec.txt'.format(tag),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_AK8PFPuppi.jec.txt'.format(tag),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_AK8PFPuppi.jec.txt'.format(tag),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L2L3Residual_AK8PFPuppi.jec.txt'.format(tag),
                 ])
                 tags_done += [tag]
-
     ext.finalize()
 
 
-
+    print("making evaluator")
 
 
     evaluator = ext.make_evaluator()
@@ -160,13 +163,13 @@ def GetJetCorrections(FatJets, events, IOV, isData=False):
     if (not isData):
         jec_names = [
             '{0}_L1FastJet_AK8PFPuppi'.format(jec_tag),
-            '{0}_L2Relative_AK8PPuppi'.format(jec_tag),
+            '{0}_L2Relative_AK8PFPuppi'.format(jec_tag),
             '{0}_L3Absolute_AK8PFPuppi'.format(jec_tag),
             '{0}_Uncertainty_AK8PFPuppi'.format(jec_tag)]
 
         if jer_tag: 
-            jec_names.extend(['{0}_PtResolution_AK8PFPuppi'.format(jer_tag),
-                              '{0}_SF_AK8PFPuppi'.format(jer_tag)])
+            jec_names.extend(['{0}_PtResolution_AK4PFchs'.format(jer_tag),
+                              '{0}_SF_AK4PFchs'.format(jer_tag)])
 
     else:
         jec_names={}
@@ -189,7 +192,7 @@ def GetJetCorrections(FatJets, events, IOV, isData=False):
         jec_inputs = {name: evaluator[name] for name in jec_names_data}
 
 
-
+    print("Stacking values")
 
     jec_stack = JECStack(jec_inputs)
 
@@ -209,7 +212,7 @@ def GetJetCorrections(FatJets, events, IOV, isData=False):
     name_map['Rho'] = 'rho'
 
 
-
+    print("Building corrected jets using jet factory")
     events_cache = events.caches[0]
 
     jet_factory = CorrectedJetsFactory(name_map, jec_stack)

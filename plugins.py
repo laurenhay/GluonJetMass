@@ -53,7 +53,7 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
     for key in df[inputs].keys():
         for qualifier in qualifiers:
             if qualifier in key:
-                print("dataset = ", key)
+                # print("dataset = ", key)
                 if testing:
                     dict[key] = [redirector +  df[inputs][key][0]]
                 else:
