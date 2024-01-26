@@ -58,7 +58,7 @@ def GetPUSF(events, IOV):
     puNom = evaluator[hname[str(IOV)]].evaluate(np.array(events.Pileup.nTrueInt), "nominal")
 
     return [puNom, puUp, puDown]
-def GetJetCorrections(FatJets, events, IOV, isData=False):
+def GetJetCorrections(FatJets, events, era, IOV, isData=False):
     #### I haven't had any issues where i need an "upload directory" like here
     # uploadDir = 'srv/' for lpcjobqueue shell or TTbarAllHadUproot/ for coffea casa
     # uploadDir = os.getcwd().replace('/','') + '/'
@@ -75,28 +75,28 @@ def GetJetCorrections(FatJets, events, IOV, isData=False):
     if (IOV=='2018'):
         jec_tag="Summer19UL18_V5_MC"
         jec_tag_data={
-            "RunA": "Summer19UL18_RunA_V5_DATA",
-            "RunB": "Summer19UL18_RunB_V5_DATA",
-            "RunC": "Summer19UL18_RunC_V5_DATA",
-            "RunD": "Summer19UL18_RunD_V5_DATA",
+            "Run2018A": "Summer19UL18_RunA_V5_DATA",
+            "Run2018B": "Summer19UL18_RunB_V5_DATA",
+            "Run2018C": "Summer19UL18_RunC_V5_DATA",
+            "Run2018D": "Summer19UL18_RunD_V5_DATA",
         }
         jer_tag = "Summer19UL18_JRV2_MC"
     elif (IOV=='2017'):
         jec_tag="Summer19UL17_V5_MC"
         jec_tag_data={
-            "RunB": "Summer19UL17_RunB_V5_DATA",
-            "RunC": "Summer19UL17_RunC_V5_DATA",
-            "RunD": "Summer19UL17_RunD_V5_DATA",
-            "RunE": "Summer19UL17_RunE_V5_DATA",
-            "RunF": "Summer19UL17_RunF_V5_DATA",
+            "Run2017B": "Summer19UL17_RunB_V5_DATA",
+            "Run2017C": "Summer19UL17_RunC_V5_DATA",
+            "Run2017D": "Summer19UL17_RunD_V5_DATA",
+            "Run2017E": "Summer19UL17_RunE_V5_DATA",
+            "Run2017F": "Summer19UL17_RunF_V5_DATA",
         }
         jer_tag = "Summer19UL17_JRV2_MC"
     elif (IOV=='2016'):
         jec_tag="Summer19UL16_V7_MC"
         jec_tag_data={
-            "RunF": "Summer19UL16_RunFGH_V7_DATA",
-            "RunG": "Summer19UL16_RunFGH_V7_DATA",
-            "RunH": "Summer19UL16_RunFGH_V7_DATA",
+            "Run2016F": "Summer19UL16_RunFGH_V7_DATA",
+            "Run2016G": "Summer19UL16_RunFGH_V7_DATA",
+            "Run2016H": "Summer19UL16_RunFGH_V7_DATA",
         }
         jer_tag = "Summer20UL16_JRV3_MC"
     elif (IOV=='2016APV'):
@@ -105,12 +105,11 @@ def GetJetCorrections(FatJets, events, IOV, isData=False):
         ## non HIPM/APV : F, G, H
 
         jec_tag_data={
-            "RunB_ver1": "Summer19UL16APV_RunBCD_V7_DATA",
-            "RunB_ver2": "Summer19UL16APV_RunBCD_V7_DATA",
-            "RunC": "Summer19UL16APV_RunBCD_V7_DATA",
-            "RunD": "Summer19UL16APV_RunBCD_V7_DATA",
-            "RunE": "Summer19UL16APV_RunEF_V7_DATA",
-            "RunF": "Summer19UL16APV_RunEF_V7_DATA",
+            "Run2016B": "Summer19UL16APV_RunBCD_V7_DATA",
+            "Run2016C": "Summer19UL16APV_RunBCD_V7_DATA",
+            "Run2016D": "Summer19UL16APV_RunBCD_V7_DATA",
+            "Run2016E": "Summer19UL16APV_RunEF_V7_DATA",
+            "Run2016F": "Summer19UL16APV_RunEF_V7_DATA",
         }
         jer_tag = "Summer20UL16APV_JRV3_MC"
     else:
@@ -185,11 +184,7 @@ def GetJetCorrections(FatJets, events, IOV, isData=False):
     if not isData:
         jec_inputs = {name: evaluator[name] for name in jec_names}
     else:
-        jec_names_data = []
-        for era in self.eras:
-            jec_names_data += jec_names[f'Run{era}']
-
-        jec_inputs = {name: evaluator[name] for name in jec_names_data}
+        jec_inputs = {name: evaluator[name] for name in jec_names[era]}
 
 
     print("Stacking values")

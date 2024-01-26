@@ -63,7 +63,7 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
 #initiate dask client and run coffea job
 from dask.distributed import Client
 
-def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing = False, year = '', data = False, winterfell = False):
+def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing = False, year = '', data = False, winterfell = False, verbose = True):
     #default is to run locally
     tstart = time.time()
     executor = processor.futures_executor
@@ -120,19 +120,29 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         print("Running on LPC Condor")
         from lpcjobqueue import LPCCondorCluster
         #### make list of files and directories to upload to dask
-        upload_to_dask = ['correctionFiles', 'plugins.py', 'utils.py', 'trijetProcessor.py', 'dijetProcessor.py']
+        upload_to_dask = ['correctionFiles', 'plugins.py', 'corrections.py', 'utils.py', 'trijetProcessor.py', 'dijetProcessor.py']
         cluster = LPCCondorCluster(memory='3 GiB', transfer_input_files=upload_to_dask)
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
         cluster.adapt(minimum=1, maximum=10)
         with Client(cluster) as client:
-            run_instance = processor.Runner(
-                            executor=processor.DaskExecutor(client=client, retries=5),#, status=False),
-                            schema=NanoAODSchema,
-                            savemetrics=True,
-                            skipbadfiles=True,
-                            # chunksize=10000,
-                            # maxchunks=10,
-                        )
+            if not verbose:
+                run_instance = processor.Runner(
+                                executor=processor.DaskExecutor(client=client, retries=5),#, status=False),
+                                schema=NanoAODSchema,
+                                savemetrics=True,
+                                skipbadfiles=True,
+                                # chunksize=10000,
+                                # maxchunks=10,
+                            )
+            else:
+                run_instance = processor.Runner(
+                                executor=processor.DaskExecutor(client=client, retries=5, status=False),
+                                schema=NanoAODSchema,
+                                savemetrics=True,
+                                skipbadfiles=True,
+                                # chunksize=10000,
+                                # maxchunks=10,
+                            )
             result, metrics = run_instance(samples,
                                            "Events",
                                            processor_instance = processor_inst,)
