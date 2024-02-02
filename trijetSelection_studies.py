@@ -22,8 +22,8 @@ environmentGroup.add_argument('--casa', action='store_true', help='Use Coffea-Ca
 environmentGroup.add_argument('--lpc', action='store_true', help='Use CMSLPC redirector: root://cmsxrootd.fnal.gov/')
 environmentGroup.add_argument('--winterfell', action='store_true', help='Get available files from UB Winterfell /mnt/data/cms')
 
-parser.add_argument('--btag', choices=['bbloose', 'bloose', 'bbmed', 'bmed', None], default="bbloose", help="Run on data") 
-
+parser.add_argument('--btag', choices=['bbloose', 'bloose', 'bbmed', 'bmed', None], default="bbloose") 
+parser.add_argument('--year', choices=['2016', '2017', '2018', '2016APV', None], default="None", help="Year to run on")
 parser.add_argument('--data', action='store_true', help="Run on data") 
 parser.add_argument('--dask', action='store_true', help='Run on dask')
 parser.add_argument('--runProcessor', type=bool, help='Run processor; if True run the processor; if False, only make plots', default='True')
@@ -41,6 +41,7 @@ if not np.any(environments): #if user forgets to assign something here
 run_bool = arg.runProcessor
 data_bool = arg.data
 btag_str = arg.btag
+year = arg.year
 processor = makeTrijetHists(data = data_bool, btag = btag_str)
 datastring = "JetHT" if processor.do_gen == False else "QCDsim"
 if processor.do_gen==True and arg.winterfell:
@@ -49,18 +50,24 @@ elif processor.do_gen==True:
     filename = "fileset_QCD.json"
 else:
     filename = "datasets_UL_NANOAOD.json"
-    
-if arg.testing and not data:
-    fname = 'coffeaOutput/trijetHistsTest_wXSscaling_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
-elif arg.testing and data:
-    fname = 'coffeaOutput/trijetHistsTest{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
-elif not arg.testing and data:
-    fname = 'coffeaOutput/trijetHists_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
+if year == 2016 or year == 2017 or year == 2018:
+    year_str = str(year)
+elif year == "2016" or year == "2016APV" or year == "2017" or year == "2018":
+    year_str = year
 else:
-    fname = 'coffeaOutput/trijetHists_wXSscaling_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
+    year_str = "All"
+
+if arg.testing and not data:
+    fname = 'coffeaOutput/trijetHistsTest_wXSscaling_{}_pt{}_eta{}_{}jesjec.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag, year_str)
+elif arg.testing and data:
+    fname = 'coffeaOutput/trijetHistsTest{}_pt{}_eta{}_{}jesjec.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag, year_str)
+elif not arg.testing and data:
+    fname = 'coffeaOutput/trijetHists_{}_pt{}_eta{}_{}jesjec{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag, year_str)
+else:
+    fname = 'coffeaOutput/trijetHists_wXSscaling_{}_pt{}_eta{}_{}jesjec{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag, year_str)
 
 if run_bool:
-    result = runCoffeaJob(processor, jsonFile = filename, casa = arg.casa, winterfell = arg.winterfell, testing = arg.testing, dask = arg.dask, data = not processor.do_gen)
+    result = runCoffeaJob(processor, jsonFile = filename, casa = arg.casa, winterfell = arg.winterfell, testing = arg.testing, dask = arg.dask, data = not processor.do_gen, verbose = False)
     with open(fname, "wb") as f:
         pickle.dump( result, f)
 

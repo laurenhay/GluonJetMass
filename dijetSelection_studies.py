@@ -17,10 +17,12 @@ environmentGroup.add_argument('--casa', action='store_true', help='Use Coffea-Ca
 environmentGroup.add_argument('--lpc', action='store_true', help='Use CMSLPC redirector: root://cmsxrootd.fnal.gov/')
 environmentGroup.add_argument('--winterfell', action='store_true', help='Get available files from UB Winterfell /mnt/data/cms')
 
+parser.add_argument('--year', choices=['2016', '2017', '2018', '2016APV', None], default="None", help="Year to run on")
 parser.add_argument('--data', action='store_true', help="Run on data") 
 parser.add_argument('--dask', action='store_true', help='Run on dask')
 parser.add_argument('--run', type=bool, help='Run processor; if True run the processor; if False, only make plots', default='True')
 parser.add_argument('--testing', action='store_true', help='Testing; run on only a subset of data')
+parser.add_argument('--verbose', type=bool, help='Have processor output status; set false if making log files', default='True')
 
 arg = parser.parse_args()
 
@@ -37,9 +39,17 @@ import pickle
 #### WE'RE MISSING 2016B ver2 -- AK8 PF HLT is missing need to use AK4 trigger isntead
 ### Run coffea processor and make plots
 run_bool = arg.run
-data_bool = arg.data
-processor = makeDijetHists(data = data_bool)
+data = arg.data
+year = arg.year
+processor = makeDijetHists(data = data)
 datastring = "JetHT" if processor.do_gen == False else "QCDsim"
+if year == 2016 or year == 2017 or year == 2018:
+    year_str = str(year)
+elif year == "2016" or year == "2016APV" or year == "2017" or year == "2018":
+    year_str = year
+else:
+    year_str = "All"
+    
 if processor.do_gen==True and arg.winterfell:
     filename = "QCD_flat_files.json"
 elif processor.do_gen==True:
@@ -47,16 +57,16 @@ elif processor.do_gen==True:
 else:
     filename = "datasets_UL_NANOAOD.json"
 if arg.testing and not data:
-    fname = 'coffeaOutput/dijetHistsTest_wXSscaling_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
+    fname = 'coffeaOutput/dijetHistsTest_wXSscaling_{}_pt{}_rapidity{}jesjec{}.pkl'.format(datastring, processor.ptcut, processor.ycut, year_str)
 elif arg.testing and data:
-    fname = 'coffeaOutput/dijetHistsTest{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
+    fname = 'coffeaOutput/dijetHistsTest{}_pt{}_rapidity{}jesjec.pkl{}'.format(datastring, processor.ptcut, processor.ycut, year_str)
 elif not arg.testing and data:
-    fname = 'coffeaOutput/dijetHists_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
+    fname = 'coffeaOutput/dijetHists_{}_pt{}_rapidity{}jesjec{}.pkl{}'.format(datastring, processor.ptcut, processor.ycut, year_str)
 else:
-    fname = 'coffeaOutput/dijetHists_wXSscaling_{}_pt{}_eta{}_{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag)
+    fname = 'coffeaOutput/dijetHists_wXSscaling_{}_pt{}_rapidity{}jesjec{}.pkl'.format(datastring, processor.ptcut, processor.ycut, year_str)
 
 if run_bool:
-    result = runCoffeaJob(processor, jsonFile = filename, casa = arg.casa, winterfell = arg.winterfell, testing = arg.testing, dask = arg.dask, data = not processor.do_gen)
+    result = runCoffeaJob(processor, jsonFile = filename, casa = arg.casa, winterfell = arg.winterfell, testing = arg.testing, dask = arg.dask, year=year, data = not processor.do_gen, verbose=False)
     with open(fname, "wb") as f:
         pickle.dump( result, f)
 
@@ -66,7 +76,7 @@ else:
 #Make plots
 import matplotlib.pyplot as plt
 os_path = 'plots/selectionStudies/dijet/'
-result=result[0]
+# result=result[0]
 plt.rcParams["figure.figsize"] = (10,10)
 fig, axs = plt.subplots(2, 2)
 fig.suptitle('Ungroomed (top) and groomed (bottom) reco jets')
@@ -76,14 +86,14 @@ result['jet_pt_mass_reco_g'][{'dataset':sum}].project('ptreco').plot1d(ax=axs[1,
 result['jet_pt_mass_reco_g'][{'dataset':sum}].project('mreco').plot1d(ax=axs[1,1])
 plt.savefig(os_path+'pt_m_reco_u_g.png')
 
-if not data_bool:
+if not data:
     plt.rcParams["figure.figsize"] = (20,15)
     fig, axs = plt.subplots(2, 2)
     fig.suptitle('Ungroomed (top) and groomed (bottom) reco jets')
-    result['jet_pt_mass_gen_u'][{'dataset':sum}].project('ptgen').plot1d(ax=axs[0,0])
-    result['jet_pt_mass_gen_u'][{'dataset':sum}].project('mgen').plot1d(ax=axs[0,1])
-    result['jet_pt_mass_gen_g'][{'dataset':sum}].project('ptgen').plot1d(ax=axs[1,0])
-    result['jet_pt_mass_gen_g'][{'dataset':sum}].project('mgen').plot1d(ax=axs[1,1])
+    result['jet_pt_mass_u_gen'][{'dataset':sum}].project('ptgen').plot1d(ax=axs[0,0])
+    result['jet_pt_mass_u_gen'][{'dataset':sum}].project('mgen').plot1d(ax=axs[0,1])
+    result['jet_pt_mass_g_gen'][{'dataset':sum}].project('ptgen').plot1d(ax=axs[1,0])
+    result['jet_pt_mass_g_gen'][{'dataset':sum}].project('mgen').plot1d(ax=axs[1,1])
     plt.savefig(os_path+"pt_m_gen_u_g.png")
 
     response_matrix_u_values = result['response_matrix_u'].project("ptreco", "mreco", "ptgen", "mgen").values()

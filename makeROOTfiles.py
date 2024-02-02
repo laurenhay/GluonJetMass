@@ -34,8 +34,6 @@ ptgen_centers = (ptgen_edges[:-1]+ptgen_edges[1:])/2
 mgen_centers = (mgen_edges[:-1]+mgen_edges[1:])/2
 rootfile['response'] = {'groomed':response_matrix_g_values[np.newaxis],
                        'ungroomed':response_matrix_u_values[np.newaxis]}
-rootfile['response_2d'] = {'groomed':response_matrix_g_values.reshape(10*11, 10*21),
-                       'ungroomed':response_matrix_u_values.reshape(10*11, 10*21)}
 rootfile['centers'] = {'ptreco':ptreco_centers[np.newaxis], 'mreco':mreco_centers[np.newaxis], 
                       'ptgen':ptgen_centers[np.newaxis], 'mgen':mgen_centers[np.newaxis]}
 rootfile.close()

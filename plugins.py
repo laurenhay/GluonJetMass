@@ -32,6 +32,8 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
         inputs = 'JetHT_data'
         if year == '2016' or year == '2016APV' or year == '2018' or year == '2017':
             qualifiers.append(eras_data[year])
+        elif year == 2016 or year == 2018 or year == 2017:
+            qualifiers.append(eras_data[str(year)]) 
         else:
             for era in list(eras_data.values()):
                 print("Era: ", era)
@@ -43,8 +45,10 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
         else:
             jsonFile = "fileset_QCD.json"
             inputs = 'QCD_binned'
-        if year == '2016' or year == '2016APV' or year == '2017' or year == '2018':
-            qualifier.add(eras_mc[year])
+        if year == '2016' or year == '2017' or year == '2018':
+            qualifiers.append(eras_mc[year])
+        elif year == 2016 or year == 2017 or year == 2018:
+            qualifiers.append(eras_mc[str(year)])
         else:
             for era in list(eras_mc.values()):
                 print("Era: ", era)
@@ -77,7 +81,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     exe_args = {"schema": NanoAODSchema, 'skipbadfiles': True,}
     samples = handleData(jsonFile, redirector, year = year, testing = testing, data = data)
     #single files for testing
-    # samples = {'/JetHT/Run2017D-UL2017_MiniAODv2_NanoAODv9-v1/NANOAOD': [redirector+'/store/data/Run2017D/JetHT/NANOAOD/UL2017_MiniAODv2_NanoAODv9-v1/120000/4A70E050-A8B9-FA46-92C3-4A85F22FB255.root']}
+    # samples = {'/JetHT/Run2016E-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD': [redirector+'/store/data/Run2016E/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/40000/0402FC45-D69F-BE47-A2BF-10394485E06E.root']}
     # samples = {'/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/RunIISummer20UL17NanoAODv9-106X_mc2017_realistic_v9-v1/NANOAODSIM': [redirector+'/store/mc/RunIISummer20UL17NanoAODv9/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_mc2017_realistic_v9-v1/270000/00DD1153-F006-3446-ABBC-7CA23A020566.root']}
 #    print("Samples = ", samples, " executor = ", executor)
     client = None
@@ -121,11 +125,11 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         from lpcjobqueue import LPCCondorCluster
         #### make list of files and directories to upload to dask
         upload_to_dask = ['correctionFiles', 'plugins.py', 'corrections.py', 'utils.py', 'trijetProcessor.py', 'dijetProcessor.py']
-        cluster = LPCCondorCluster(memory='3 GiB', transfer_input_files=upload_to_dask)
+        cluster = LPCCondorCluster(memory='5 GiB', transfer_input_files=upload_to_dask)
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
         cluster.adapt(minimum=1, maximum=10)
         with Client(cluster) as client:
-            if not verbose:
+            if verbose:
                 run_instance = processor.Runner(
                                 executor=processor.DaskExecutor(client=client, retries=5),#, status=False),
                                 schema=NanoAODSchema,

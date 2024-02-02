@@ -70,7 +70,6 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False):
     #     uploadDir = 'srv/'
 
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/jmeCorrections.py
-    print("Running Jet corrections")
     jer_tag=None
     if (IOV=='2018'):
         jec_tag="Summer19UL18_V5_MC"
@@ -90,7 +89,7 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False):
             "Run2017E": "Summer19UL17_RunE_V5_DATA",
             "Run2017F": "Summer19UL17_RunF_V5_DATA",
         }
-        jer_tag = "Summer19UL17_JRV2_MC"
+        jer_tag = "Summer19UL17_JRV3_MC"
     elif (IOV=='2016'):
         jec_tag="Summer19UL16_V7_MC"
         jec_tag_data={
@@ -116,7 +115,7 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False):
         print(f"Error: Unknown year \"{IOV}\".")
 
 
-    print("extracting corrections from files for " + jec_tag)
+    #print("extracting corrections from files for " + jec_tag)
     ext = extractor()
     if not isData:
     #For MC
@@ -127,16 +126,15 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False):
             '* * '+'correctionFiles/JEC/{0}/{0}_UncertaintySources_AK8PFPuppi.junc.txt'.format(jec_tag),
             '* * '+'correctionFiles/JEC/{0}/{0}_Uncertainty_AK8PFPuppi.junc.txt'.format(jec_tag),
         ])
-        print("Added JEC files successfully")
-        #### Do AK98PUPPI jer files exist??
+        #### Do AK8PUPPI jer files exist??
         if jer_tag:
             print("JER tag: ", jer_tag)
-            print("File "+'correctionFiles/JER/{0}/{0}_PtResolution_AK4PFchs.jr.txt'.format(jer_tag)+" exists: ", os.path.exists('correctionFiles/JER/{0}/{0}_PtResolution_AK4PFchs.jr.txt'.format(jer_tag)))
+            print("File "+'correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag)+" exists: ", os.path.exists('correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag)))
+            print("File "+'correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)+" exists: ", os.path.exists('correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)))
             ext.add_weight_sets([
-            '* * '+'correctionFiles/JER/{0}/{0}_PtResolution_AK4PFchs.jr.txt'.format(jer_tag),
-            '* * '+'correctionFiles/JER/{0}/{0}_SF_AK4PFchs.jersf.txt'.format(jer_tag)])
-        print("Added JER files successfully")
-
+            '* * '+'correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag),
+            '* * '+'correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)])
+            print("JER SF added")
     else:       
         #For data, make sure we don't duplicat
         tags_done = []
@@ -151,9 +149,7 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False):
                 tags_done += [tag]
     ext.finalize()
 
-
-    print("making evaluator")
-
+    print("Making evaluator")
 
     evaluator = ext.make_evaluator()
 
@@ -167,8 +163,8 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False):
             '{0}_Uncertainty_AK8PFPuppi'.format(jec_tag)]
 
         if jer_tag: 
-            jec_names.extend(['{0}_PtResolution_AK4PFchs'.format(jer_tag),
-                              '{0}_SF_AK4PFchs'.format(jer_tag)])
+            jec_names.extend(['{0}_PtResolution_AK8PFPuppi'.format(jer_tag),
+                              '{0}_SF_AK8PFPuppi'.format(jer_tag)])
 
     else:
         jec_names={}
@@ -187,7 +183,6 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False):
         jec_inputs = {name: evaluator[name] for name in jec_names[era]}
 
 
-    print("Stacking values")
 
     jec_stack = JECStack(jec_inputs)
 
@@ -207,10 +202,9 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False):
     name_map['Rho'] = 'rho'
 
 
-    print("Building corrected jets using jet factory")
     events_cache = events.caches[0]
 
     jet_factory = CorrectedJetsFactory(name_map, jec_stack)
     corrected_jets = jet_factory.build(FatJets, lazy_cache=events_cache)
-
+    print("Built corrections object")
     return corrected_jets

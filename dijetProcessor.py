@@ -155,19 +155,18 @@ class makeDijetHists(processor.ProcessorABC):
         out = self._histos
         dataset = events.metadata['dataset']
         filename = events.metadata['filename']
-
         print("Filename: ", filename)
         print("dataset: ", dataset)
         #####################################
         #### Find the IOV from the dataset name
         #####################################
-        IOV = ('2016APV' if ( any(re.findall(r'APV',  dataset)) or any(re.findall(r'UL2016APV', dataset)))
+        IOV = ('2016APV' if ( any(re.findall(r'APV',  dataset)) or any(re.findall(r'HIPM', dataset)))
                else '2018'    if ( any(re.findall(r'UL18', dataset)) or any(re.findall(r'UL2018',    dataset)))
                else '2017'    if ( any(re.findall(r'UL17', dataset)) or any(re.findall(r'UL2017',    dataset)))
                else '2016')
         #####################################
         #### Find the era from the file name
-        #### Apply the good lumi mask
+        #### Add values needed for jet corrections
         #####################################
         FatJet=events.FatJet
         FatJet["p4"] = ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
@@ -183,23 +182,27 @@ class makeDijetHists(processor.ProcessorABC):
             era = fname_toks[ fname_toks.index("data") + 1]
             print("IOV ", IOV, ", era ", era)
         corrected_fatjets = GetJetCorrections(FatJet, events, era, IOV, isData=not self.do_gen)
+        # corrected_fatjets = FatJet
+        print(corrected_fatjets.fields)
         corrections = {"nominal": corrected_fatjets}
-        if 'jes' in self.systematics and self.do_gen:
-            corrections.update({
-                       "jesUp": corrected_fatjets.JES_jes.up,
-                       "jesDown": corrected_fatjets.JES_jes.down
-                      })
+        if (len(corrected_fatjets.pt[0]) > 1) and 'jes' in self.systematics and self.do_gen:
             print('JEC:%s:JES up, nom, down:%s:%s:%s',
                          corrected_fatjets.JES_jes.up.pt[0][0],
                          corrected_fatjets.pt[0][0],
                          corrected_fatjets.JES_jes.down.pt[0][0])
             print("JES up vals: ", corrected_fatjets.JES_jes.up)
+        if 'jes' in self.systematics and self.do_gen:
+            corrections.update({
+                       "jesUp": corrected_fatjets.JES_jes.up,
+                       "jesDown": corrected_fatjets.JES_jes.down
+                      })
+
         if 'jer' in self.systematics and self.do_gen:
             corrections.update({"jerUp": corrected_fatjets.JER.up,
                                 "jerDown": corrected_fatjets.JER.down
                             })
         for syst in corrections.keys():
-            # print("Adding ", syst, " values ", corrections[syst])
+            print("Adding ", syst, " values ", corrections[syst], " to output")
             events_corr = ak.with_field(events, corrections[syst], "FatJet")
             weights = np.ones(len(events_corr))
             print("Length of events before any cuts", len(events_corr), "length of weights ", len(weights))
@@ -207,7 +210,9 @@ class makeDijetHists(processor.ProcessorABC):
                 print("Do XS scaling")
                 weights = weights * getXSweight(dataset, IOV)
             else:
-                #apply lumimask and require at least one jet to apply jet trigger prescales
+                ###############
+                ### apply lumimask and require at least one jet to apply jet trigger prescales
+                ##############
                 lumi_mask = getLumiMask(IOV)(events_corr.run, events_corr.luminosityBlock)
                 events_corr = events_corr [lumi_mask & (ak.num(events_corr.FatJet) >= 1)]
                 trigsel, psweights = applyPrescales(events_corr, year = IOV)
