@@ -17,53 +17,54 @@ void testUnfold()
 {//turn on errors in histograms?
   TH1::SetDefaultSumw2();
 
+  
+
   //open MC root file from coffea/uproot and get hists
-  TFile *f = TFile::Open("fakeHists_arr.root");
-  TH2D *ptgen_mgen_g = f->Get<TH2D>("ptgen_mgen_g");
-  TH2D *ptgen_mgen_u = f->Get<TH2D>("ptgen_mgen_u");
+  TFile *f = TFile::Open("dijetHistsQCDsim_jec_2016.root");
+  TH2D *ptgen_mgen_g = f->Get<TH2D>("ptgen_mgen_g_nominal");
+  TH2D *ptgen_mgen_u = f->Get<TH2D>("ptgen_mgen_u_nominal");
   TH2D *fakes_ptreco_mreco = f->Get<TH2D>("fakes_ptreco_mreco");
   TH2D *misses_ptgen_mgen = f->Get<TH2D>("misses_ptgen_mgen");
   
   //open data root file and get hists
-  TFile *f_reco = TFile::Open("fakeHists_arr.root");
-  TH2D *ptreco_mreco_u = f_reco->Get<TH2D>("jet_ptreco_mreco_u");
-  TH2D *ptreco_mreco_g = f_reco->Get<TH2D>("jet_ptreco_mreco_g");
-  TH2D *ptreco_mreco_up = f_reco->Get<TH2D>("jet_ptreco_mreco_up");
-  TH2D *ptreco_mreco_dwn = f_reco->Get<TH2D>("jet_ptreco_mreco_down");
+  TFile *f_reco = TFile::Open("dijetHistsQCDsim_jec_2016.root");
+  TH2D *ptreco_mreco_u = f_reco->Get<TH2D>("jet_ptreco_mreco_u_nominal");
+  TH2D *ptreco_mreco_u_up = f_reco->Get<TH2D>("jet_ptreco_mreco_u_jerUp");
+  TH2D *ptreco_mreco_u_dn = f_reco->Get<TH2D>("jet_ptreco_mreco_u_jerDown");
+  TH2D *ptreco_mreco_g = f_reco->Get<TH2D>("jet_ptreco_mreco_g_nominal");
+  TH2D *ptreco_mreco_g_up = f_reco->Get<TH2D>("jet_ptreco_mreco_g_jerUp");
+  TH2D *ptreco_mreco_g_dn = f_reco->Get<TH2D>("jet_ptreco_mreco_g_jerDown");
 
+  //ptreco_mreco_u->Print("all");
   
   // Create a TTreeReader for the tree by passing the TTree's name and the TDirectory / TFile it is in.
   TTreeReader matrixReader("response", f);
   TTreeReader binReader("centers", f);
-  TTreeReader recoReader("reco", f_reco);
-  TTreeReader genReader("gen", f);
   // The branch "reco_gen_groomed" contains doubles; access them as response_matrix_g
-  TTreeReaderArray<Double_t> response_matrix_g(matrixReader, "groomed");
+  /* TTreeReaderArray<Double_t> response_matrix_g(matrixReader, "groomed_nominal"); */
+  /* TTreeReaderArray<Double_t> response_matrix_g_up(matrixReader, "groomed_jesUp"); */
+  /* TTreeReaderArray<Double_t> response_matrix_g_dn(matrixReader, "groomed_jesDown"); */
   // The branch "reco_gen_ungroomed" contains doubles; access them as response_matrix_u
-  TTreeReaderArray<Double_t> response_matrix_u(matrixReader, "ungroomed");
-  TTreeReaderArray<Double_t> response_matrix_up(matrixReader, "errorUp");
-  TTreeReaderArray<Double_t> response_matrix_dwn(matrixReader, "errorDown");
-  // Make bin arrays
+  TTreeReaderArray<Double_t> response_matrix_u(matrixReader, "ungroomed_nominal");
+  TTreeReaderArray<Double_t> response_matrix_u_up(matrixReader, "ungroomed_jesUp");
+  TTreeReaderArray<Double_t> response_matrix_u_dn(matrixReader, "ungroomed_jesDown");
+  // Bin center arrays
   TTreeReaderArray<Double_t> ptreco_center(binReader, "ptreco");
   TTreeReaderArray<Double_t> mreco_center(binReader, "mreco");
   TTreeReaderArray<Double_t> ptgen_center(binReader, "ptgen");
   TTreeReaderArray<Double_t> mgen_center(binReader, "mgen");
-  // make reco arrays
-  TTreeReaderArray<Double_t> ptreco_mreco_g_val(recoReader, "groomed");
-  TTreeReaderArray<Double_t> ptreco_mreco_u_val(recoReader, "ungroomed");
-  TTreeReaderArray<Double_t> fakes_val(recoReader, "fakes");
-  // make gen arrays
-  TTreeReaderArray<Double_t> ptgen_mgen_g_val(genReader, "groomed");
-  TTreeReaderArray<Double_t> ptgen_mgen_u_val(genReader, "ungroomed");
-  TTreeReaderArray<Double_t> misses_val(genReader, "misses");
+  const Double_t *ptgen_low = ptgen_mgen_u->GetXaxis()->GetXbins()->GetArray();
+  const Double_t *mgen_low = ptgen_mgen_u->GetYaxis()->GetXbins()->GetArray();
+  const Double_t *ptreco_low = ptreco_mreco_u->GetXaxis()->GetXbins()->GetArray();
+  const Double_t *mreco_low = ptreco_mreco_u->GetYaxis()->GetXbins()->GetArray();
     //check content by drawing hists
-  TCanvas *c1 = new TCanvas("c1","FAKES AND MISSES",1200,600);
-  c1->Divide(2,1);
-  c1->cd(1);
-  misses_ptgen_mgen->Draw("colz");
-  c1->cd(2);
-  c1->SetLogz();
-  fakes_ptreco_mreco->Draw("colz");
+  /* TCanvas *c1 = new TCanvas("c1","FAKES AND MISSES",1200,600); */
+  /* c1->Divide(2,1); */
+  /* c1->cd(1); */
+  /* misses_ptgen_mgen->Draw("colz"); */
+  /* c1->cd(2); */
+  /* c1->SetLogz(); */
+  /* fakes_ptreco_mreco->Draw("colz"); */
 
   //define mass binnings
   vector<double> binsMassCoarseVec{0.,1.,5.,10.,20.,40.,60.,80.,100.,150.,200.,250.,1000.}; //gen
@@ -101,34 +102,41 @@ void testUnfold()
   TUnfoldBinning *detectorBinning = new TUnfoldBinning("detector");
   //  TUnfoldBinning *missBinning = detectorBinning->AddBinning("missesBin", 1);
   TUnfoldBinning *recoBinning = detectorBinning->AddBinning("reco");
-  recoBinning->AddAxis("m_{RECO}", nBinMassFine, binsMassFine.data(), false, false); //mreco
-  //  recoBinning->AddAxis(*ptreco_mreco_u->GetYaxis(), false, false); //mreco
-  recoBinning->AddAxis("pt_{RECO}", nBinsPt, binsPt.data(), false, false); //ptreco
+  recoBinning->AddAxis(*ptreco_mreco_u->GetYaxis(), false, true); //mreco
+  recoBinning->AddAxis(*ptgen_mgen_u->GetXaxis(), false, true); //ptreco
+  //recoBinning->AddAxis("m_{RECO}", nBinMassFine, binsMassFine.data(), false, true); //mreco
+  //recoBinning->AddAxis("pt_{RECO}", nBinsPt, binsPt.data(), false, false); //ptreco
 
   
   TUnfoldBinning *generatorBinning = new TUnfoldBinning("generator");
   //  TUnfoldBinning *fakeBinning=generatorBinning->AddBinning("fakesBin", 1);
   TUnfoldBinning *genBinning = generatorBinning->AddBinning("gen");
-  //  genBinning->AddAxis(*ptgen_mgen_u->GetYaxis(), false, false); //mgen
-  //  genBinning->AddAxis(*ptgen_mgen_u->GetXaxis(), false, false); //ptgen
-  genBinning->AddAxis("m_{GEN}", nBinMassCoarse, binsMassCoarse.data(), false, false); //mgen
-  genBinning->AddAxis("pt_{GEN}", nBinsPt, binsPt.data(), false, false); //ptgen  
+  genBinning->AddAxis(*ptgen_mgen_u->GetYaxis(), false, false); //mgen
+  genBinning->AddAxis(*ptgen_mgen_u->GetXaxis(), false, false); //ptgen
+  //genBinning->AddAxis("m_{GEN}", nBinMassCoarse, binsMassCoarse.data(), false, true); //mgen
+  //genBinning->AddAxis("pt_{GEN}", nBinsPt, binsPt.data(), false, true); //ptgen  
   cout << "Test binning for ptreco = 250, mreco = 500 " <<recoBinning->GetGlobalBinNumber(250,500) << endl;
   
   // create histogram of migrations and gen hists
-  TH2D *histMCGenRec=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec");
-  TH2D *histMCGenRecUp=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec+1#sigma");
-  TH2D *histMCGenRecDwn=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec-1#sigma");
+  TH2D *histMCGenRec_u=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec Ungroomed");
+  TH2D *histMCGenRecUp_u=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec+jerUp Ungroomed");
+  TH2D *histMCGenRecDn_u=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec-jerDn Ungroomed");
+  /* TH2D *histMCGenRec_g=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec Groomed"); */
+  /* TH2D *histMCGenRecUp_g=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec+jerUp Groomed"); */
+  /* TH2D *histMCGenRecDn_g=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec-jerDn Groomed"); */
   // create data histograms
-  TH1 *histDataReco=recoBinning->CreateHistogram("histDataReco");  //data values in reco binnning --> input to unfolding
+  TH1 *histDataReco_u=recoBinning->CreateHistogram("histDataReco Ungroomed");  //data values in reco binnning --> input to unfolding
+  //  TH1 *histDataReco_g=recoBinning->CreateHistogram("histDataReco Groomed");  //data values in reco binnning --> input to unfolding
 
   //create MC hists for comparison
-  TH1 *histMCReco=recoBinning->CreateHistogram("histMCReco"); //gen values in reco binning --> htruef in Sal's example
-  TH1 *histMCTruth=genBinning->CreateHistogram("histMCTruth");  //gen values in gen binning
+  TH1 *histMCReco_u=recoBinning->CreateHistogram("histMCReco Ungroomed"); //gen values in reco binning --> htruef in Sal's example
+  TH1 *histMCTruth_u=genBinning->CreateHistogram("histMCTruth Ungroomed");  //gen values in gen binning
+  /* TH1 *histMCReco_g=recoBinning->CreateHistogram("histMCReco Groomed"); //gen values in reco binning --> htruef in Sal's example */
+  /* TH1 *histMCTruth_g=genBinning->CreateHistogram("histMCTruth Groomed");  //gen values in gen binning */
   
   // Loop through reco and gen bins of MC input and fill hist of migrations
-  while(matrixReader.Next() && binReader.Next() && recoReader.Next() && genReader.Next()) {
-    cout << "Type of groomed: " << typeid(response_matrix_g).name() << " and size: " << response_matrix_u.GetSize() << endl;
+  while(matrixReader.Next() && binReader.Next()) {
+    cout << "Type of ungroomed: " << typeid(response_matrix_u).name() << " and size: " << response_matrix_u.GetSize() << endl;
     cout << "Size of ptreco bins: " << ptreco_center.GetSize()<< endl;
     cout << "Size of mreco bins: " << mreco_center.GetSize()<< endl;
     cout << "Size of mgen bins: " << mgen_center.GetSize()<< endl;
@@ -139,7 +147,9 @@ void testUnfold()
     // reco loop: i is ptreco, j is mreco
     for(int i=0; i<ptreco_center.GetSize(); i++){
       for(int j=0; j<mreco_center.GetSize(); j++){
-	glob_recobin=i*mreco_center.GetSize()+j;
+    /* for(int i=0; i<NBin_pt_fine; i++){ */
+    /*   for(int j=0; j<NBin_mass_fine; j++){	 */
+	glob_recobin=(i)*mreco_center.GetSize()+j;
 	/* cout<<"has centers mreco " << mreco_center[j] << " and ptreco " << ptreco_center[i] << endl; */
 	recoBin=recoBinning->GetGlobalBinNumber(mreco_center[j],ptreco_center[i]);
 	//only fill fakes in fake genBin
@@ -148,13 +158,15 @@ void testUnfold()
 	//Int_t fakeBin=fakeBinning->GetStartBin();
 	//histMCGenRec->SetBinContent(fakeBin,recoBin,fake_weight);
 	//fill data hist
-	Double_t data_weight_u=ptreco_mreco_u_val[glob_recobin];
-	histDataReco->Fill(recoBin, data_weight_u);
+	Double_t data_weight_u=ptreco_mreco_u->GetBinContent(i+1,j+1);
+	histDataReco_u->Fill(recoBin, data_weight_u);
 	cout << "Reco weight " << data_weight_u << " for glob reco bin "<< glob_recobin << "and matrix reco bin " << recoBin << endl;
+	/* Double_t data_weight_g=ptreco_mreco_g->GetBinContent(i+1,j+1); */
+	/* histDataReco_g->Fill(recoBin, data_weight_g); */
 	// gen loop: k is ptgen, l is mgen
-	for(int k=0; k<ptgen_center.GetSize(); k++){
+	for(int k=0; k<mgen_center.GetSize(); k++){
 	  for(int l=0; l<mgen_center.GetSize(); l++){
-	    glob_genbin=k*mgen_center.GetSize()+l;
+	    glob_genbin=(k)*mgen_center.GetSize()+l;
 	    genBin=genBinning->GetGlobalBinNumber(mgen_center[l],ptgen_center[k]);
 	    /* cout<< genBin << "has centers mgen " << mgen_center[l] << " and ptgen " << ptgen_center[k] << endl; */
 	    //only fill misses in miss recoBin
@@ -165,106 +177,136 @@ void testUnfold()
 	    //fill MC truth for closure test
 	    //ONLY FILL ONCE INSIDE i,j LOOP
 	    if(i==0 && j==0){
-	      Double_t truth_weight_u = ptgen_mgen_u_val[glob_genbin];
-	      histMCTruth->Fill(genBin, truth_weight_u);
+	      Double_t truth_weight_u = ptgen_mgen_u->GetBinContent(k+1,l+1);
+	      histMCTruth_u->Fill(genBin, truth_weight_u);
 	      cout << "Truth weight " << truth_weight_u << " for glob gen bin "<< glob_genbin << "and matrix gen bin " << genBin << endl;
+	      /* Double_t truth_weight_g = ptgen_mgen_g->GetBinContent(k+1,l+1); */
+	      /* histMCTruth_g->Fill(genBin, truth_weight_g); */
 	      //fill MC reco for comparison
+	      // COULD BE GOING WRONG BC DIFF NUMBER OF K's AND L's VS I's AND J's
 	      Int_t recoBin_genObj=recoBinning->GetGlobalBinNumber(mgen_center[l],ptgen_center[k]);
 	      cout << "Truth weight " << truth_weight_u << " for k == " << k << " and l == " << l << "and reco bin " << recoBin_genObj << endl;
-	      histMCReco->Fill(recoBin_genObj, truth_weight_u);	    	    }
+	      histMCReco_u->Fill(recoBin_genObj, truth_weight_u);
+	      //	      histMCReco_g->Fill(recoBin_genObj, truth_weight_g);
+	  }
 	    Int_t glob_bin = glob_recobin*(mgen_center.GetSize()*ptgen_center.GetSize())+glob_genbin;
 	    /* cout<<"Global bin " << glob_bin << " for reco bin " << glob_recobin << " and gen bin " << glob_genbin << endl; */
 	    //		    cout <<"TUnfold gen bin "<< genBin << " and reco bin " << recoBin<< "for value" << response_matrix_u[glob_bin] <<endl;
+	    // fill ungroomed resp. matrices
 	    Double_t resp_weight_u = response_matrix_u[glob_bin];
-	    histMCGenRec->Fill(genBin,recoBin,resp_weight_u);
-	    //fill matrices for systematics
-	    Double_t resp_weight_up = response_matrix_up[glob_bin];
-	    histMCGenRecUp->Fill(genBin,recoBin,resp_weight_up);
-	    Double_t resp_weight_dwn = response_matrix_dwn[glob_bin];
-	    histMCGenRecDwn->Fill(genBin,recoBin,resp_weight_dwn);
+	    histMCGenRec_u->Fill(genBin,recoBin,resp_weight_u);
+	    Double_t resp_weight_u_up = response_matrix_u_up[glob_bin];
+	    histMCGenRecUp_u->Fill(genBin,recoBin,resp_weight_u_up);
+	    Double_t resp_weight_u_dn = response_matrix_u_dn[glob_bin];
+	    histMCGenRecDn_u->Fill(genBin,recoBin,resp_weight_u_dn);
+	    /* // fill groomed resp. matrices */
+	    /* Double_t resp_weight_g = response_matrix_g[glob_bin]; */
+	    /* histMCGenRec_g->Fill(genBin,recoBin,resp_weight_g); */
+	    /* Double_t resp_weight_g_up = response_matrix_g_up[glob_bin]; */
+	    /* histMCGenRecUp_g->Fill(genBin,recoBin,resp_weight_g_up); */
+	    /* Double_t resp_weight_g_dn = response_matrix_g_dn[glob_bin]; */
+	    /* histMCGenRecDn_g->Fill(genBin,recoBin,resp_weight_g_dn); */
 	  }}}}
     cout << response_matrix_u[849] <<endl;              
   }
   
-  histMCGenRec->Print("base");
-  histMCReco->Print("base");
-  histMCTruth->Print("base");
-    
+  //histMCGenRec->Print("base");
+  cout<<"MC Reco (filled with MC gen but reco bins)" << endl;
+  histMCReco_u->Print("base");
+  cout<<"MC Truth (filled with MC gen and gen bins)" << endl;
+  histMCTruth_u->Print("base");
+  cout<<"Response matrix"<<endl;
+  histMCGenRec_u->Print("base");
   // check that response matrix has been filled properly
-  TH1 *histMCReco_M=histMCGenRec->ProjectionY("MCReco", 1, -2);
-  TH1 *histMCTruth_M=histMCGenRec->ProjectionX("MCTruth", 1, -2);
-
+  TH1 *histMCReco_u_M=histMCGenRec_u->ProjectionY("MCReco", 1, -2);
+  TH1 *histMCTruth_u_M=histMCGenRec_u->ProjectionX("MCTruth", 1, -2);
+  histMCReco_u_M->Print("all");
+  // check that response matrix has been filled properly
+  /* TH1 *histMCReco_g_M=histMCGenRec_g->ProjectionY("MCReco", 1, -2); */
+  /* TH1 *histMCTruth_g_M=histMCGenRec_g->ProjectionX("MCTruth", 1, -2); */
+  
   //check Truth contents
-  int nBinsTruth = histMCTruth_M->GetXaxis()->GetNbins();
+  int nBinsTruth = histMCTruth_u_M->GetXaxis()->GetNbins();
   for(int bin = 0; bin < nBinsTruth; bin++){
-    cout << "Matrix truth value: " << histMCTruth_M->GetBinContent(bin) << " for matrix bin : "<< bin << endl;
+    cout << "Matrix truth value: " << histMCTruth_u_M->GetBinContent(bin) << " for matrix bin : "<< bin << endl;
   }
-  int nBinsReco = histMCReco_M->GetXaxis()->GetNbins();
+  int nBinsReco = histMCReco_u_M->GetXaxis()->GetNbins();
   for(int bin = 0; bin < nBinsReco; bin++){
-    cout << "Matrix reco value: " << histMCReco_M->GetBinContent(bin) << " for matrix bin : "<< bin << endl;
+    cout << "Matrix reco value: " << histMCReco_u_M->GetBinContent(bin) << " for matrix bin : "<< bin << endl;
   }
   
-  TCanvas *c2 = new TCanvas("c2","Plot Data and MC input mass binned by pt",1200,400);
+  TCanvas *c2 = new TCanvas("c2","Plot MC input ungroomed binned by pt (outer) and mass (inner)",1200,400);
   c2->Divide(2,1);
   c2->cd(1);
-  histMCTruth_M->SetMarkerStyle(24);
-  histMCTruth_M->SetLineColor(kRed);
-  histMCTruth_M->SetMarkerColor(kRed);
-  histMCTruth_M->Draw();
-  histMCTruth->SetMarkerStyle(21);
-  histMCTruth->SetLineColor(kBlue);
-  histMCTruth->SetMarkerColor(kBlue);
-  histMCTruth->Draw("SAME");
-
-  /* histMCTruth_M->SetMarkerStyle(21); */
-  /* histMCTruth_M->SetLineColor(kRed); */
-  /* histMCTruth_M->SetMarkerColor(kRed); */
-  /* histMCTruth_M->Draw(); */
-  /* histMCReco_M->SetMarkerStyle(24); */
-  /* histMCReco_M->SetLineColor(kBlue); */
-  /* histMCReco_M->SetMarkerColor(kBlue); */
-  /* histMCReco_M->Draw("SAME"); */
-
-  
+  histMCTruth_u_M->SetMarkerStyle(21);
+  histMCTruth_u_M->SetLineColor(kRed);
+  histMCTruth_u_M->SetMarkerColor(kRed);
+  histMCTruth_u_M->Draw();
+  histMCTruth_u->SetMarkerStyle(24);
+  histMCTruth_u->SetLineColor(kBlue);
+  histMCTruth_u->SetMarkerColor(kBlue);
+  histMCTruth_u->Draw("SAME");
   auto leg1 = new TLegend(0.7, 0.7, 0.86, 0.86);
-  leg1->AddEntry(histMCTruth_M, "MC Gen from M", "p");
-  leg1->AddEntry(histMCTruth, "MC Grn", "p");
+  leg1->AddEntry(histMCTruth_u_M, "MC Gen from M", "p");
+  leg1->AddEntry(histMCTruth_u, "MC Grn", "p");
   leg1->Draw();
+  
   c2->cd(2);
-  histMCReco_M->SetMarkerStyle(24);
-  histMCReco_M->SetLineColor(kRed);
-  histMCReco_M->SetMarkerColor(kRed);
-  histMCReco_M->Draw();
-  histMCReco->SetMarkerStyle(21);
-  histMCReco->SetLineColor(kBlue);
-  histMCReco->SetMarkerColor(kBlue);
-  histMCReco->Draw("SAME");
-
-  /* histMCTruth->SetMarkerStyle(24); */
-  /* histMCTruth->SetLineColor(kRed); */
-  /* histMCTruth->SetMarkerColor(kRed); */
-  /* histMCTruth->Draw(); */
-  /* histMCReco->SetMarkerStyle(21); */
-  /* histMCReco->SetLineColor(kBlue); */
-  /* histMCReco->SetMarkerColor(kBlue); */
-  /* histMCReco->Draw("SAME"); */
-
+  histMCReco_u_M->SetMarkerStyle(21);
+  histMCReco_u_M->SetLineColor(kRed);
+  histMCReco_u_M->SetMarkerColor(kRed);
+  histMCReco_u_M->Draw();
+  histMCReco_u->SetMarkerStyle(24);
+  histMCReco_u->SetLineColor(kBlue);
+  histMCReco_u->SetMarkerColor(kBlue);
+  histMCReco_u->Draw("SAME");
   auto leg2 = new TLegend(0.7, 0.7, 0.86, 0.86);
-  leg2->AddEntry(histMCReco_M, "MC Reco from M", "p");
-  leg2->AddEntry(histMCReco, "MC Reco", "p");
+  leg2->AddEntry(histMCReco_u_M, "MC Reco from M", "p");
+  leg2->AddEntry(histMCReco_u, "MC Reco", "p");
   leg2->Draw();
 
+  /* TCanvas *c2g = new TCanvas("c2g","Plot MC input groomed binned by pt (outer) and mass (inner)",1200,400); */
+  /* c2g->Divide(2,1); */
+  /* c2g->cd(1); */
+  /* histMCTruth_g_M->SetMarkerStyle(21); */
+  /* histMCTruth_g_M->SetLineColor(kRed); */
+  /* histMCTruth_g_M->SetMarkerColor(kRed); */
+  /* histMCTruth_g_M->Draw(); */
+  /* histMCTruth_g->SetMarkerStyle(24); */
+  /* histMCTruth_g->SetLineColor(kBlue); */
+  /* histMCTruth_g->SetMarkerColor(kBlue); */
+  /* histMCTruth_g->Draw("SAME"); */
+  /* auto leg1g = new TLegend(0.7, 0.7, 0.86, 0.86); */
+  /* leg1g->AddEntry(histMCTruth_g_M, "MC Gen from M", "p"); */
+  /* leg1g->AddEntry(histMCTruth_g, "MC Gen g", "p"); */
+  /* leg1g->Draw(); */
+  
+  /* c2g->cd(2); */
+  /* histMCReco_g_M->SetMarkerStyle(21); */
+  /* histMCReco_g_M->SetLineColor(kRed); */
+  /* histMCReco_g_M->SetMarkerColor(kRed); */
+  /* histMCReco_g_M->Draw(); */
+  /* histMCReco_g->SetMarkerStyle(24); */
+  /* histMCReco_g->SetLineColor(kBlue); */
+  /* histMCReco_g->SetMarkerColor(kBlue); */
+  /* histMCReco_g->Draw("SAME"); */
+  /* auto leg2g = new TLegend(0.7, 0.7, 0.86, 0.86); */
+  /* leg2g->AddEntry(histMCReco_g_M, "MC Reco from M", "p"); */
+  /* leg2g->AddEntry(histMCReco_g, "MC Reco g", "p"); */
+  /* leg2g->Draw(); */
+
+  
   TCanvas *c3 = new TCanvas("c3","Plot full response",1200,800);
   c3->Divide(3,1);
   c3->cd(1);
   c3->SetLogz();
-  histMCGenRec->Draw("colz");
+  histMCGenRec_u->Draw("colz");
   c3->cd(2);
   c3->SetLogz();
-  histMCGenRecUp->Draw("colz");
+  histMCGenRecUp_u->Draw("colz");
   c3->cd(3);
   c3->SetLogz();
-  histMCGenRecDwn->Draw("colz");
+  histMCGenRecDn_u->Draw("colz");
   
   //=======================================================
   // open file to save histograms and binning schemes
@@ -274,9 +316,9 @@ void testUnfold()
   detectorBinning->Write();
   generatorBinning->Write();
 
-  histMCReco->Write();
-  histMCGenRec->Write();
-  histMCTruth->Write();
+  histMCReco_u->Write();
+  histMCGenRec_u->Write();
+  histMCTruth_u->Write();
   
   detectorBinning->PrintStream(cout);
   generatorBinning->PrintStream(cout);
@@ -300,12 +342,12 @@ void testUnfold()
   // Ashley also used kHistMapOutputHoriz and kEConstraintNone
   // She also used kRegModeNone instead of keRegModeSize
   //Try Sal's setting: kRegModeCurvatur, kEConstraintArea, kDensityModeBinWidth
-  TUnfoldDensity tunfold(histMCGenRec,TUnfoldDensity::kHistMapOutputHoriz,
+  TUnfoldDensity tunfold(histMCGenRec_u,TUnfoldDensity::kHistMapOutputHoriz,
 				       TUnfoldDensity::kRegModeCurvature,TUnfoldDensity::kEConstraintArea,
 			 TUnfoldDensity::kDensityModeBinWidth); //, generatorBinning, detectorBinning);
     // set up matrix of migrations
   /* TH1 *input; */
-  /* input = histMCReco_M; */
+  /* input = histMCReco_g_M; */
   /* TH2D *inputEmatrix= */
   /*   detectorBinning->CreateErrorMatrixHistogram("input_covar",true); */
   /* for(int i=1;i<=inputEmatrix->GetNbinsX();i++) { */
@@ -315,9 +357,9 @@ void testUnfold()
     // test: non-zero covariance where variance is zero
     //if(e<=0.) inputEmatrix->SetBinContent(i,i,0.000000001);
   //}
-  tunfold.SetInput(histDataReco);
-  tunfold.AddSysError(histMCGenRecUp, "Up", TUnfoldDensity::kHistMapOutputHoriz, TUnfoldDensity::kSysErrModeMatrix);
-  tunfold.AddSysError(histMCGenRecDwn, "Down", TUnfoldDensity::kHistMapOutputHoriz, TUnfoldDensity::kSysErrModeMatrix);
+  tunfold.SetInput(histMCReco_u_M);
+  tunfold.AddSysError(histMCGenRecUp_u, "Up", TUnfoldDensity::kHistMapOutputHoriz, TUnfoldDensity::kSysErrModeMatrix);
+  tunfold.AddSysError(histMCGenRecDn_u, "Down", TUnfoldDensity::kHistMapOutputHoriz, TUnfoldDensity::kSysErrModeMatrix);
   tunfold.DoUnfold(0.0);
 
   // Get output -- DOES NOT CONTAIN SYSTEMATICS
@@ -339,11 +381,11 @@ void testUnfold()
   c4->cd();
   histDataUnfolded->SetLineColor(kBlue);
   histDataUnfolded->Draw("E");
-  histMCTruth_M->SetLineColor(kRed); 
-  histMCTruth_M->Draw("SAME HIST");
+  histMCTruth_u_M->SetLineColor(kRed);
+  histMCTruth_u_M->Draw("SAME HIST");
   auto leg = new TLegend(0.7, 0.7, 0.86, 0.86);
   leg->AddEntry(histDataUnfolded, "Unfolded, total unc","p");
-  leg->AddEntry(histMCTruth_M, "MCTruth","p");
+  leg->AddEntry(histMCTruth_u_M, "MCTruth","p");
   leg->Draw();
     
 }
