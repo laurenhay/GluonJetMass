@@ -365,10 +365,6 @@ class makeTrijetHists(processor.ProcessorABC):
             events_corr, btagSel = applyBTag(events_corr, self.btag)
             weights = weights[btagSel]
             print("Number of reco trijet events after btag ", len(events_corr.FatJet), '\n')
-            out["jet_pt_mass_reco_u"].fill( dataset=dataset, syst=syst, ptreco=events_corr.FatJet[:,2].pt, mreco=events_corr.FatJet[:,2].mass,
-                                           weight=weights )
-            out["jet_pt_mass_reco_g"].fill( dataset=dataset, syst=syst, ptreco=events_corr.FatJet[:,2].pt, mreco=events_corr.FatJet[:,2].msoftdrop,
-                                           weight=weights )
             
             #### Find fakes and make response matrices
             if self.do_gen:
@@ -560,6 +556,10 @@ class makeTrijetHists(processor.ProcessorABC):
                 print("Number of jet3's", len(jet3), " and number of gluon jet 3's ", len(jet3_g))
                 out['cutflow']['n3Jets'] += (len(jet3.pt))
                 print(out['cutflow']['n3Jets'])
+            out["jet_pt_mass_reco_u"].fill( dataset=dataset, syst=syst, ptreco=events_corr.FatJet[:,2].pt, mreco=events_corr.FatJet[:,2].mass,
+                                           weight=weights )
+            out["jet_pt_mass_reco_g"].fill( dataset=dataset, syst=syst, ptreco=events_corr.FatJet[:,2].pt, mreco=events_corr.FatJet[:,2].msoftdrop,
+                                           weight=weights )
         out['cutflow']['chunks'] += 1
         return out
     

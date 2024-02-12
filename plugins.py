@@ -3,6 +3,7 @@ import pandas as pd
 import time
 from coffea import processor
 from coffea.nanoevents import NanoEventsFactory, NanoAODSchema
+import pickle
 
 #if using LPC dask or running locally use 'root://cmsxrootd.fnal.gov/'
 #is using coffea casa use 'root://xcache/'
@@ -163,3 +164,15 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     print(result)
     print("Time taken to run over samples ", elapsed)
     return result
+def addFiles(files):
+    results = pickle.load( open(files[0], "rb") )
+    for fname in files[1:]:
+        with open(fname, "rb") as f:
+            result = pickle.load( f )
+            for hist in result:
+                results[hist] += result[hist]
+    outputFilename = files[0][:-8]+"ALL.pkl"
+    with open(outputFilename, "wb") as f:
+        pickle.dump( results, f)
+    return(outputFilename)
+    

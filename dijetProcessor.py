@@ -336,8 +336,6 @@ class makeDijetHists(processor.ProcessorABC):
             # print("Fatjet flattened along axis 0: ", ak.flatten(FatJet[:,:2], axis=1).pt)
             dijet = ak.flatten(FatJet[:,:2], axis=1)
             print("Length of FatJet after flattenting: ", len(FatJet))
-            out["jet_pt_mass_reco_u"].fill( dataset=dataset, syst=syst, ptreco=dijet.pt, mreco=dijet.mass, weight=dijet_weights )
-            out["jet_pt_mass_reco_g"].fill( dataset=dataset, syst=syst, ptreco=dijet.pt, mreco=dijet.msoftdrop, weight=dijet_weights )
             
             #### match jets
             if self.do_gen:
@@ -524,6 +522,8 @@ class makeDijetHists(processor.ProcessorABC):
                                     )
                     out['cutflow']['nGluonJets'] += (len(ak.flatten(dijet[np.abs(gen_dijet.partonFlavour) == 21].pt, axis=-1)))
                     out['cutflow']['nJets'] += (len(ak.flatten(jet1.pt, axis=-1)))
+            out["jet_pt_mass_reco_u"].fill( dataset=dataset, syst=syst, ptreco=dijet.pt, mreco=dijet.mass, weight=dijet_weights )
+            out["jet_pt_mass_reco_g"].fill( dataset=dataset, syst=syst, ptreco=dijet.pt, mreco=dijet.msoftdrop, weight=dijet_weights )
         out['cutflow']['chunks'] += 1
         return out
     
