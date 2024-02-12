@@ -25,6 +25,8 @@ void testUnfold()
   TH2D *ptgen_mgen_u = f->Get<TH2D>("ptgen_mgen_u_nominal");
   TH2D *fakes_ptreco_mreco = f->Get<TH2D>("fakes_ptreco_mreco");
   TH2D *misses_ptgen_mgen = f->Get<TH2D>("misses_ptgen_mgen");
+
+  ptgen_mgen_g->Print("base");
   
   //open data root file and get hists
   TFile *f_reco = TFile::Open("dijetHistsQCDsim_jec_2016.root");
@@ -41,9 +43,9 @@ void testUnfold()
   TTreeReader matrixReader("response", f);
   TTreeReader binReader("centers", f);
   // The branch "reco_gen_groomed" contains doubles; access them as response_matrix_g
-  /* TTreeReaderArray<Double_t> response_matrix_g(matrixReader, "groomed_nominal"); */
-  /* TTreeReaderArray<Double_t> response_matrix_g_up(matrixReader, "groomed_jesUp"); */
-  /* TTreeReaderArray<Double_t> response_matrix_g_dn(matrixReader, "groomed_jesDown"); */
+  TTreeReaderArray<Double_t> response_matrix_g(matrixReader, "groomed_nominal");
+  TTreeReaderArray<Double_t> response_matrix_g_up(matrixReader, "groomed_jesUp");
+  TTreeReaderArray<Double_t> response_matrix_g_dn(matrixReader, "groomed_jesDown");
   // The branch "reco_gen_ungroomed" contains doubles; access them as response_matrix_u
   TTreeReaderArray<Double_t> response_matrix_u(matrixReader, "ungroomed_nominal");
   TTreeReaderArray<Double_t> response_matrix_u_up(matrixReader, "ungroomed_jesUp");
@@ -53,10 +55,13 @@ void testUnfold()
   TTreeReaderArray<Double_t> mreco_center(binReader, "mreco");
   TTreeReaderArray<Double_t> ptgen_center(binReader, "ptgen");
   TTreeReaderArray<Double_t> mgen_center(binReader, "mgen");
-  const Double_t *ptgen_low = ptgen_mgen_u->GetXaxis()->GetXbins()->GetArray();
-  const Double_t *mgen_low = ptgen_mgen_u->GetYaxis()->GetXbins()->GetArray();
-  const Double_t *ptreco_low = ptreco_mreco_u->GetXaxis()->GetXbins()->GetArray();
-  const Double_t *mreco_low = ptreco_mreco_u->GetYaxis()->GetXbins()->GetArray();
+  const TArrayD ptgen_low = *ptgen_mgen_u->GetXaxis()->GetXbins();
+  const TArrayD mgen_low = *ptgen_mgen_u->GetYaxis()->GetXbins();
+  const TArrayD ptreco_low = *ptreco_mreco_u->GetXaxis()->GetXbins();
+  const TArrayD mreco_low = *ptreco_mreco_u->GetYaxis()->GetXbins();
+
+  cout << "mass gen low edge from TH2 size " << mgen_low.GetSize()<<endl;
+  
     //check content by drawing hists
   /* TCanvas *c1 = new TCanvas("c1","FAKES AND MISSES",1200,600); */
   /* c1->Divide(2,1); */
@@ -72,6 +77,8 @@ void testUnfold()
   vector<double> binsVector[2];
   for(int i=0;i<=nBinMassCoarse;i++) {
     double x0=binsMassCoarseVec[i];
+    //    cout << "mass gen low edge from array " << mgen_center[i]<<endl;
+    //cout << "mass gen low edge from TH2 " << mgen_low[i]<<endl;
     for(int k=0;k<2;k++) binsVector[k].push_back(x0);
     if(i<nBinMassCoarse) {
       // add extra bins
@@ -102,8 +109,8 @@ void testUnfold()
   TUnfoldBinning *detectorBinning = new TUnfoldBinning("detector");
   //  TUnfoldBinning *missBinning = detectorBinning->AddBinning("missesBin", 1);
   TUnfoldBinning *recoBinning = detectorBinning->AddBinning("reco");
-  recoBinning->AddAxis(*ptreco_mreco_u->GetYaxis(), false, true); //mreco
-  recoBinning->AddAxis(*ptgen_mgen_u->GetXaxis(), false, true); //ptreco
+  recoBinning->AddAxis(*ptreco_mreco_u->GetYaxis(), false, false); //mreco
+  recoBinning->AddAxis(*ptgen_mgen_u->GetXaxis(), false, false); //ptreco
   //recoBinning->AddAxis("m_{RECO}", nBinMassFine, binsMassFine.data(), false, true); //mreco
   //recoBinning->AddAxis("pt_{RECO}", nBinsPt, binsPt.data(), false, false); //ptreco
 
@@ -121,18 +128,18 @@ void testUnfold()
   TH2D *histMCGenRec_u=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec Ungroomed");
   TH2D *histMCGenRecUp_u=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec+jerUp Ungroomed");
   TH2D *histMCGenRecDn_u=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec-jerDn Ungroomed");
-  /* TH2D *histMCGenRec_g=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec Groomed"); */
-  /* TH2D *histMCGenRecUp_g=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec+jerUp Groomed"); */
-  /* TH2D *histMCGenRecDn_g=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec-jerDn Groomed"); */
+  TH2D *histMCGenRec_g=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec Groomed");
+  TH2D *histMCGenRecUp_g=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec+jerUp Groomed");
+  TH2D *histMCGenRecDn_g=TUnfoldBinning::CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec-jerDn Groomed");
   // create data histograms
   TH1 *histDataReco_u=recoBinning->CreateHistogram("histDataReco Ungroomed");  //data values in reco binnning --> input to unfolding
-  //  TH1 *histDataReco_g=recoBinning->CreateHistogram("histDataReco Groomed");  //data values in reco binnning --> input to unfolding
+  TH1 *histDataReco_g=recoBinning->CreateHistogram("histDataReco Groomed");  //data values in reco binnning --> input to unfolding
 
   //create MC hists for comparison
   TH1 *histMCReco_u=recoBinning->CreateHistogram("histMCReco Ungroomed"); //gen values in reco binning --> htruef in Sal's example
   TH1 *histMCTruth_u=genBinning->CreateHistogram("histMCTruth Ungroomed");  //gen values in gen binning
-  /* TH1 *histMCReco_g=recoBinning->CreateHistogram("histMCReco Groomed"); //gen values in reco binning --> htruef in Sal's example */
-  /* TH1 *histMCTruth_g=genBinning->CreateHistogram("histMCTruth Groomed");  //gen values in gen binning */
+  TH1 *histMCReco_g=recoBinning->CreateHistogram("histMCReco Groomed"); //gen values in reco binning --> htruef in Sal's example
+  TH1 *histMCTruth_g=genBinning->CreateHistogram("histMCTruth Groomed");  //gen values in gen binning
   
   // Loop through reco and gen bins of MC input and fill hist of migrations
   while(matrixReader.Next() && binReader.Next()) {
@@ -140,18 +147,21 @@ void testUnfold()
     cout << "Size of ptreco bins: " << ptreco_center.GetSize()<< endl;
     cout << "Size of mreco bins: " << mreco_center.GetSize()<< endl;
     cout << "Size of mgen bins: " << mgen_center.GetSize()<< endl;
+    cout << "Size of ptreco bins: " << ptreco_low.GetSize()<< endl;
+    cout << "Size of mreco bins: " << mreco_low.GetSize()<< endl;
+    cout << "Size of mgen bins: " << mgen_low.GetSize()<< endl;
     Int_t glob_recobin;
     Int_t recoBin;
     Int_t glob_genbin;
     Int_t genBin;
     // reco loop: i is ptreco, j is mreco
-    for(int i=0; i<ptreco_center.GetSize(); i++){
-      for(int j=0; j<mreco_center.GetSize(); j++){
+    for(int i=0; i<(ptreco_low.GetSize()-1); i++){
+      for(int j=0; j<(mreco_low.GetSize()-1); j++){
     /* for(int i=0; i<NBin_pt_fine; i++){ */
     /*   for(int j=0; j<NBin_mass_fine; j++){	 */
-	glob_recobin=(i)*mreco_center.GetSize()+j;
-	/* cout<<"has centers mreco " << mreco_center[j] << " and ptreco " << ptreco_center[i] << endl; */
-	recoBin=recoBinning->GetGlobalBinNumber(mreco_center[j],ptreco_center[i]);
+	glob_recobin=(i)*(mreco_low.GetSize()-1)+j;
+	cout<<"has centers mreco " << mreco_low[j] << " and ptreco " << ptreco_low[i] << endl;
+	recoBin=recoBinning->GetGlobalBinNumber(mreco_low[j],ptreco_low[i]);
 	//only fill fakes in fake genBin
 	//	    Double_t fake_weight = fakes_ptreco_mreco->GetBinContent(i,j);
 	// cout << "Fake weight " << fake_weight << " for i == " << i << " and j == " << j << endl;
@@ -161,14 +171,14 @@ void testUnfold()
 	Double_t data_weight_u=ptreco_mreco_u->GetBinContent(i+1,j+1);
 	histDataReco_u->Fill(recoBin, data_weight_u);
 	cout << "Reco weight " << data_weight_u << " for glob reco bin "<< glob_recobin << "and matrix reco bin " << recoBin << endl;
-	/* Double_t data_weight_g=ptreco_mreco_g->GetBinContent(i+1,j+1); */
-	/* histDataReco_g->Fill(recoBin, data_weight_g); */
+	Double_t data_weight_g=ptreco_mreco_g->GetBinContent(i+1,j+1);
+	histDataReco_g->Fill(recoBin, data_weight_g);
 	// gen loop: k is ptgen, l is mgen
-	for(int k=0; k<mgen_center.GetSize(); k++){
-	  for(int l=0; l<mgen_center.GetSize(); l++){
-	    glob_genbin=(k)*mgen_center.GetSize()+l;
-	    genBin=genBinning->GetGlobalBinNumber(mgen_center[l],ptgen_center[k]);
-	    /* cout<< genBin << "has centers mgen " << mgen_center[l] << " and ptgen " << ptgen_center[k] << endl; */
+	for(int k=0; k<(mgen_low.GetSize()-1); k++){
+	  for(int l=0; l<(mgen_low.GetSize()-1); l++){
+	    glob_genbin=(k)*(mgen_low.GetSize()-1)+l;
+	    genBin=genBinning->GetGlobalBinNumber(mgen_low[l],ptgen_low[k]);
+	    //	    cout<< genBin << " has lower edges mgen " << mgen_low[l] << " and ptgen " << ptgen_low[k] << endl;
 	    //only fill misses in miss recoBin
 	    //Double_t miss_weight = misses_ptgen_mgen->GetBinContent(k,l);
 	    /* cout << "Miss weight " << miss_weight << " for k == " << k << " and k == " << k << endl; */
@@ -180,14 +190,14 @@ void testUnfold()
 	      Double_t truth_weight_u = ptgen_mgen_u->GetBinContent(k+1,l+1);
 	      histMCTruth_u->Fill(genBin, truth_weight_u);
 	      cout << "Truth weight " << truth_weight_u << " for glob gen bin "<< glob_genbin << "and matrix gen bin " << genBin << endl;
-	      /* Double_t truth_weight_g = ptgen_mgen_g->GetBinContent(k+1,l+1); */
-	      /* histMCTruth_g->Fill(genBin, truth_weight_g); */
+	      Double_t truth_weight_g = ptgen_mgen_g->GetBinContent(k+1,l+1);
+	      histMCTruth_g->Fill(genBin, truth_weight_g);
 	      //fill MC reco for comparison
 	      // COULD BE GOING WRONG BC DIFF NUMBER OF K's AND L's VS I's AND J's
-	      Int_t recoBin_genObj=recoBinning->GetGlobalBinNumber(mgen_center[l],ptgen_center[k]);
+	      Int_t recoBin_genObj=recoBinning->GetGlobalBinNumber(mgen_low[l],ptgen_low[k]);
 	      cout << "Truth weight " << truth_weight_u << " for k == " << k << " and l == " << l << "and reco bin " << recoBin_genObj << endl;
 	      histMCReco_u->Fill(recoBin_genObj, truth_weight_u);
-	      //	      histMCReco_g->Fill(recoBin_genObj, truth_weight_g);
+	      histMCReco_g->Fill(recoBin_genObj, truth_weight_g);
 	  }
 	    Int_t glob_bin = glob_recobin*(mgen_center.GetSize()*ptgen_center.GetSize())+glob_genbin;
 	    /* cout<<"Global bin " << glob_bin << " for reco bin " << glob_recobin << " and gen bin " << glob_genbin << endl; */
@@ -200,12 +210,12 @@ void testUnfold()
 	    Double_t resp_weight_u_dn = response_matrix_u_dn[glob_bin];
 	    histMCGenRecDn_u->Fill(genBin,recoBin,resp_weight_u_dn);
 	    /* // fill groomed resp. matrices */
-	    /* Double_t resp_weight_g = response_matrix_g[glob_bin]; */
-	    /* histMCGenRec_g->Fill(genBin,recoBin,resp_weight_g); */
-	    /* Double_t resp_weight_g_up = response_matrix_g_up[glob_bin]; */
-	    /* histMCGenRecUp_g->Fill(genBin,recoBin,resp_weight_g_up); */
-	    /* Double_t resp_weight_g_dn = response_matrix_g_dn[glob_bin]; */
-	    /* histMCGenRecDn_g->Fill(genBin,recoBin,resp_weight_g_dn); */
+	    Double_t resp_weight_g = response_matrix_g[glob_bin];
+	    histMCGenRec_g->Fill(genBin,recoBin,resp_weight_g);
+	    Double_t resp_weight_g_up = response_matrix_g_up[glob_bin];
+	    histMCGenRecUp_g->Fill(genBin,recoBin,resp_weight_g_up);
+	    Double_t resp_weight_g_dn = response_matrix_g_dn[glob_bin];
+	    histMCGenRecDn_g->Fill(genBin,recoBin,resp_weight_g_dn);
 	  }}}}
     cout << response_matrix_u[849] <<endl;              
   }
@@ -218,12 +228,12 @@ void testUnfold()
   cout<<"Response matrix"<<endl;
   histMCGenRec_u->Print("base");
   // check that response matrix has been filled properly
-  TH1 *histMCReco_u_M=histMCGenRec_u->ProjectionY("MCReco", 1, -2);
-  TH1 *histMCTruth_u_M=histMCGenRec_u->ProjectionX("MCTruth", 1, -2);
+  TH1 *histMCReco_u_M=histMCGenRec_u->ProjectionY("MCReco u", 1, -2);
+  TH1 *histMCTruth_u_M=histMCGenRec_u->ProjectionX("MCTruth u", 1, -2);
   histMCReco_u_M->Print("all");
   // check that response matrix has been filled properly
-  /* TH1 *histMCReco_g_M=histMCGenRec_g->ProjectionY("MCReco", 1, -2); */
-  /* TH1 *histMCTruth_g_M=histMCGenRec_g->ProjectionX("MCTruth", 1, -2); */
+  TH1 *histMCReco_g_M=histMCGenRec_g->ProjectionY("MCReco g", 1, -2); 
+  TH1 *histMCTruth_g_M=histMCGenRec_g->ProjectionX("MCTruth g", 1, -2);
   
   //check Truth contents
   int nBinsTruth = histMCTruth_u_M->GetXaxis()->GetNbins();
@@ -265,35 +275,35 @@ void testUnfold()
   leg2->AddEntry(histMCReco_u, "MC Reco", "p");
   leg2->Draw();
 
-  /* TCanvas *c2g = new TCanvas("c2g","Plot MC input groomed binned by pt (outer) and mass (inner)",1200,400); */
-  /* c2g->Divide(2,1); */
-  /* c2g->cd(1); */
-  /* histMCTruth_g_M->SetMarkerStyle(21); */
-  /* histMCTruth_g_M->SetLineColor(kRed); */
-  /* histMCTruth_g_M->SetMarkerColor(kRed); */
-  /* histMCTruth_g_M->Draw(); */
-  /* histMCTruth_g->SetMarkerStyle(24); */
-  /* histMCTruth_g->SetLineColor(kBlue); */
-  /* histMCTruth_g->SetMarkerColor(kBlue); */
-  /* histMCTruth_g->Draw("SAME"); */
-  /* auto leg1g = new TLegend(0.7, 0.7, 0.86, 0.86); */
-  /* leg1g->AddEntry(histMCTruth_g_M, "MC Gen from M", "p"); */
-  /* leg1g->AddEntry(histMCTruth_g, "MC Gen g", "p"); */
-  /* leg1g->Draw(); */
+  TCanvas *c2g = new TCanvas("c2g","Plot MC input groomed binned by pt (outer) and mass (inner)",1200,400);
+  c2g->Divide(2,1);
+  c2g->cd(1);
+  histMCTruth_g_M->SetMarkerStyle(21);
+  histMCTruth_g_M->SetLineColor(kRed);
+  histMCTruth_g_M->SetMarkerColor(kRed);
+  histMCTruth_g_M->Draw();
+  histMCTruth_g->SetMarkerStyle(24);
+  histMCTruth_g->SetLineColor(kBlue);
+  histMCTruth_g->SetMarkerColor(kBlue);
+  histMCTruth_g->Draw("SAME");
+  auto leg1g = new TLegend(0.7, 0.7, 0.86, 0.86);
+  leg1g->AddEntry(histMCTruth_g_M, "MC Gen from M", "p");
+  leg1g->AddEntry(histMCTruth_g, "MC Gen g", "p");
+  leg1g->Draw();
   
-  /* c2g->cd(2); */
-  /* histMCReco_g_M->SetMarkerStyle(21); */
-  /* histMCReco_g_M->SetLineColor(kRed); */
-  /* histMCReco_g_M->SetMarkerColor(kRed); */
-  /* histMCReco_g_M->Draw(); */
-  /* histMCReco_g->SetMarkerStyle(24); */
-  /* histMCReco_g->SetLineColor(kBlue); */
-  /* histMCReco_g->SetMarkerColor(kBlue); */
-  /* histMCReco_g->Draw("SAME"); */
-  /* auto leg2g = new TLegend(0.7, 0.7, 0.86, 0.86); */
-  /* leg2g->AddEntry(histMCReco_g_M, "MC Reco from M", "p"); */
-  /* leg2g->AddEntry(histMCReco_g, "MC Reco g", "p"); */
-  /* leg2g->Draw(); */
+  c2g->cd(2);
+  histMCReco_g_M->SetMarkerStyle(21);
+  histMCReco_g_M->SetLineColor(kRed);
+  histMCReco_g_M->SetMarkerColor(kRed);
+  histMCReco_g_M->Draw();
+  histMCReco_g->SetMarkerStyle(24);
+  histMCReco_g->SetLineColor(kBlue);
+  histMCReco_g->SetMarkerColor(kBlue);
+  histMCReco_g->Draw("SAME");
+  auto leg2g = new TLegend(0.7, 0.7, 0.86, 0.86);
+  leg2g->AddEntry(histMCReco_g_M, "MC Reco from M", "p");
+  leg2g->AddEntry(histMCReco_g, "MC Reco g", "p");
+  leg2g->Draw();
 
   
   TCanvas *c3 = new TCanvas("c3","Plot full response",1200,800);
