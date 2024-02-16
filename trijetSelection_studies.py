@@ -39,10 +39,9 @@ if not np.any(environments): #if user forgets to assign something here
 #### WE'RE MISSING 2016B ver2 -- AK8 PF HLT is missing need to use AK4 trigger isntead
 ### Run coffea processor and make plots
 run_bool = arg.runProcessor
-data_bool = arg.data
 btag_str = arg.btag
 year = arg.year
-processor = makeTrijetHists(data = data_bool, btag = btag_str)
+processor = makeTrijetHists(data = arg.data, btag = btag_str)
 datastring = "JetHT" if processor.do_gen == False else "QCDsim"
 if processor.do_gen==True and arg.winterfell:
     filename = "QCD_flat_files.json"
@@ -57,14 +56,14 @@ elif year == "2016" or year == "2016APV" or year == "2017" or year == "2018":
 else:
     year_str = "All"
 
-if arg.testing and not data:
-    fname = 'coffeaOutput/trijetHistsTest_wXSscaling_{}_pt{}_eta{}_{}jesjec.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag, year_str)
-elif arg.testing and data:
-    fname = 'coffeaOutput/trijetHistsTest{}_pt{}_eta{}_{}jesjec.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag, year_str)
-elif not arg.testing and data:
-    fname = 'coffeaOutput/trijetHists_{}_pt{}_eta{}_{}jesjec{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag, year_str)
+if arg.testing and not arg.data:
+    fname = 'coffeaOutput/trijetHistsTest_wXSscaling_{}_pt{}_rapidity{}_{}jesjec{}.pkl'.format(datastring, processor.ptcut, processor.ycut, processor.btag, year_str)
+elif arg.testing and arg.data:
+    fname = 'coffeaOutput/trijetHistsTest{}_pt{}_rapidity{}_{}jesjec{}.pkl'.format(datastring, processor.ptcut, processor.ycut, processor.btag, year_str)
+elif not arg.testing and arg.data:
+    fname = 'coffeaOutput/trijetHists_{}_pt{}_rappidity{}_{}jesjec{}.pkl'.format(datastring, processor.ptcut, processor.ycut, processor.btag, year_str)
 else:
-    fname = 'coffeaOutput/trijetHists_wXSscaling_{}_pt{}_eta{}_{}jesjec{}.pkl'.format(datastring, processor.ptcut, processor.etacut, processor.btag, year_str)
+    fname = 'coffeaOutput/trijetHists_wXSscaling_{}_pt{}rapidity{}_{}jesjec{}.pkl'.format(datastring, processor.ptcut, processor.ycut, processor.btag, year_str)
 
 if run_bool:
     result = runCoffeaJob(processor, jsonFile = filename, casa = arg.casa, winterfell = arg.winterfell, testing = arg.testing, dask = arg.dask, data = not processor.do_gen, verbose = False)
@@ -89,7 +88,7 @@ result['jet_pt_mass_reco_g'][{'dataset':sum}].project('ptreco').plot1d(ax=axs[1,
 result['jet_pt_mass_reco_g'][{'dataset':sum}].project('mreco').plot1d(ax=axs[1,1])
 plt.savefig(os_path+'/pt_m_reco_u_g.png')
 
-if not data:
+if not arg.data:
     plt.rcParams["figure.figsize"] = (20,15)
     fig, axs = plt.subplots(2, 2)
     fig.suptitle('Ungroomed (top) and groomed (bottom) reco jets')

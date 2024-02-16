@@ -126,13 +126,9 @@ class makeTrijetHists(processor.ProcessorABC):
         dphi_axis = hist.axis.Regular(150, -2*np.pi, 2*np.pi, name="dphi", label=r"$\Delta \phi$")
 
         self._histos = {
-        #### Old histos
-        'jet_mass':        hist.Hist(dataset_cat, jet_cat, parton_cat, mass_gen_bin, storage="weight", name="Events"),
-        'jet_pt':          hist.Hist(dataset_cat, jet_cat, parton_cat, pt_gen_bin, storage="weight", name="Events"),
-        'jet_eta':         hist.Hist(dataset_cat, jet_cat, parton_cat, eta_bin, storage="weight", name="Events"),
-        'btag':            hist.Hist(dataset_cat, jet_cat, parton_cat, frac_axis, storage="weight", name="Events"),
-        #### misc.
-        'cutflow':            processor.defaultdict_accumulator(int),
+        #### btag study histos
+        'alljet_ptreco_mreco':        hist.Hist(dataset_cat, jet_cat, parton_cat, mass_bin, pt_bin, storage="weight", name="Events"),
+        'btag_ptgen_eta':            hist.Hist(dataset_cat, jet_cat, parton_cat, frac_axis, eta_bin, pt_gen_bin, storage="weight", name="Events"),
             
         #### Plots of things during the selection process / for debugging
         'njet_gen':                  hist.Hist(dataset_cat, syst_cat, n_axis, storage="weight", label="Counts"),
@@ -195,6 +191,7 @@ class makeTrijetHists(processor.ProcessorABC):
         dataset = events.metadata['dataset']
         filename = events.metadata['filename']
         print(dataset)
+        out['cutflow']['nEvents initial'] += (len(events.FatJet))
         #####################################
         #### Find the IOV from the dataset name
         #####################################
@@ -432,125 +429,65 @@ class makeTrijetHists(processor.ProcessorABC):
                 print("Check for none values", ak.any(ak.is_none(jet3_g.mass), axis = -1))
     
     
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Gluon",  mgen = jet1_g.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Gluon",  mreco = jet1_g.mass, ptreco = jet1_g.pt,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "UDS",    mgen = jet1_uds.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "UDS",    mreco = jet1_uds.mass, ptreco = jet1_uds.pt,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Charm",  mgen = jet1_c.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Charm",  mreco = jet1_c.mass, ptreco = jet1_c.pt,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Bottom", mgen = jet1_b.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Bottom", mreco = jet1_b.mass, ptreco = jet1_b.pt,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Other",  mgen = jet1_other.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Other",  mreco = jet1_other.mass, ptreco = jet1_other.pt,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Gluon",  mgen = jet2_g.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Gluon",  mreco = jet2_g.mass, ptreco = jet2_g.pt,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "UDS",    mgen = jet2_uds.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "UDS",    mreco = jet2_uds.mass, ptreco = jet2_uds.pt,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Charm",  mgen = jet2_c.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Charm",  mgen = jet2_c.mass, ptreco = jet2_c.pt,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Bottom", mgen = jet2_b.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Bottom", mgen = jet2_b.mass,ptreco = jet2_b.pt,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Other",  mgen = jet2_other.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Other",  mgen = jet2_other.mass,ptreco = jet2_other.pt,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon",  mgen = jet3_g.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon",  mgen = jet3_g.mass,ptreco = jet3_g.pt,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "UDS",    mgen = jet3_uds.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "UDS",    mgen = jet3_uds.mass,ptreco = jet3_uds.pt,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Charm",  mgen = jet3_c.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Charm",  mgen = jet3_c.mass,
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Bottom", mgen = jet3_b.mass
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Bottom", mgen = jet3_b.mass
                                     )
-                out['jet_mass'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Other",  mgen = jet3_other.mass,
+                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Other",  mgen = jet3_other.mass,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Gluon",  ptgen = jet1_g.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Gluon",  frac = jet1_g.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "UDS",    ptgen = jet1_uds.pt
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "UDS",    frac = jet1_uds.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Charm",  ptgen = jet1_c.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Charm",  frac = jet1_c.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Bottom", ptgen = jet1_b.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Bottom", frac = jet1_b.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Other",  ptgen = jet1_other.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Other",  frac = jet1_other.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Gluon",  ptgen = jet2_g.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Gluon",  frac = jet2_g.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "UDS",    ptgen = jet2_uds.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "UDS",    frac = jet2_uds.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Charm",  ptgen = jet2_c.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Charm",  frac = jet2_c.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Bottom", ptgen = jet2_b.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Bottom", frac = jet2_b.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Other",  ptgen = jet2_other.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Other",  frac = jet2_other.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon",  ptgen = jet3_g.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon",  frac = jet3_g.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "UDS",    ptgen = jet3_uds.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "UDS",    frac = jet3_uds.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Charm",  ptgen = jet3_c.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Charm",  frac = jet3_c.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Bottom", ptgen = jet3_b.pt,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Bottom", frac = jet3_b.btagCSVV2,
                                     )
-                out['jet_pt'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Other",  ptgen = jet3_other.pt,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Gluon",  eta = jet1_g.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "UDS",    eta = jet1_uds.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Charm",  eta = jet1_c.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Bottom", eta = jet1_b.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Other",  eta = jet1_other.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Gluon",  eta = jet2_g.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "UDS",    eta = jet2_uds.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Charm",  eta = jet2_c.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Bottom", eta = jet2_b.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Other",  eta = jet2_other.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon",  eta = jet3_g.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "UDS",    eta = jet3_uds.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Charm",  eta = jet3_c.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Bottom", eta = jet3_b.eta,
-                                    )
-                out['jet_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Other",  eta = jet3_other.eta,
-                                    )   
-                out['btag'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Gluon",  frac = jet1_g.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "UDS",    frac = jet1_uds.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Charm",  frac = jet1_c.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Bottom", frac = jet1_b.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Other",  frac = jet1_other.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Gluon",  frac = jet2_g.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "UDS",    frac = jet2_uds.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Charm",  frac = jet2_c.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Bottom", frac = jet2_b.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Other",  frac = jet2_other.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon",  frac = jet3_g.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "UDS",    frac = jet3_uds.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Charm",  frac = jet3_c.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Bottom", frac = jet3_b.btagCSVV2,
-                                    )
-                out['btag'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Other",  frac = jet3_other.btagCSVV2,
+                out['btag_ptgen_rap'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Other",  frac = jet3_other.btagCSVV2,
                                     )
                 out['cutflow']['nGluonJets'] += (len(jet3_g))
                 print("Number of jet3's", len(jet3), " and number of gluon jet 3's ", len(jet3_g))
@@ -560,6 +497,7 @@ class makeTrijetHists(processor.ProcessorABC):
                                            weight=weights )
             out["jet_pt_mass_reco_g"].fill( dataset=dataset, syst=syst, ptreco=events_corr.FatJet[:,2].pt, mreco=events_corr.FatJet[:,2].msoftdrop,
                                            weight=weights )
+            out['cutflow']['nEvents final selection'] += (len(events_corr.FatJet))
         out['cutflow']['chunks'] += 1
         return out
     

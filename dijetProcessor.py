@@ -157,6 +157,7 @@ class makeDijetHists(processor.ProcessorABC):
         filename = events.metadata['filename']
         print("Filename: ", filename)
         print("dataset: ", dataset)
+        out['cutflow']['nEvents inital'] += (len(events.FatJet))
         #####################################
         #### Find the IOV from the dataset name
         #####################################
@@ -522,6 +523,7 @@ class makeDijetHists(processor.ProcessorABC):
                                     )
                     out['cutflow']['nGluonJets'] += (len(ak.flatten(dijet[np.abs(gen_dijet.partonFlavour) == 21].pt, axis=-1)))
                     out['cutflow']['nJets'] += (len(ak.flatten(jet1.pt, axis=-1)))
+            out['cutflow']['nEvents final selection'] += (len(events.FatJet))
             out["jet_pt_mass_reco_u"].fill( dataset=dataset, syst=syst, ptreco=dijet.pt, mreco=dijet.mass, weight=dijet_weights )
             out["jet_pt_mass_reco_g"].fill( dataset=dataset, syst=syst, ptreco=dijet.pt, mreco=dijet.msoftdrop, weight=dijet_weights )
         out['cutflow']['chunks'] += 1

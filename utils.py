@@ -48,8 +48,8 @@ turnOnPts_JetHT = {'2016': {'AK8PFJet40':  0.,
                             'AK8PFJet500': 745.1851326682686, 
                             'AK8PFJet550': 796.7749788024963}
             }
-
-xsdb_2017= { 'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 104000.0,
+# in 
+xsdb= { 'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 104000.0,
 'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 6806.0,
 'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 552.0,
 'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 154.6,
@@ -108,9 +108,9 @@ def getXSweight(dataset, IOV):
         if year in IOV:
             lum = lumi[year]
             print("Lumi ", lum, " for year ", year)
-            for process in np.array(list(xsdb_2017.keys())):
+            for process in np.array(list(xsdb.keys())):
                 if process in dataset:
-                    xs = xsdb_2017[process]
+                    xs = xsdb[process]
                     print("Number of gen events for year: ", num_gen[year][process])
                     weight = xs * lum * 1000 / num_gen[year][process]
                     return weight
