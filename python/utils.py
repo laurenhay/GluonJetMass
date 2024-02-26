@@ -67,7 +67,7 @@ lumi = {'2018' : 59.74,
        }
 
 num_gen = { '2016': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 29758000,
-'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 29758000,
+'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 55264000,
 'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 52408000,
 'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 64584000,
 'QCD_Pt_800to1000_TuneCP5_13TeV_pythia8' : 37698000,

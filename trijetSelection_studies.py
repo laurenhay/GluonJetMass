@@ -10,8 +10,8 @@ from coffea.nanoevents import NanoEventsFactory, NanoAODSchema
 import hist
 
 
-from plugins import *
-from trijetProcessor import makeTrijetHists
+from python.plugins import *
+from python.trijetProcessor import makeTrijetHists
 import pickle
 import argparse
 
@@ -22,8 +22,8 @@ environmentGroup.add_argument('--casa', action='store_true', help='Use Coffea-Ca
 environmentGroup.add_argument('--lpc', action='store_true', help='Use CMSLPC redirector: root://cmsxrootd.fnal.gov/')
 environmentGroup.add_argument('--winterfell', action='store_true', help='Get available files from UB Winterfell /mnt/data/cms')
 
-parser.add_argument('--btag', choices=['bbloose', 'bloose', 'bbmed', 'bmed', None], default="bbloose") 
-parser.add_argument('--year', choices=['2016', '2017', '2018', '2016APV', None], default="None", help="Year to run on")
+parser.add_argument('--btag', choices=['bbloose', 'bloose', 'bbmed', 'bmed', 'None'], default="bloose") 
+parser.add_argument('--year', choices=['2016', '2017', '2018', '2016APV', 'None'], default="None", help="Year to run on")
 parser.add_argument('--data', action='store_true', help="Run on data") 
 parser.add_argument('--dask', action='store_true', help='Run on dask')
 parser.add_argument('--runProcessor', type=bool, help='Run processor; if True run the processor; if False, only make plots', default='True')

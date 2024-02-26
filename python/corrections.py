@@ -16,6 +16,7 @@ def GetL1PreFiringWeight(events):
     # Need to check if weights (up/dn) produced are comparable or greater than JEC weights --> if yes apply, if no take as a systematic uncertainty
     ## var = "Nom", "Up", "Dn"
     L1PrefiringWeights = [events.L1PreFiringWeight.Nom, events.L1PreFiringWeight.Up, events.L1PreFiringWeight.Dn]
+    print("Got L1 weights")
     return L1PrefiringWeights
 
 def HEMCleaning(JetCollection):
@@ -45,6 +46,7 @@ def GetPUSF(events, IOV):
     ## json files from: https://gitlab.cern.ch/cms-nanoAOD/jsonpog-integration/-/tree/master/POG/LUM
         
     fname = "correctionFiles/puWeights/{0}_UL/puWeights.json.gz".format(IOV)
+    print("PU SF filename: ", fname)
     hname = {
         "2016APV": "Collisions16_UltraLegacy_goldenJSON",
         "2016"   : "Collisions16_UltraLegacy_goldenJSON",
@@ -57,7 +59,7 @@ def GetPUSF(events, IOV):
     puDown = evaluator[hname[str(IOV)]].evaluate(np.array(events.Pileup.nTrueInt), "down")
     puNom = evaluator[hname[str(IOV)]].evaluate(np.array(events.Pileup.nTrueInt), "nominal")
 
-    return [puNom, puUp, puDown]
+    return puNom, puUp, puDown
 def GetJetCorrections(FatJets, events, era, IOV, isData=False):
     #### I haven't had any issues where i need an "upload directory" like here
     # uploadDir = 'srv/' for lpcjobqueue shell or TTbarAllHadUproot/ for coffea casa

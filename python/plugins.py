@@ -1,3 +1,6 @@
+
+
+
 ### This file houses plugins
 import pandas as pd
 import time
@@ -125,7 +128,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         print("Running on LPC Condor")
         from lpcjobqueue import LPCCondorCluster
         #### make list of files and directories to upload to dask
-        upload_to_dask = ['correctionFiles', 'plugins.py', 'corrections.py', 'utils.py', 'trijetProcessor.py', 'dijetProcessor.py']
+        upload_to_dask = ['correctionFiles', 'python']
         cluster = LPCCondorCluster(memory='5 GiB', transfer_input_files=upload_to_dask)
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
         cluster.adapt(minimum=1, maximum=10)
