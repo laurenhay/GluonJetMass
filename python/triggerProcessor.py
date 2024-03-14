@@ -5,16 +5,12 @@ from coffea import processor, util
 import hist
 import pandas
 import correctionlib
+import sys
+import os
+#### for casa dask, `from python.* import` does not work
+sys.path.append(os.getcwd()+'/python/')
 from utils import getLumiMask
-
-import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument("year")
-parser.add_argument("trigger")
-parser.add_argument("testing")
-parser.add_argument("inputFiles")
-parser.add_argument("coffea")
-parser.add_argument("dask")
+# from python.utils import getLumiMask
 
 class triggerProcessor(processor.ProcessorABC):
     def __init__(self, year = None, trigger = "", data = False):
@@ -91,13 +87,14 @@ class triggerProcessor(processor.ProcessorABC):
     def postprocess(self, accumulator):
         return accumulator
     
-#### applyPrescales should only be run on data --> why??
+#### applyPrescales should only be run on data
 class applyPrescales(processor.ProcessorABC):
     def __init__(self, trigger, year, turnOnPts, data = True):
         self.data = data
         self.trigger = trigger
         self.year = year
         self.turnOnPt = turnOnPts
+        ver2 = self.ver2
         if data:
             pt_bin = hist.axis.Regular(1000, 0, 2400.,name="pt", label="Jet pT (GeV)")
         else: pt_bin = hist.axis.Regular(1000, 0, 3200.,name="pt", label="Jet pT (GeV)")
@@ -122,6 +119,9 @@ class applyPrescales(processor.ProcessorABC):
         if self.year == '2016' or self.year == '2016APV':
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500]
             pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_2016.json")
+            if trigger == "PFJet":
+                pseval = correctionlib.CorrectionSet.from_file("ps_weightAK4_JSON_2016.json")
+                print("Deriving ps's for 2016 APV v2")
         elif self.year == '2017':
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]  
             pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_"+self.year+".json")
