@@ -1,6 +1,3 @@
-
-
-
 ### This file houses plugins
 import pandas as pd
 import time
@@ -12,6 +9,8 @@ import pickle
 #is using coffea casa use 'root://xcache/'
 
 import os
+import warnings
+warnings.filterwarnings("ignore")
 from distributed.diagnostics.plugin import UploadDirectory
 
 def checkdir(directory):
@@ -151,9 +150,17 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
                                 # chunksize=10000,
                                 # maxchunks=10,
                             )
-            result, metrics = run_instance(samples,
-                                           "Events",
-                                           processor_instance = processor_inst,)
+            # result, metrics = run_instance(samples,
+            #                                "Events",
+            #                                processor_instance = processor_inst,)
+            with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    print("Skipping file: ", samples.keys())
+                    result, metrics = run_instance(samples, 
+                                                   "Events",
+                                                   processor_instance=processor_inst,)
+                    del metrics
+
 #         print("Waiting for at least one worker...")
     else:
         print("Running locally")
@@ -166,6 +173,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     elapsed = time.time() - tstart
     print(result)
     print("Time taken to run over samples ", elapsed)
+    # del cluster
     return result
 def addFiles(files):
     results = pickle.load( open(files[0], "rb") )

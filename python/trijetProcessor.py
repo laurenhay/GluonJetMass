@@ -253,8 +253,6 @@ class makeTrijetHists(processor.ProcessorABC):
                 events_corr = events_corr [lumi_mask & (ak.num(events_corr.FatJet) >= 1)]
                 trigsel, psweights = applyPrescales(events_corr, year = IOV)
                 weights=psweights
-                print("Trigger: len of events ", len(events_corr), "len of weights ", len(trigsel))
-                print(weights)
                 events_corr = events_corr[trigsel]
                 weights = weights[trigsel]
                 out['cutflow']['nEvents after trigger sel '+syst] += (len(events_corr.FatJet))
@@ -303,7 +301,7 @@ class makeTrijetHists(processor.ProcessorABC):
                 matches = ak.all(events_corr.GenJetAK8.delta_r(events_corr.GenJetAK8.nearest(events_corr.FatJet)) < 0.2, axis = -1)
                 # matches_g = ak.all(groomed_genjet.delta_r(groomed_genjet.nearest(events.FatJet)) < 0.15, axis = -1)
                 misses = ~matches
-                # misses_g = ~matches_g
+                # gen but no reco
                 out["misses"].fill(dataset=dataset, syst=syst, ptgen = events_corr[misses].GenJetAK8[:,2].pt, 
                                         mgen = events_corr[misses].GenJetAK8[:,2].mass)
                 # out["misses_g"].fill(dataset=dataset, ptgen = ak.flatten(events[misses_g].GenJetAK8[:,2].pt), 
@@ -311,8 +309,8 @@ class makeTrijetHists(processor.ProcessorABC):
                 events_corr = events_corr[matches]
                 weights = weights[matches]
                 print("Gen jet fields: ", events_corr.GenJetAK8.fields)
-                out['cutflow']['nEvents after '+syst] += (len(events_corr.FatJet))
-                out['cutflow']['misses'] += (len(misses))
+                out['cutflow']['nEvents after removing misses '+syst] += (len(events_corr.FatJet))
+                out['cutflow']['misses'] += (len(events_corr[misses].FatJet))
     #         print("Fields available for FatJets ", trijetEvents.FatJet.fields)
     #         print("Fields available for GenJets ", trijetEvents.GenJetAK8.fields)
     
@@ -358,11 +356,11 @@ class makeTrijetHists(processor.ProcessorABC):
                 #### fakes = reco but no gen
                 fakes = ak.any(ak.is_none(events_corr.FatJet.matched_gen, axis = -1), axis = -1)
                 out["fakes"].fill(dataset = dataset, syst=syst, ptreco = events_corr[fakes].FatJet[:,2].pt, mreco = events_corr[fakes].FatJet[:,2].mass)
-                out['cutflow']['fakes '+syst] += (len(fakes))
+                out['cutflow']['fakes '+syst] += (events_corr[fakes].FatJet)
                 matched_reco = ~fakes
                 events_corr = events_corr[matched_reco]
                 weights = weights[matched_reco]
-                out['cutflow']['nEvents after gen matching '+syst] += (len(events_corr.FatJet))
+                out['cutflow']['nEvents after removing fakes '+syst] += (len(events_corr.FatJet))
                 #### Get gen soft drop mass
                 genjet = events_corr.GenJetAK8[:,2]
                 gensubjets = events_corr.SubGenJetAK8
@@ -379,13 +377,11 @@ class makeTrijetHists(processor.ProcessorABC):
                 out["jet_m_pt_g_reco_over_gen"].fill(dataset=dataset, syst=syst, ptgen=groomed_genjet.pt,
                                                      mgen=groomed_genjet.mass, frac=jet.msoftdrop/groomed_genjet.mass,
                                                      weight=weights)
-                out["response_matrix_u"].fill(dataset=dataset, syst=syst, ptreco=jet.pt, ptgen=genjet.pt, 
-                                              mreco=jet.mass, mgen=genjet.mass, weight = weights )
-                out["response_matrix_g"].fill(dataset=dataset, syst=syst, ptreco=jet.pt, ptgen=genjet.pt,
-                                              mreco=jet.msoftdrop, mgen=groomed_genjet.mass, weight = weights )
+                out["response_matrix_u"].fill(dataset=dataset, syst=syst, ptreco=jet.pt, ptgen=genjet.pt, mreco=jet.mass, mgen=genjet.mass, weight = weights )
+                out["response_matrix_g"].fill(dataset=dataset, syst=syst, ptreco=jet.pt, ptgen=genjet.pt, mreco=jet.msoftdrop, mgen=groomed_genjet.mass, weight = weights )
                 #### Outliers
                 weird = (np.abs(jet.msoftdrop - groomed_genjet.mass) > 20.0) & (jet.msoftdrop > 10.)
-                out['cutflow']['Number of outliers '+syst] += (len(events_corr.FatJet))
+                out['cutflow']['Number of outliers '+syst] += (len(events_corr[weird].FatJet))
                 #### Gluon purity plots        
                 jet1 = events_corr.FatJet[:,0]
                 jet2 = events_corr.FatJet[:,1]
@@ -491,15 +487,15 @@ class makeTrijetHists(processor.ProcessorABC):
                                     )
                 out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Bottom", frac = jet3_b.btagDeepB,eta = jet3_b.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Other",  frac = jet3_other.btagDeepB,eta = jet3_other.eta,
+                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Other", frac = jet3_other.btagDeepB,eta = jet3_other.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon_b",    frac = jet3_jetb_g.btagDeepB,eta, ptreco = jet3_jetb_g.eta,
+                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon_b", frac = jet3_jetb_g.btagDeepB, eta = jet3_jetb_g.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon_bb",  mreco = jet3_jetbb_g.btagDeepB, ptreco = jet3_jetbb_g.eta,
+                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon_bb",  frac = jet3_jetbb_g.btagDeepB, eta = jet3_jetbb_g.eta,
                                     )
-                out['btag_eta']].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "All_b", mreco = jet3_jetb.btagDeepB, ptreco = jet3_jetb.eta,
+                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "All_b", frac = jet3_jetb.btagDeepB, eta = jet3_jetb.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "All_bb",  mreco = jet3_jetbb.btagDeepB, ptreco = jet3_jetbb.eta,
+                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "All_bb",  frac = jet3_jetbb.btagDeepB, eta = jet3_jetbb.eta,
                                     )
                 out['cutflow']['nGluonJets'] += (len(jet3_g)+len(jet1_g)+len(jet2_g))
                 out['cutflow']['nJets'] += (len(jet3)+len(jet1)+len(jet2))

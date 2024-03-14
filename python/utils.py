@@ -128,6 +128,32 @@ def getLumiMask(year):
 
     return mask
 
+def get_gen_sd_mass_jet( jet, subjets):
+    combs = ak.cartesian( (jet, subjets), axis=1 )
+    dr_jet_subjets = combs['0'].delta_r(combs['1'])
+    combs = combs[dr_jet_subjets < 0.8]
+    total = combs['1'].sum(axis=1)
+    return total 
+
+def get_dphi( jet0, jet1 ):
+    '''
+    Find dphi between two jets, returning none when the event does not have at least two jets
+    '''
+    combs = ak.cartesian( (jet0, jet1), axis=1 )
+    dphi = np.abs(combs['0'].delta_phi(combs['1']))
+    return ak.firsts(dphi)
+
+def update(events, collections):
+    # https://github.com/nsmith-/boostedhiggs/blob/master/boostedhiggs/hbbprocessor.py
+    """Return a shallow copy of events array with some collections swapped out"""
+    out = events
+#     logger.debug('update:%s:%s', time.time(), collections)
+    
+    for name, value in collections.items():
+        out = ak.with_field(out, value, name)
+
+    return out
+
 ### function to get apply prescale weights to 
 def applyPrescales(events, year, trigger = "AK8PFJet", turnOnPts = turnOnPts_JetHT, data = True):
     print("Trigger year ", year)
