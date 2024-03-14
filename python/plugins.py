@@ -1,4 +1,4 @@
-### This file houses plugins
+### This file houses helper functions for running processors
 import pandas as pd
 import time
 from coffea import processor
@@ -94,17 +94,21 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         from coffea_casa import CoffeaCasaCluster
         client = Client("tls://lauren-2emeryl-2ehay-40cern-2ech.dask.cmsaf-prod.flatiron.hollandhpc.org:8786")
         # client.register_worker_plugin(UploadDirectory("/home/cms-jovyan/GluonJetMass", restart=True, update_path=True), nanny=True)
-        client.upload_file("plugins.py")
-        client.upload_file("utils.py")
-        client.upload_file("corrections.py")
-        client.upload_file("trijetProcessor.py") #upload additional files to the client                               
-        client.upload_file("dijetProcessor.py")
+        client.upload_file("fileset_QCD.json")
+        client.upload_file("datasets_UL_NANOAOD.json")
+        client.upload_file("python/plugins.py")
+        client.upload_file("python/utils.py")
+        client.upload_file("python/corrections.py")
+        client.upload_file("python/trijetProcessor.py") #upload additional files to the client                               
+        client.upload_file("python/dijetProcessor.py")
+        client.upload_file("python/triggerProcessor.py")
         client.upload_file("correctionFiles/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt")
         client.upload_file("correctionFiles/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt")
         client.upload_file("correctionFiles/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt")
         client.upload_file("correctionFiles/ps_weight_JSON_2016.json")
         client.upload_file("correctionFiles/ps_weight_JSON_2017.json")
         client.upload_file("correctionFiles/ps_weight_JSON_2018.json")
+        client.upload_file("correctionFiles/ps_weightAK4_JSON_2016.json")
         # cluster = CoffeaCasaCluster(cores=11, memory="20 GiB", death_timeout = 60)
         # cluster.adapt(minimum=2, maximum=14)
         # client = Client(cluster)
