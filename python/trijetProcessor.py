@@ -93,14 +93,13 @@ def applyBTag(events, btag):
 #              b_med(apply medium bTag to only the hardest jet), bb_med (apply medium bTag to leading two jets)
 
 class makeTrijetHists(processor.ProcessorABC):
-    def __init__(self, ptcut = 200., ycut = 2.5, btag = 'None', data = 'False', systematics = ['nominal', 'jer', 'jes']):
+    def __init__(self, ptcut = 200., ycut = 2.5, btag = 'None', data = 'False', jet_systematics = ['nominal', 'jer', 'jes'], systematics = ['L1PreFiringWeight', 'PUSF']):
         self.ptcut = ptcut
         self.ycut = ycut
         self.btag = btag
         self.do_gen = not data
         self.systematics = systematics
         print("Data: ", data, " gen ", self.do_gen)
-        dataset_cat = hist.axis.StrCategory([],growth=True,name="dataset", label="Dataset")
         jet_cat = hist.axis.StrCategory([], growth=True, name="jetNumb", label="Jet")
         parton_cat = hist.axis.StrCategory([],growth=True,name="partonFlav", label="Parton Flavour")
         syst_cat = hist.axis.StrCategory([], growth=True, name='syst', label="Systematic")
@@ -122,59 +121,62 @@ class makeTrijetHists(processor.ProcessorABC):
         n_axis = hist.axis.Regular(5, 0, 5, name="n", label=r"Number")
         dr_axis = hist.axis.Regular(150, 0, 6.0, name="dr", label=r"$\Delta R$")
         dphi_axis = hist.axis.Regular(150, -2*np.pi, 2*np.pi, name="dphi", label=r"$\Delta \phi$")
+        weight_bin = hist.axis.Regular(100, 0, 5, name="corrWeight", label="Weight")
 
         self._histos = {
         #### btag study histos
-        'alljet_ptreco_mreco':        hist.Hist(dataset_cat, jet_cat, parton_cat, mass_bin, pt_bin, storage="weight", name="Events"),
-        'btag_eta':            hist.Hist(dataset_cat, jet_cat, parton_cat, frac_axis, eta_bin, storage="weight", name="Events"),
+        'alljet_ptreco_mreco':        hist.Hist(jet_cat, parton_cat, mass_bin, pt_bin, storage="weight", name="Events"),
+        'btag_eta':            hist.Hist(jet_cat, parton_cat, frac_axis, eta_bin, storage="weight", name="Events"),
             
         #### Plots of things during the selection process / for debugging
-        'njet_gen':                  hist.Hist(dataset_cat, syst_cat, n_axis, storage="weight", label="Events"),
-        'dphimin_gen':               hist.Hist(dataset_cat, syst_cat, dphi_axis, storage="weight", label="Events"),
-        'asymm_gen':               hist.Hist(dataset_cat, syst_cat, frac_axis, storage="weight", label="Events"),
-        'njet_reco':                  hist.Hist(dataset_cat, syst_cat, n_axis, storage="weight", label="Events"),
-        'dphimin_reco':               hist.Hist(dataset_cat, syst_cat, dphi_axis, storage="weight", label="Events"),
-        'asymm_reco':               hist.Hist(dataset_cat, syst_cat, frac_axis, storage="weight", label="Events"),
+        'njet_gen':                  hist.Hist(syst_cat, n_axis, storage="weight", label="Events"),
+        'dphimin_gen':               hist.Hist(syst_cat, dphi_axis, storage="weight", label="Events"),
+        'asymm_gen':               hist.Hist(syst_cat, frac_axis, storage="weight", label="Events"),
+        'njet_reco':                  hist.Hist(syst_cat, n_axis, storage="weight", label="Events"),
+        'dphimin_reco':               hist.Hist(syst_cat, dphi_axis, storage="weight", label="Events"),
+        'asymm_reco':               hist.Hist(syst_cat, frac_axis, storage="weight", label="Events"),
             
-        'jet_dr_reco_gen':           hist.Hist(dataset_cat, syst_cat, dr_axis, storage="weight", label="Events"),
-        'jet_mass_reco_over_gen':    hist.Hist(dataset_cat, syst_cat, frac_axis, storage="weight", label="Events"),
-        'jet_pt_reco':               hist.Hist(dataset_cat, syst_cat, pt_bin, storage="weight", name="Events"),
-        'jet_pt_gen':                hist.Hist(dataset_cat, syst_cat, pt_bin, storage="weight", name="Events"),
-        'jet_pt_reco_over_gen':      hist.Hist(dataset_cat, syst_cat, frac_axis, storage="weight", label="Events"),
-        'jet_eta_reco':              hist.Hist(dataset_cat, syst_cat, eta_bin, storage="weight", name="Events"),
-        'jet_eta_gen':               hist.Hist(dataset_cat, syst_cat, eta_bin, storage="weight",name="Events"),
-        'jet_rap_reco':              hist.Hist(dataset_cat, syst_cat, y_bin, storage="weight", name="Events"),
-        'jet_rap_gen':               hist.Hist(dataset_cat, syst_cat, y_bin, storage="weight",name="Events"),
-        #'jet_dr_gen':                hist.Hist(dataset_cat, dr_axis, storage="weight", label="Counts"),
-        #'jet_dr_reco':               hist.Hist(dataset_cat, dr_axis, storage="weight", label="Counts"),
-        'jet_dphi_reco':             hist.Hist(dataset_cat, syst_cat, dphi_axis, storage="weight", label="Events"),
+        'jet_dr_reco_gen':           hist.Hist(syst_cat, dr_axis, storage="weight", label="Events"),
+        'jet_mass_reco_over_gen':    hist.Hist(syst_cat, frac_axis, storage="weight", label="Events"),
+        'jet_pt_reco':               hist.Hist(syst_cat, pt_bin, storage="weight", name="Events"),
+        'jet_pt_gen':                hist.Hist(syst_cat, pt_bin, storage="weight", name="Events"),
+        'jet_pt_reco_over_gen':      hist.Hist(syst_cat, frac_axis, storage="weight", label="Events"),
+        'jet_eta_reco':              hist.Hist(syst_cat, eta_bin, storage="weight", name="Events"),
+        'jet_eta_gen':               hist.Hist(syst_cat, eta_bin, storage="weight",name="Events"),
+        'jet_rap_reco':              hist.Hist(syst_cat, y_bin, storage="weight", name="Events"),
+        'jet_rap_gen':               hist.Hist(syst_cat, y_bin, storage="weight",name="Events"),
+        #'jet_dr_gen':                hist.Hist(dr_axis, storage="weight", label="Counts"),
+        #'jet_dr_reco':               hist.Hist(dr_axis, storage="weight", label="Counts"),
+        'jet_dphi_reco':             hist.Hist(syst_cat, dphi_axis, storage="weight", label="Events"),
         
-        'jet_ptasymm_reco':          hist.Hist(dataset_cat, syst_cat, frac_axis, storage="weight", label="Events"),
-        'jet_dr_gen_subjet':         hist.Hist(dataset_cat, syst_cat, dr_axis, storage="weight", label="Events"),
-        'jet_dr_reco_to_gen_subjet': hist.Hist(dataset_cat, syst_cat, dr_axis, storage="weight", label="Events"),
-        'jet_sd_mass_reco':          hist.Hist(dataset_cat, syst_cat, jet_cat, parton_cat, mass_bin, storage="weight", name="Events"),
-        'jet_sd_mass_gen':           hist.Hist(dataset_cat, syst_cat, jet_cat, parton_cat, mass_bin, storage="weight", name="Events"),
-        'misses_g':       hist.Hist(dataset_cat, syst_cat, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
-        'fakes_g':        hist.Hist(dataset_cat, syst_cat, pt_bin, mass_bin, storage="weight", name="Events"),
-        'misses':       hist.Hist(dataset_cat, syst_cat, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
-        'fakes':        hist.Hist(dataset_cat, syst_cat, pt_bin, mass_bin, storage="weight", name="Events"),
+        'jet_ptasymm_reco':          hist.Hist(syst_cat, frac_axis, storage="weight", label="Events"),
+        'jet_dr_gen_subjet':         hist.Hist(syst_cat, dr_axis, storage="weight", label="Events"),
+        'jet_dr_reco_to_gen_subjet': hist.Hist(syst_cat, dr_axis, storage="weight", label="Events"),
+        'jet_sd_mass_reco':          hist.Hist(syst_cat, jet_cat, parton_cat, mass_bin, storage="weight", name="Events"),
+        'jet_sd_mass_gen':           hist.Hist(syst_cat, jet_cat, parton_cat, mass_bin, storage="weight", name="Events"),
+        'misses_g':                  hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
+        'fakes_g':                   hist.Hist(syst_cat, pt_bin, mass_bin, storage="weight", name="Events"),
+        'misses':                    hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
+        'fakes':                     hist.Hist(syst_cat, pt_bin, mass_bin, storage="weight", name="Events"),
+        #### hist for comparison of weights
+        'weights':                   hist.Hist(syst_cat, weight_bin, storage="weight", name="Events"),
          
             
         #### Plots to be unfolded
-        'jet_pt_mass_reco_u':       hist.Hist(dataset_cat, syst_cat, pt_bin, mass_bin, storage="weight", name="Events"),
-        'jet_pt_mass_reco_g':        hist.Hist(dataset_cat, syst_cat, pt_bin, mass_bin, storage="weight", name="Events"),
+        'ptreco_mreco_u':       hist.Hist(syst_cat, pt_bin, mass_bin, storage="weight", name="Events"),
+        'ptreco_mreco_g':        hist.Hist(syst_cat, pt_bin, mass_bin, storage="weight", name="Events"),
 
         #### Plots for comparison
-        'jet_pt_mass_gen_u':        hist.Hist(dataset_cat, syst_cat, pt_gen_bin, mass_gen_bin, storage="weight", label="Events"),       
-        'jet_pt_mass_gen_g':            hist.Hist(dataset_cat, syst_cat, pt_gen_bin, mass_gen_bin, storage="weight", label="Events"),
+        'ptgen_mgen_u':        hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, storage="weight", label="Events"),       
+        'ptgen_mgen_g':            hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, storage="weight", label="Events"),
         
         #### Plots to get JMR and JMS in MC
-        'jet_m_pt_u_reco_over_gen': hist.Hist(dataset_cat, syst_cat, pt_gen_bin, mass_gen_bin, frac_axis, storage="weight",                                                                        label="Events"),
-        'jet_m_pt_g_reco_over_gen':  hist.Hist(dataset_cat, syst_cat, pt_gen_bin, mass_gen_bin, frac_axis, storage="weight",                                                                        label="Events"),
+        'jet_m_pt_u_reco_over_gen': hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, frac_axis, storage="weight",                                                                        label="Events"),
+        'jet_m_pt_g_reco_over_gen':  hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, frac_axis, storage="weight",                                                                        label="Events"),
 
         #### Plots for the analysis in the proper binning
-        'response_matrix_u':    hist.Hist(dataset_cat, syst_cat, pt_bin, mass_bin, pt_gen_bin, mass_gen_bin, storage="weight",                                                         label="Events"),
-        'response_matrix_g':     hist.Hist(dataset_cat, syst_cat, pt_bin, mass_bin, pt_gen_bin, mass_gen_bin, storage="weight",                                                         label="Events"),
+        'response_matrix_u':    hist.Hist(syst_cat, pt_bin, mass_bin, pt_gen_bin, mass_gen_bin, storage="weight",                                                         label="Events"),
+        'response_matrix_g':     hist.Hist(syst_cat, pt_bin, mass_bin, pt_gen_bin, mass_gen_bin, storage="weight",                                                         label="Events"),
         # accumulators
         'cutflow': processor.defaultdict_accumulator(int),
         'weights': processor.defaultdict_accumulator(float),
@@ -202,6 +204,8 @@ class makeTrijetHists(processor.ProcessorABC):
         #### Find the era from the file name
         #### Apply the good lumi mask
         #####################################
+        if IOV == '2018':
+            events = events[HEMVeto(events.FatJet, events.run)]
         FatJet=events.FatJet
         FatJet["p4"] = ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
         if self.do_gen:
@@ -219,26 +223,30 @@ class makeTrijetHists(processor.ProcessorABC):
         corrected_fatjets = GetJetCorrections(FatJet, events, era, IOV, isData=not self.do_gen)
         # corrected_fatjets = FatJet
         corrections = {"nominal": corrected_fatjets}
-        if (len(corrected_fatjets.pt[0]) > 1) and 'jes' in self.systematics and self.do_gen:
+        if (len(corrected_fatjets.pt[0]) > 1) and 'jes' in self.jet_systematics and self.do_gen:
             print('JEC:%s:JES up, nom, down:%s:%s:%s',
                          corrected_fatjets.JES_jes.up.pt[0][0],
                          corrected_fatjets.pt[0][0],
                          corrected_fatjets.JES_jes.down.pt[0][0])
             print("JES up vals: ", corrected_fatjets.JES_jes.up)
-        if 'jes' in self.systematics and self.do_gen:
-            corrections.update({
-                       "jesUp": corrected_fatjets.JES_jes.up,
-                       "jesDown": corrected_fatjets.JES_jes.down
-                      })
+        if 'jes' in self.jet_systematics and self.do_gen:
+            for unc_src in (unc_src for unc_src in corrected_fatjets.fields if "JES" in unc_src):
+                print("Uncertainty source: ", unc_src)
+                print(corrected_fatjets[unc_src])
+                jet_corrs.update({
+                    unc_src+"Up":corrected_fatjets[unc_src].up,
+                    unc_src+"Down":corrected_fatjets[unc_src].up, })
 
-        if 'jer' in self.systematics and self.do_gen:
+        if 'jer' in self.jet_systematics and self.do_gen:
             corrections.update({"jerUp": corrected_fatjets.JER.up,
                                 "jerDown": corrected_fatjets.JER.down
                             })
-        for syst in corrections.keys():
-            print("Length of corrected: ", len(corrections[syst]), " length fo events: ", len(events))
-            print("Adding ", syst, " values ", corrections[syst], " to output")
-            events_corr = ak.with_field(events, corrections[syst], "FatJet")
+        #### Initialize dictionary to store weights for all jet correction objects
+        self.weights = {}
+        for jetsyst in corrections.keys():
+            print("Length of corrected: ", len(corrections[jetsyst]), " length fo events: ", len(events))
+            print("Adding ", jetsyst, " values ", corrections[jetsyst], " to output")
+            events_corr = ak.with_field(events, corrections[jetsyst], "FatJet")
             weights = np.ones(len(events_corr))
             print("Length of events before any cuts", len(events_corr), "length of weights ", len(weights))
             if (self.do_gen):
@@ -255,7 +263,7 @@ class makeTrijetHists(processor.ProcessorABC):
                 weights=psweights
                 events_corr = events_corr[trigsel]
                 weights = weights[trigsel]
-                out['cutflow']['nEvents after trigger sel '+syst] += (len(events_corr.FatJet))
+                out['cutflow']['nEvents after trigger sel '+jetsyst] += (len(events_corr.FatJet))
             
             #### Need to add PU reweighting for if do_gen
             #### Remove event with very large gen weights???
@@ -274,13 +282,13 @@ class makeTrijetHists(processor.ProcessorABC):
                 # sel.add("ptEtaCutGen", (pt_cut_gen & eta_cut_gen))
                 # kinesel = sel.all("threeGenJets", "ptEtaCutGen")
                 kinesel = (pt_cut_gen & rap_cut_gen & (ak.num(events_corr.GenJetAK8) >2))
-                out["njet_gen"].fill(dataset=dataset, syst=syst, n=ak.num(events_corr.GenJetAK8[rap_cut_gen & pt_cut_gen]), 
+                out["njet_gen"].fill(syst=jetsyst, n=ak.num(events_corr.GenJetAK8[rap_cut_gen & pt_cut_gen]), 
                                      weight = weights[rap_cut_gen & pt_cut_gen] )
                                  
                 #### Get leading 3 jets
                 events_corr = events_corr[kinesel]
                 weights = weights[kinesel]
-                out['cutflow']['nEvents after >2 jet, rapidity, and pT selection '+syst] += (len(events_corr.FatJet))
+                out['cutflow']['nEvents after >2 jet, rapidity, and pT selection '+jetsyst] += (len(events_corr.FatJet))
                 genjet1 = events_corr.GenJetAK8[:,0]
                 genjet2 = events_corr.GenJetAK8[:,1]
                 genjet3 = events_corr.GenJetAK8[:,2]
@@ -290,26 +298,28 @@ class makeTrijetHists(processor.ProcessorABC):
                 dphi13_gen = np.abs(genjet1.delta_phi(genjet3))
                 dphi23_gen = np.abs(genjet2.delta_phi(genjet3))
                 dphimin_gen = np.amin([dphi12_gen, dphi13_gen, dphi23_gen], axis = 0)
-                out["dphimin_gen"].fill(dataset=dataset, syst=syst, dphi = dphimin_gen, weight = weights)
+                out["dphimin_gen"].fill(syst=jetsyst, dphi = dphimin_gen, weight = weights)
                 asymm_gen  = np.abs(genjet1.pt - genjet2.pt)/(genjet1.pt + genjet2.pt)
-                out["asymm_gen"].fill(dataset=dataset, syst=syst, frac = asymm_gen, weight=weights)
+                out["asymm_gen"].fill(syst=jetsyst, frac = asymm_gen, weight=weights)
                 events_corr = events_corr[(dphimin_gen < 1.0) & (asymm_gen < 0.3)]
                 weights = weights[(dphimin_gen < 1.0) & (asymm_gen < 0.3)]
-                out['cutflow']['nEvents after gen dphi and ptasymm selection '+syst] += (len(events_corr.FatJet))
+                out['cutflow']['nEvents after gen dphi and ptasymm selection '+jetsyst] += (len(events_corr.FatJet))
                 gensubjets = events_corr.SubGenJetAK8
                 groomed_genjet = get_gen_sd_mass_jet(events_corr.GenJetAK8, gensubjets)
                 matches = ak.all(events_corr.GenJetAK8.delta_r(events_corr.GenJetAK8.nearest(events_corr.FatJet)) < 0.2, axis = -1)
                 # matches_g = ak.all(groomed_genjet.delta_r(groomed_genjet.nearest(events.FatJet)) < 0.15, axis = -1)
                 misses = ~matches
                 # gen but no reco
-                out["misses"].fill(dataset=dataset, syst=syst, ptgen = events_corr[misses].GenJetAK8[:,2].pt, 
+                print("misses: ", len(misses))
+                print("events: ", len(events_corr))
+                out["misses"].fill(syst=jetsyst, ptgen = events_corr[misses].GenJetAK8[:,2].pt, 
                                         mgen = events_corr[misses].GenJetAK8[:,2].mass)
-                # out["misses_g"].fill(dataset=dataset, ptgen = ak.flatten(events[misses_g].GenJetAK8[:,2].pt), 
+                # out["misses_g"].fill(ptgen = ak.flatten(events[misses_g].GenJetAK8[:,2].pt), 
                 #                         mgen = ak.flatten(groomed_genjet[misses_g][:,2].mass))
                 events_corr = events_corr[matches]
                 weights = weights[matches]
                 print("Gen jet fields: ", events_corr.GenJetAK8.fields)
-                out['cutflow']['nEvents after removing misses '+syst] += (len(events_corr.FatJet))
+                out['cutflow']['nEvents after removing misses '+jetsyst] += (len(events_corr.FatJet))
                 out['cutflow']['misses'] += (len(events_corr[misses].FatJet))
     #         print("Fields available for FatJets ", trijetEvents.FatJet.fields)
     #         print("Fields available for GenJets ", trijetEvents.GenJetAK8.fields)
@@ -325,14 +335,15 @@ class makeTrijetHists(processor.ProcessorABC):
             FatJet = events_corr.FatJet
             FatJet["p4"] = ak.with_name(events_corr.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
             rap_cut = ak.all(np.abs(getRapidity(FatJet.p4)) < self.ycut, axis = -1)
+            out["njet_reco"].fill(syst = jetsyst, n=ak.num(events_corr.FatJet[rap_cut & pt_cut]), 
+                                     weight = weights[rap_cut & pt_cut] )
             weights = weights[(ak.num(events_corr.FatJet) >= 3) & pt_cut & rap_cut]
             events_corr = events_corr[(ak.num(events_corr.FatJet) >= 3) & pt_cut & rap_cut]
             FatJet = events_corr.FatJet
             FatJet["p4"] = ak.with_name(events_corr.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-            out["njet_reco"].fill(dataset=dataset, syst=syst, n=ak.num(events_corr.FatJet), weight = weights)
-            out["jet_eta_reco"].fill(dataset=dataset, syst=syst, eta = events_corr.FatJet[:,2].eta, weight=weights)
-            out["jet_rap_reco"].fill(dataset=dataset, syst=syst, rapidity=np.abs(getRapidity(FatJet[:,2].p4)), weight = weights)
-            out['cutflow']['nEvents after reco kine selection '+syst] += (len(events_corr.FatJet))
+            out["jet_eta_reco"].fill(syst=jetsyst, eta = events_corr.FatJet[:,2].eta, weight=weights)
+            out["jet_rap_reco"].fill(syst=jetsyst, rapidity=np.abs(getRapidity(FatJet[:,2].p4)), weight = weights)
+            out['cutflow']['nEvents after reco kine selection '+jetsyst] += (len(events_corr.FatJet))
             jet1 = events_corr.FatJet[:, 0]
             jet2 = events_corr.FatJet[:, 1]
             jet3 = events_corr.FatJet[:, 2]
@@ -340,48 +351,71 @@ class makeTrijetHists(processor.ProcessorABC):
             dphi13 = np.abs(jet1.delta_phi(jet3))
             dphi23 = np.abs(jet2.delta_phi(jet3))
             dphimin = np.amin([dphi12, dphi13, dphi23], axis = 0)
-            out["dphimin_reco"].fill(dataset=dataset, syst=syst, dphi = dphimin, weight = weights)
+            out["dphimin_reco"].fill(syst=jetsyst, dphi = dphimin, weight = weights)
             asymm = np.abs(jet1.pt - jet2.pt)/(jet1.pt + jet2.pt)
-            out["asymm_reco"].fill(dataset=dataset, syst=syst, frac = asymm, weight=weights)
+            out["asymm_reco"].fill(syst=jetsyst, frac = asymm, weight=weights)
             events_corr = events_corr[(dphimin > 1.0) & (asymm < 0.3)]
             weights = weights[(dphimin > 1.0) & (asymm < 0.3)]
-            out['cutflow']['nEvents after reco topo selection '+syst] += (len(events_corr.FatJet))
+            out['cutflow']['nEvents after reco topo selection '+jetsyst] += (len(events_corr.FatJet))
             #### Apply btag 
             events_corr, btagSel = applyBTag(events_corr, self.btag)
             weights = weights[btagSel]
-            out['cutflow']['nEvents after reco btag '+syst] += (len(events_corr.FatJet))
+            out['cutflow']['nEvents after reco btag '+jetsyst] += (len(events_corr.FatJet))
             
             #### Find fakes and make response matrices
             if self.do_gen:
                 #### fakes = reco but no gen
                 fakes = ak.any(ak.is_none(events_corr.FatJet.matched_gen, axis = -1), axis = -1)
-                out["fakes"].fill(dataset = dataset, syst=syst, ptreco = events_corr[fakes].FatJet[:,2].pt, mreco = events_corr[fakes].FatJet[:,2].mass)
-                out['cutflow']['fakes '+syst] += (events_corr[fakes].FatJet)
+                out["fakes"].fill(syst=jetsyst, ptreco = events_corr[fakes].FatJet[:,2].pt, mreco = events_corr[fakes].FatJet[:,2].mass)
+                out['cutflow']['fakes '+jetsyst] += (events_corr[fakes].FatJet)
                 matched_reco = ~fakes
                 events_corr = events_corr[matched_reco]
                 weights = weights[matched_reco]
-                out['cutflow']['nEvents after removing fakes '+syst] += (len(events_corr.FatJet))
+                out['cutflow']['nEvents after removing fakes '+jetsyst] += (len(events_corr.FatJet))
                 #### Get gen soft drop mass
                 genjet = events_corr.GenJetAK8[:,2]
                 gensubjets = events_corr.SubGenJetAK8
                 groomed_genjet = get_gen_sd_mass_jet(genjet, gensubjets)
-                out["jet_pt_mass_gen_u"].fill( dataset=dataset, syst=syst, ptgen=genjet.pt, mgen=genjet.mass, weight=weights )
-                out["jet_pt_mass_gen_g"].fill( dataset=dataset, syst=syst, ptgen=groomed_genjet.pt, mgen=groomed_genjet.mass, weight=weights )
+                #### Create coffea analysis weights object
+                self.weights[jetsyst] = Weights(len(weights))
+                #### store initial gen weights
+                self.weights[jetsyst].add('jetWeight', weights)
+                if "L1PreFiringWeight" in events.fields and "L1PreFiringWeight" in self.systematics:                
+                    prefiringNom, prefiringUp, prefiringDown = GetL1PreFiringWeight(events_corr)
+                    self.weights[jetsyst].add("L1prefiring", weight=prefiringNom, weightUp=prefiringUp, weightDown=prefiringDown)
+                if "PUSF" in self.systematics:
+                    puUp, puDown, puNom = GetPUSF(events_corr, IOV)
+                    self.weights[jetsyst].add("PUSF", weight=puNom, weightUp=puUp, weightDown=puDown)
+                out["ptgen_mgenu"].fill(syst=jetsyst, ptgen=genjet.pt, mgen=genjet.mass, weight=self.weights[jetsyst].weight() )
+                out["ptgen_mgen_g"].fill(syst=jetsyst, ptgen=groomed_genjet.pt, mgen=groomed_genjet.mass, weight=self.weights[jetsyst].weight() )
                 #### Get dr between gen and reco jets (should be all < 0.15)
                 jet = events_corr.FatJet[:,2]
-                out["jet_dr_reco_gen"].fill(dataset=dataset, syst=syst, dr=jet.delta_r(genjet), weight=weights)
+                out["jet_dr_reco_gen"].fill(syst=jetsyst, dr=jet.delta_r(genjet), weight=self.weights[jetsyst].weight())
                 #### Final plots
-                out["jet_pt_reco_over_gen"].fill(dataset=dataset, syst=syst, frac=jet.pt/genjet.pt, weight=weights)
-                out["jet_m_pt_u_reco_over_gen"].fill(dataset=dataset, syst=syst, ptgen=genjet.pt, mgen = genjet.mass, 
-                                                     frac=jet.mass/genjet.mass, weight=weights)
-                out["jet_m_pt_g_reco_over_gen"].fill(dataset=dataset, syst=syst, ptgen=groomed_genjet.pt,
+                out["jet_pt_reco_over_gen"].fill(syst=jetsyst, frac=jet.pt/genjet.pt, weight=self.weights[jetsyst].weight())
+                out["jet_m_pt_u_reco_over_gen"].fill(syst=jetsyst, ptgen=genjet.pt, mgen = genjet.mass, 
+                                                     frac=jet.mass/genjet.mass, weight=self.weights[jetsyst].weight())
+                out["jet_m_pt_g_reco_over_gen"].fill(syst=jetsyst, ptgen=groomed_genjet.pt,
                                                      mgen=groomed_genjet.mass, frac=jet.msoftdrop/groomed_genjet.mass,
-                                                     weight=weights)
-                out["response_matrix_u"].fill(dataset=dataset, syst=syst, ptreco=jet.pt, ptgen=genjet.pt, mreco=jet.mass, mgen=genjet.mass, weight = weights )
-                out["response_matrix_g"].fill(dataset=dataset, syst=syst, ptreco=jet.pt, ptgen=genjet.pt, mreco=jet.msoftdrop, mgen=groomed_genjet.mass, weight = weights )
+                                                     weight=self.weights[jetsyst].weight())
+                out["response_matrix_u"].fill(syst=jetsyst, ptreco=jet.pt, ptgen=genjet.pt, mreco=jet.mass, mgen=genjet.mass, weight = weights )
+                out["response_matrix_g"].fill(syst=jetsyst, ptreco=jet.pt, ptgen=genjet.pt, mreco=jet.msoftdrop, mgen=groomed_genjet.mass, weight = self.weights[jetsyst].weight() )
+                if jetsyst=="nominal":
+                    for syst in self.weights[jetsyst].variations:
+                        print("Weight variation: ", syst)
+                        #fill nominal, up, and down variations for each
+                        out['jet_pt_mass_gen_u'].fill(syst=syst, ptgen=gen_jet.pt, mgen=gen_jet.mass, weight=self.weights[jetsyst].weight(syst) )
+                        out['jet_pt_mass_gen_g'].fill(syst=syst, ptgen=groomed_genjet.pt, mgen=groomed_genjet.mass, 
+                                                      weight=self.weights[jetsyst].weight(syst) )           
+                        out["response_matrix_u"].fill(syst=syst,
+                                               ptreco=jet.pt, ptgen=genjet.pt,
+                                               mreco=jet.mass, mgen=genjet.mass, weight=self.weights[jetsyst].weight(syst))
+                        out["response_matrix_g"].fill(syst=syst,
+                                               ptreco=jet.pt, ptgen=genjet.pt,
+                                               mreco=jet.msoftdrop, mgen=groomed_genjet.mass, weight=self.weights[jetsyst].weight(syst))
                 #### Outliers
                 weird = (np.abs(jet.msoftdrop - groomed_genjet.mass) > 20.0) & (jet.msoftdrop > 10.)
-                out['cutflow']['Number of outliers '+syst] += (len(events_corr[weird].FatJet))
+                out['cutflow']['Number of outliers '+jetsyst] += (len(events_corr[weird].FatJet))
                 #### Gluon purity plots        
                 jet1 = events_corr.FatJet[:,0]
                 jet2 = events_corr.FatJet[:,1]
@@ -421,81 +455,81 @@ class makeTrijetHists(processor.ProcessorABC):
                 print("Check for none values", ak.any(ak.is_none(jet3_g.mass), axis = -1))
     
     
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Gluon",  mreco = jet1_g.mass, ptreco = jet1_g.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet1", partonFlav = "Gluon",  mreco = jet1_g.mass, ptreco = jet1_g.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "UDS",    mreco = jet1_uds.mass, ptreco = jet1_uds.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet1", partonFlav = "UDS",    mreco = jet1_uds.mass, ptreco = jet1_uds.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Charm",  mreco = jet1_c.mass, ptreco = jet1_c.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet1", partonFlav = "Charm",  mreco = jet1_c.mass, ptreco = jet1_c.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Bottom", mreco = jet1_b.mass, ptreco = jet1_b.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet1", partonFlav = "Bottom", mreco = jet1_b.mass, ptreco = jet1_b.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Other",  mreco = jet1_other.mass, ptreco = jet1_other.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet1", partonFlav = "Other",  mreco = jet1_other.mass, ptreco = jet1_other.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Gluon",  mreco = jet2_g.mass, ptreco = jet2_g.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet2", partonFlav = "Gluon",  mreco = jet2_g.mass, ptreco = jet2_g.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "UDS",    mreco = jet2_uds.mass, ptreco = jet2_uds.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet2", partonFlav = "UDS",    mreco = jet2_uds.mass, ptreco = jet2_uds.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Charm",  mreco = jet2_c.mass, ptreco = jet2_c.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet2", partonFlav = "Charm",  mreco = jet2_c.mass, ptreco = jet2_c.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Bottom", mreco = jet2_b.mass, ptreco = jet2_b.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet2", partonFlav = "Bottom", mreco = jet2_b.mass, ptreco = jet2_b.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Other",  mreco = jet2_other.mass, ptreco = jet2_other.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet2", partonFlav = "Other",  mreco = jet2_other.mass, ptreco = jet2_other.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon",  mreco = jet3_g.mass, ptreco = jet3_g.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet3", partonFlav = "Gluon",  mreco = jet3_g.mass, ptreco = jet3_g.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "UDS",    mreco = jet3_uds.mass, ptreco = jet3_uds.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet3", partonFlav = "UDS",    mreco = jet3_uds.mass, ptreco = jet3_uds.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Charm",  mreco = jet3_c.mass, ptreco = jet3_c.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet3", partonFlav = "Charm",  mreco = jet3_c.mass, ptreco = jet3_c.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Bottom", mreco = jet3_b.mass, ptreco = jet3_b.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet3", partonFlav = "Bottom", mreco = jet3_b.mass, ptreco = jet3_b.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Other",  mreco = jet3_other.mass, ptreco = jet3_other.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet3", partonFlav = "Other",  mreco = jet3_other.mass, ptreco = jet3_other.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon_b",    mreco = jet3_jetb_g.mass, ptreco = jet3_jetb_g.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet3", partonFlav = "Gluon_b",    mreco = jet3_jetb_g.mass, ptreco = jet3_jetb_g.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon_bb",  mreco = jet3_jetbb_g.mass, ptreco = jet3_jetbb_g.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet3", partonFlav = "Gluon_bb",  mreco = jet3_jetbb_g.mass, ptreco = jet3_jetbb_g.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "All_b", mreco = jet3_jetb.mass, ptreco = jet3_jetb.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet3", partonFlav = "All_b", mreco = jet3_jetb.mass, ptreco = jet3_jetb.pt,
                                     )
-                out['alljet_ptreco_mreco'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "All_bb",  mreco = jet3_jetbb.mass, ptreco = jet3_jetbb.pt,
+                out['alljet_ptreco_mreco'].fill(jetNumb = "jet3", partonFlav = "All_bb",  mreco = jet3_jetbb.mass, ptreco = jet3_jetbb.pt,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Gluon",  frac = jet1_g.btagDeepB, eta = jet1_g.eta,
+                out['btag_eta'].fill(jetNumb = "jet1", partonFlav = "Gluon",  frac = jet1_g.btagDeepB, eta = jet1_g.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "UDS",    frac = jet1_uds.btagDeepB, eta = jet1_uds.eta,
+                out['btag_eta'].fill(jetNumb = "jet1", partonFlav = "UDS",    frac = jet1_uds.btagDeepB, eta = jet1_uds.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Charm",  frac = jet1_c.btagDeepB,eta = jet1_c.eta,
+                out['btag_eta'].fill(jetNumb = "jet1", partonFlav = "Charm",  frac = jet1_c.btagDeepB,eta = jet1_c.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Bottom", frac = jet1_b.btagDeepB, eta = jet1_b.eta,
+                out['btag_eta'].fill(jetNumb = "jet1", partonFlav = "Bottom", frac = jet1_b.btagDeepB, eta = jet1_b.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet1", partonFlav = "Other",  frac = jet1_other.btagDeepB, eta = jet1_other.eta,
+                out['btag_eta'].fill(jetNumb = "jet1", partonFlav = "Other",  frac = jet1_other.btagDeepB, eta = jet1_other.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Gluon",  frac = jet2_g.btagDeepB, eta = jet2_g.eta,
+                out['btag_eta'].fill(jetNumb = "jet2", partonFlav = "Gluon",  frac = jet2_g.btagDeepB, eta = jet2_g.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "UDS",    frac = jet2_uds.btagDeepB,eta = jet2_uds.eta,
+                out['btag_eta'].fill(jetNumb = "jet2", partonFlav = "UDS",    frac = jet2_uds.btagDeepB,eta = jet2_uds.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Charm",  frac = jet2_c.btagDeepB,eta = jet2_c.eta,
+                out['btag_eta'].fill(jetNumb = "jet2", partonFlav = "Charm",  frac = jet2_c.btagDeepB,eta = jet2_c.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Bottom", frac = jet2_b.btagDeepB,eta = jet2_b.eta,
+                out['btag_eta'].fill(jetNumb = "jet2", partonFlav = "Bottom", frac = jet2_b.btagDeepB,eta = jet2_b.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet2", partonFlav = "Other",  frac = jet2_other.btagDeepB,eta = jet2_other.eta,
+                out['btag_eta'].fill(jetNumb = "jet2", partonFlav = "Other",  frac = jet2_other.btagDeepB,eta = jet2_other.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon",  frac = jet3_g.btagDeepB,eta = jet3_g.eta,
+                out['btag_eta'].fill(jetNumb = "jet3", partonFlav = "Gluon",  frac = jet3_g.btagDeepB,eta = jet3_g.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "UDS",    frac = jet3_uds.btagDeepB,eta = jet3_uds.eta,
+                out['btag_eta'].fill(jetNumb = "jet3", partonFlav = "UDS",    frac = jet3_uds.btagDeepB,eta = jet3_uds.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Charm",  frac = jet3_c.btagDeepB,eta = jet3_c.eta,
+                out['btag_eta'].fill(jetNumb = "jet3", partonFlav = "Charm",  frac = jet3_c.btagDeepB,eta = jet3_c.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Bottom", frac = jet3_b.btagDeepB,eta = jet3_b.eta,
+                out['btag_eta'].fill(jetNumb = "jet3", partonFlav = "Bottom", frac = jet3_b.btagDeepB,eta = jet3_b.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Other", frac = jet3_other.btagDeepB,eta = jet3_other.eta,
+                out['btag_eta'].fill(jetNumb = "jet3", partonFlav = "Other", frac = jet3_other.btagDeepB,eta = jet3_other.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon_b", frac = jet3_jetb_g.btagDeepB, eta = jet3_jetb_g.eta,
+                out['btag_eta'].fill(jetNumb = "jet3", partonFlav = "Gluon_b", frac = jet3_jetb_g.btagDeepB, eta = jet3_jetb_g.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "Gluon_bb",  frac = jet3_jetbb_g.btagDeepB, eta = jet3_jetbb_g.eta,
+                out['btag_eta'].fill(jetNumb = "jet3", partonFlav = "Gluon_bb",  frac = jet3_jetbb_g.btagDeepB, eta = jet3_jetbb_g.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "All_b", frac = jet3_jetb.btagDeepB, eta = jet3_jetb.eta,
+                out['btag_eta'].fill(jetNumb = "jet3", partonFlav = "All_b", frac = jet3_jetb.btagDeepB, eta = jet3_jetb.eta,
                                     )
-                out['btag_eta'].fill(dataset = dataset, jetNumb = "jet3", partonFlav = "All_bb",  frac = jet3_jetbb.btagDeepB, eta = jet3_jetbb.eta,
+                out['btag_eta'].fill(jetNumb = "jet3", partonFlav = "All_bb",  frac = jet3_jetbb.btagDeepB, eta = jet3_jetbb.eta,
                                     )
                 out['cutflow']['nGluonJets'] += (len(jet3_g)+len(jet1_g)+len(jet2_g))
                 out['cutflow']['nJets'] += (len(jet3)+len(jet1)+len(jet2))
@@ -505,11 +539,12 @@ class makeTrijetHists(processor.ProcessorABC):
                 out['cutflow']['nSoftestJets_b'] += (len(jet3_jetb))
                 out['cutflow']['nSoftestJets_bb'] += (len(jet3_jetbb))
                 out['cutflow']['n3Jets'] += (len(jet3.pt))
-            out["jet_pt_mass_reco_u"].fill( dataset=dataset, syst=syst, ptreco=events_corr.FatJet[:,2].pt, mreco=events_corr.FatJet[:,2].mass,
+            out["ptreco_mreco_u"].fill( syst=jetsyst, ptreco=events_corr.FatJet[:,2].pt, mreco=events_corr.FatJet[:,2].mass,
                                            weight=weights )
-            out["jet_pt_mass_reco_g"].fill( dataset=dataset, syst=syst, ptreco=events_corr.FatJet[:,2].pt, mreco=events_corr.FatJet[:,2].msoftdrop,
+            out["ptreco_mreco_g"].fill( syst=jetsyst, ptreco=events_corr.FatJet[:,2].pt, mreco=events_corr.FatJet[:,2].msoftdrop,
                                            weight=weights )
             out['cutflow']['nEvents final selection'] += (len(events_corr.FatJet))
+            del events_corr
         out['cutflow']['chunks'] += 1
         return out
     
@@ -520,9 +555,9 @@ def main():
     #### Next run processor with futures executor on all test files
     from dask.distributed import Client
     from plugins import runCoffeaJob
-    processor = makeDijetHists()
+    processor = makeTrijetHists()
     result = runCoffeaJob(processor, jsonFile = "QCD_flat_files.json", winterfell = True, testing = True, data = False)
-    util.save(result, "coffeaOutput/dijet_pT" + str(processor.ptcut) + "_eta" + str(processor.etacut) + "_result_test.coffea")
+    util.save(result, "coffeaOutput/trijet_pT" + str(processor.ptcut) + "_eta" + str(processor.etacut) + "_result_test.coffea")
     
 
 if __name__ == '__main__':

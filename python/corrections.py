@@ -16,7 +16,6 @@ def GetL1PreFiringWeight(events):
     # Need to check if weights (up/dn) produced are comparable or greater than JEC weights --> if yes apply, if no take as a systematic uncertainty
     ## var = "Nom", "Up", "Dn"
     L1PrefiringWeights = [events.L1PreFiringWeight.Nom, events.L1PreFiringWeight.Up, events.L1PreFiringWeight.Dn]
-    print("Got L1 weights")
     return L1PrefiringWeights
 
 def HEMCleaning(JetCollection):
@@ -40,6 +39,23 @@ def HEMCleaning(JetCollection):
     corrected_jets["mass"] = JetCollection.mass * isHEM
 
     return corrected_jets
+def HEMVeto(FatJets, runs):
+
+    ## Reference: https://hypernews.cern.ch/HyperNews/CMS/get/JetMET/2000.html
+    
+    runid = (runs >= 319077)
+
+    detector_region1 = ((FatJets.phi < -0.87) & (FatJets.phi > -1.57) &
+                       (FatJets.eta < -1.3) & (FatJets.eta > -2.5))
+    detector_region2 = ((FatJets.phi < -0.87) & (FatJets.phi > -1.57) &
+                       (FatJets.eta < -2.5) & (FatJets.eta > -3.0))
+    jet_selection    = ((FatJets.jetId > 1) & (FatJets.pt > 15))
+
+    vetoHEMFatJets = ak.any((detector_region1 & jet_selection & runid) ^ (detector_region2 & jet_selection & runid), axis=1)
+
+    vetoHEM = ~(vetoHEMFatJets)
+    
+    return vetoHEM
 
 def GetPUSF(events, IOV):
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/TTbarDileptonProcessor.py#L38
@@ -60,17 +76,13 @@ def GetPUSF(events, IOV):
     puNom = evaluator[hname[str(IOV)]].evaluate(np.array(events.Pileup.nTrueInt), "nominal")
 
     return puNom, puUp, puDown
-def GetJetCorrections(FatJets, events, era, IOV, isData=False):
-    #### I haven't had any issues where i need an "upload directory" like here
-    # uploadDir = 'srv/' for lpcjobqueue shell or TTbarAllHadUproot/ for coffea casa
-    # uploadDir = os.getcwd().replace('/','') + '/'
-    # if 'TTbarAllHadUproot' in uploadDir: 
-    #     uploadDir = 'TTbarAllHadUproot/'
-    # elif 'jovyan' in uploadDir:
-    #     uploadDir = 'TTbarAllHadUproot/'
-    # else:
-    #     uploadDir = 'srv/'
-
+def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = None):
+    if uncertainties != None:
+        uncertainty_sources = uncertainties
+    else:
+        uncertainty_sources = ["AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF",
+"PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample",
+"RelativeStatEC","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/jmeCorrections.py
     jer_tag=None
     if (IOV=='2018'):
@@ -155,14 +167,12 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False):
 
     evaluator = ext.make_evaluator()
 
-
-
     if (not isData):
         jec_names = [
             '{0}_L1FastJet_AK8PFPuppi'.format(jec_tag),
             '{0}_L2Relative_AK8PFPuppi'.format(jec_tag),
-            '{0}_L3Absolute_AK8PFPuppi'.format(jec_tag),
-            '{0}_Uncertainty_AK8PFPuppi'.format(jec_tag)]
+            '{0}_L3Absolute_AK8PFPuppi'.format(jec_tag)]
+        jec_names.extend(['{0}_UncertaintySources_AK8PFPuppi_{1}'.format(jec_tag, unc_src) for unc_src in uncertainty_sources])
 
         if jer_tag: 
             jec_names.extend(['{0}_PtResolution_AK8PFPuppi'.format(jer_tag),
@@ -185,7 +195,7 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False):
         jec_inputs = {name: evaluator[name] for name in jec_names[era]}
 
 
-
+    # print("jec_input", jec_inputs)
     jec_stack = JECStack(jec_inputs)
 
 
@@ -208,5 +218,6 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False):
 
     jet_factory = CorrectedJetsFactory(name_map, jec_stack)
     corrected_jets = jet_factory.build(FatJets, lazy_cache=events_cache)
-    print("Built corrections object")
+    # print("Available uncertainties: ", jet_factory.uncertainties())
+    # print("Corrected jets object: ", corrected_jets.fields)
     return corrected_jets

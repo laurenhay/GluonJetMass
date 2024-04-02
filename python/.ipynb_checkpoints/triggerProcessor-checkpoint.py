@@ -5,16 +5,12 @@ from coffea import processor, util
 import hist
 import pandas
 import correctionlib
-from utils import getLumiMask
-
-import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument("year")
-parser.add_argument("trigger")
-parser.add_argument("testing")
-parser.add_argument("inputFiles")
-parser.add_argument("coffea")
-parser.add_argument("dask")
+import sys
+import os
+#### for casa dask, `from python.* import` does not work
+# sys.path.append(os.getcwd()+'/python/')
+# from utils import getLumiMask
+from python.utils import getLumiMask
 
 class triggerProcessor(processor.ProcessorABC):
     def __init__(self, year = None, trigger = "", data = False):
@@ -41,12 +37,12 @@ class triggerProcessor(processor.ProcessorABC):
         out = self._histos
         #### choose events that have at least one fatjet
         events = events[ak.num(events.FatJet) >= 1]
-        print("Events metadata: ", events.metadata)
+        # print("Events metadata: ", events.metadata)
         
         #### Choose trigger objects that belong to jets (id == 1), after this selection remove events 
         #### that don't have corresponding jet trigger objects
         trigObj = events.TrigObj
-        print("Trigger object id:", trigObj.id)
+        # print("Trigger object id:", trigObj.id)
         trigObj = trigObj[trigObj.id == 1]
         events = events[ak.num(trigObj, axis = -1) != 0]
         trigObj = trigObj[ak.num(trigObj, axis = -1) != 0]
@@ -75,8 +71,8 @@ class triggerProcessor(processor.ProcessorABC):
             path = HLT_paths[i]
             print("index: ", i, " HLT path: ", path)
             if (path in events.HLT.fields) and (i > 0):
-                print("Number of events w/ trigger ", ak.count_nonzero(events.HLT[HLT_paths[i]]))
-                print("HLT ref path: ", HLT_paths[i-1], " Number of Trues ", ak.count_nonzero(events.HLT[HLT_paths[i-1]]))
+                # print("Number of events w/ trigger ", ak.count_nonzero(events.HLT[HLT_paths[i]]))
+                # print("HLT ref path: ", HLT_paths[i-1], " Number of Trues ", ak.count_nonzero(events.HLT[HLT_paths[i-1]]))
                 #### choose jets belonging to ref trigger (i-1) and passing pt cut of trigger of trigger of interest (i)
                 efficiencies[path] = events.FatJet[:,0].pt[(events.HLT[HLT_paths[i-1]]) & (trigObj.pt[:,0] > trigThresh[i])]
                 #### trig eff
@@ -86,12 +82,18 @@ class triggerProcessor(processor.ProcessorABC):
                 out['hist_trigRef'].fill(dataset = datastring +  str(year), HLT_cat = path, pt = events.FatJet[:,0].pt[(events.HLT[HLT_paths[i-1]])])
                 out['hist_pt'].fill(dataset = datastring + str(year), pt = events.FatJet[:,0].pt)
         print("Final efficiencies:", efficiencies)
+        if np.all([(len(eff)==0) for eff in efficiencies.values()]):
+            print("No AK8PFJet triggers -- PFJet")
+            print(events.metadata)
+        else:
+            print("Has AKPFJet triggers -- move to main JSON file")
+            # print(events.metadata)
         return out
     
     def postprocess(self, accumulator):
         return accumulator
     
-#### applyPrescales should only be run on data --> why??
+#### applyPrescales should only be run on data
 class applyPrescales(processor.ProcessorABC):
     def __init__(self, trigger, year, turnOnPts, data = True):
         self.data = data
@@ -121,41 +123,43 @@ class applyPrescales(processor.ProcessorABC):
             datastring = "QCDsim"
         if self.year == '2016' or self.year == '2016APV':
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500]
-            pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_2016.json")
+            pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_2016.json")
+            if trigger == "PFJet":
+                pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weightAK4_JSON_2016.json")
+                print("Deriving ps's for 2016 APV v2")
         elif self.year == '2017':
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]  
-            pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_"+self.year+".json")
+            pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_"+self.year+".json")
         elif self.year == '2018':
             trigThresh = [15, 25, 40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
-            pseval = correctionlib.CorrectionSet.from_file("ps_weight_JSON_"+self.year+".json")
+            pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_"+self.year+".json")
         #### require at least one jet in each event
         HLT_paths = [trigger + str(i) for i in trigThresh]
         events = events[ak.num(events.FatJet) >= 1]                                           
         ### allRuns_AK8HLT.csv is the result csv of running 'brilcalc trg --prescale --hltpath "HLT_AK8PFJet*" --output-style                 csv' and is used to create the ps_weight_JSON files
         lumi_mask = getLumiMask(self.year)(events.run, events.luminosityBlock)
-#        print("Length of events before lumi mask: ", len(events))
+        # print("Length of events before lumi mask: ", len(events))
         events = events[lumi_mask]
-#         print("Length of events before lumi mask: ", len(events))
+        # print("Length of events after lumi mask: ", len(events))
         for i in np.arange(len(HLT_paths))[::-1]:
             path = HLT_paths[i]
-#             print("Index i: ", i, " for path: ", path)
+            print("Index i: ", i, " for path: ", path)
             if path in events.HLT.fields:
                 pt0 = events.FatJet[:,0].pt
-#                 print(len(pt0), "leading pts: ", pt0, "for events", len(events))
+                print(len(pt0), "leading pts: ", pt0, "for events", len(events))
                 #### here we will use correctionlib to assign weights
                 out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path]])
                 if i == (len(HLT_paths) - 1):
-#                     print('last index')
                     events_cut = events[((pt0 > turnOnPt[i]) & events.HLT[path])]
                     pt0 = events_cut.FatJet[:,0].pt
-#                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0))
                     out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0, 
-                                                      weight = pseval['prescaleWeight'].evaluate(ak.to_numpy(events_cut.run), path, ak.to_numpy(ak.values_astype(events[events_cut].luminosityBlock, np.float32))))
+                                                      weight = pseval['prescaleWeight'].evaluate(ak.to_numpy(events_cut.run), path, ak.to_numpy(ak.values_astype(events_cut.luminosityBlock, np.float32))))
+                    print("last index # events passing pt cut ",  turnOnPt[i], ": ", len(pt0))
                 else:
                     events_cut = events[((pt0 > turnOnPt[i]) & (pt0 <= turnOnPt[i+1]) & events.HLT[path])]
                     pt0 = events_cut.FatJet[:,0].pt
-#                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0))
-                    out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0, weight =                                                                         pseval['prescaleWeight'].evaluate(ak.to_numpy(events_cut.run), path,                                                               ak.to_numpy(ak.values_astype(events[events_cut].luminosityBlock, np.float32))))
+                    out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0, weight =                                                                         pseval['prescaleWeight'].evaluate(ak.to_numpy(events_cut.run), path,                                                               ak.to_numpy(ak.values_astype(events_cut.luminosityBlock, np.float32))))
+                    print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0))
         return out
     def postprocess(self, accumulator):
         return accumulator

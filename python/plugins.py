@@ -116,7 +116,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         exe_args = {
             "client": client,
             "status":False,
-            "skipbadfiles":True,
+            "skipbadfiles":False,
             "schema": NanoAODSchema,
             "align_clusters": True,
         }
@@ -141,7 +141,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
                                 executor=processor.DaskExecutor(client=client, retries=5),#, status=False),
                                 schema=NanoAODSchema,
                                 savemetrics=True,
-                                skipbadfiles=True,
+                                skipbadfiles=False,
                                 # chunksize=10000,
                                 # maxchunks=10,
                             )
@@ -150,7 +150,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
                                 executor=processor.DaskExecutor(client=client, retries=5, status=False),
                                 schema=NanoAODSchema,
                                 savemetrics=True,
-                                skipbadfiles=True,
+                                skipbadfiles=False,
                                 # chunksize=10000,
                                 # maxchunks=10,
                             )
@@ -159,7 +159,6 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
             #                                processor_instance = processor_inst,)
             with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    print("Skipping file: ", samples.keys())
                     result, metrics = run_instance(samples, 
                                                    "Events",
                                                    processor_instance=processor_inst,)
@@ -177,17 +176,18 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     elapsed = time.time() - tstart
     print(result)
     print("Time taken to run over samples ", elapsed)
-    # del cluster
+    del cluster
     return result
 def addFiles(files):
     results = pickle.load( open(files[0], "rb") )
     for fname in files[1:]:
+        print(fname)
         with open(fname, "rb") as f:
             result = pickle.load( f )
             for hist in result:
+                print("Hist ", hist, " with syst cats ",[bin for bin in result['response_matrix_u'].project("syst").axes[0]])
                 results[hist] += result[hist]
-    outputFilename = files[0][:-8]+"ALL.pkl"
-    with open(outputFilename, "wb") as f:
-        pickle.dump( results, f)
-    return(outputFilename)
+                print("Successfully added")
+    print("Done")
+    return(results)
     
