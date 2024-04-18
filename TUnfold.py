@@ -10,6 +10,7 @@ import uproot
 import hist
 import coffea
 from coffea import processor
+from python.plugins import checkdir
 #import statistics as st
 ROOT.gStyle.SetOptStat(000000)
 ROOT.gInterpreter.ProcessLine('#include "MyTUnfoldDensity.h"')
@@ -27,7 +28,7 @@ parser.add_argument('-i', '--input', required=False, help='MC input pkl file')
 parser.add_argument('-d', '--dataInput', default=None,  help='Data input pkl file; if none provided only run closure test')                    
 arg = parser.parse_args()
 #### define plotting functions
-def plotinputsROOT(matrix, truth, reco, groom="", syst="", year=""):
+def plotinputsROOT(matrix, truth, reco, groom="", syst="", year="", ospath=''):
             histMCReco_M=matrix.ProjectionY("MCReco "+groom)
             histMCTruth_M=matrix.ProjectionX("MCTruth "+groom)
             c1 = ROOT.TCanvas("c1","Plot MC input "+groom+" binned by pt (outer) and mass (inner)",1200,400)
@@ -59,7 +60,7 @@ def plotinputsROOT(matrix, truth, reco, groom="", syst="", year=""):
             leg1_2.AddEntry(reco, "MC Reco", "p")
             leg1_2.Draw()
 
-            c1.SaveAs("MCInput_"+groom+"_"+syst+"flatmatrix"+year+".png")
+            c1.SaveAs(ospath+"MCInput_"+groom+"_"+syst+"flatmatrix"+year+".png")
             c1.Close()
 
 #### open files
@@ -73,6 +74,7 @@ if "dijet" in fname:
     os_path = "plots/unfolding/dijet/"
 else:
     os_path = "plots/unfolding/trijet/"
+checkdir(os_path)
 year = fname[-8:-4]
 print(year)
 #### for data get results once
