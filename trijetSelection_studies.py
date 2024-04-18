@@ -27,6 +27,7 @@ parser.add_argument('--year', choices=['2016', '2017', '2018', '2016APV', 'None'
 parser.add_argument('--data', action='store_true', help="Run on data") 
 parser.add_argument('--dask', action='store_true', help='Run on dask')
 parser.add_argument('--testing', action='store_true', help='Testing; run on only a subset of data')
+parser.add_argument('--verbose', type=bool, help='Have processor output status; set false if making log files', default='True')
 parser.add_argument('--allUncertaintySources', action='store_true', help='Run processor for each unc. source separately')
 parser.add_argument('--jetSyst', default=['nominal', 'jer'], nargs='+')
 parser.add_argument('--syst', default=['PUSF', 'L1PreFiringWeight'], nargs='+')
@@ -36,12 +37,12 @@ environments = [arg.casa, arg.lpc, arg.winterfell]
 
 if not np.any(environments): #if user forgets to assign something here
     print('Default environment -> lpc')
-    args.lpc = True
+    arg.lpc = True
 
 #### WE'RE MISSING 2016B ver2 -- AK8 PF HLT is missing need to use AK4 trigger isntead
 ### Run coffea processor and make plots
 def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, syst=arg.syst):
-    processor = makeTrijetHists(data = arg.data, btag = btag_str, jet_systematics = jet_syst, systematics = syst)
+    processor = makeTrijetHists(data = arg.data, btag = arg.btag, jet_systematics = jet_syst, systematics = syst)
     datastring = "JetHT" if processor.do_gen == False else "QCDsim"
     if processor.do_gen==True and arg.winterfell:
         filename = "QCD_flat_files.json"

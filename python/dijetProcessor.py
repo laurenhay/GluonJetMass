@@ -20,10 +20,12 @@ from python.corrections import *
 import hist
 print(hist.__version__)
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument("year")
-parser.add_argument("data")
+import logging
+logfile = 'dijetProc_' + str(int(time.time())) + '.log'
+print(logfile)
+logging.basicConfig(filename=logfile, level=logging.DEBUG)
+logger = logging.getLogger('__main__')
+logger.setLevel(logging.DEBUG)
 
 #### currently only for MC --> makes hists and response matrix
 class makeDijetHists(processor.ProcessorABC):
@@ -32,7 +34,7 @@ class makeDijetHists(processor.ProcessorABC):
     With "do_gen == True", will perform GEN selection and create response matrices. 
     Will always plot RECO level quantities. 
     '''
-    def __init__(self, ptcut = 200., ycut = 2.5, data = False, jet_systematics = ['nominal', 'jer', 'jes'], systematics = ['L1PreFiringWeight', 'PUSF'], hem="False"):
+    def __init__(self, ptcut = 200., ycut = 2.5, data = False, jet_systematics = ['nominal', 'jer', 'jes'], systematics = ['L1PreFiringWeight', 'PUSF'], hem=False):
         # should have separate **lower** ptcut for gen
         self.do_gen = not data
         self.ptcut = ptcut
@@ -40,7 +42,7 @@ class makeDijetHists(processor.ProcessorABC):
         self.jet_systematics = jet_systematics
         self.systematics = systematics
         self.hem = hem
-        print("Data: ", data, " gen ", self.do_gen)
+        logger.debug("Data: ", data, " Gen: ", self.do_gen)
         jet_cat = hist.axis.StrCategory([], growth=True, name="jetNumb", label="Jet")
         syst_cat = hist.axis.StrCategory([], growth=True, name='syst', label="Systematic")
         parton_cat = hist.axis.StrCategory([], growth=True,name="partonFlav", label="Parton Flavour")
@@ -60,10 +62,10 @@ class makeDijetHists(processor.ProcessorABC):
         
         self._histos = {
             #### Old histos
-            'jet_mass':             hist.Hist(jet_cat, parton_cat, mass_bin, storage="weight", name="Events"),
-            'jet_pt':             hist.Hist(jet_cat, parton_cat, pt_bin, storage="weight", name="Events"),
-            'jet_rap':            hist.Hist(jet_cat, parton_cat, y_bin, storage="weight", name="Events"),
-            'jet_eta':            hist.Hist(jet_cat, parton_cat, eta_bin, storage="weight", name="Events"),
+            # 'jet_mass':             hist.Hist(jet_cat, parton_cat, mass_bin, storage="weight", name="Events"),
+            # 'jet_pt':             hist.Hist(jet_cat, parton_cat, pt_bin, storage="weight", name="Events"),
+            # 'jet_rap':            hist.Hist(jet_cat, parton_cat, y_bin, storage="weight", name="Events"),
+            # 'jet_eta':            hist.Hist(jet_cat, parton_cat, eta_bin, storage="weight", name="Events"),
             
             #### Plots of things during the selection process / for debugging
             'njet_reco':                 hist.Hist(syst_cat, n_axis, storage="weight", label="Counts"),
@@ -122,8 +124,8 @@ class makeDijetHists(processor.ProcessorABC):
         out = self._histos
         dataset = events.metadata['dataset']
         filename = events.metadata['filename']
-        print("Filename: ", filename)
-        print("dataset: ", dataset)
+        logger.debug("Filename: ", filename)
+        logger.debug("Dataset: ", dataset)
         out['cutflow']['nEvents initial'] += (len(events.FatJet))
         #####################################
         #### Find the IOV from the dataset name
@@ -151,7 +153,7 @@ class makeDijetHists(processor.ProcessorABC):
             fname2 = filename[firstidx:]
             fname_toks = fname2.split("/")
             era = fname_toks[ fname_toks.index("data") + 1]
-            print("IOV ", IOV, ", era ", era)
+            logger.debug("IOV ", IOV, ", era ", era)
         corrected_fatjets = GetJetCorrections(FatJet, events, era, IOV, isData=not self.do_gen)
         # print("Got jet corrections: ", corrected_fatjets)
         jet_corrs = {}
@@ -168,27 +170,26 @@ class makeDijetHists(processor.ProcessorABC):
             jet_corrs.update({"nominal": corrected_fatjets})
         if 'jes' in self.jet_systematics and self.do_gen:
             for unc_src in (unc_src for unc_src in corrected_fatjets.fields if "JES" in unc_src):
-                print("Uncertainty source: ", unc_src)
-                print(corrected_fatjets[unc_src])
+                logger.debug("Uncertainty source: ", unc_src)
                 jet_corrs.update({
                     unc_src+"Up":corrected_fatjets[unc_src].up,
                     unc_src+"Down":corrected_fatjets[unc_src].down, })
         elif self.do_gen:
-            print("Getting sources: ", [unc_src for unc_src in self.jet_systematics if ("JES_"+unc_src in corrected_fatjets.fields)])
+            # print("Getting sources: ", [unc_src for unc_src in self.jet_systematics if ("JES_"+unc_src in corrected_fatjets.fields)])
             avail_srcs = [unc_src for unc_src in self.jet_systematics if ("JES_"+unc_src in corrected_fatjets.fields)]
             for unc_src in avail_srcs:
-                print("Uncertainty source: ", unc_src)
-                print(corrected_fatjets["JES_"+unc_src])
+                # print("Uncertainty source: ", unc_src)
+                # print(corrected_fatjets["JES_"+unc_src])
                 jet_corrs.update({
                     unc_src+"Up":corrected_fatjets["JES_"+unc_src].up,
                     unc_src+"Down":corrected_fatjets["JES_"+unc_src].down                                    , })
-        print("Final jet corrs to run over: ", jet_corrs)
+        logger.debug("Final jet corrs to run over: ", jet_corrs)
         for jetsyst in jet_corrs.keys():
-            print("Adding ", jetsyst, " values ", jet_corrs[jetsyst], " to output")
+            # print("Adding ", jetsyst, " values ", jet_corrs[jetsyst], " to output")
             events_corr = ak.with_field(events, jet_corrs[jetsyst], "FatJet")
             weights = np.ones(len(events_corr))
             if (self.do_gen):
-                print("Do XS scaling")
+                logger.debug("Doing XS scaling")
                 weights = weights * getXSweight(dataset, IOV)
             else:
                 ###############
@@ -199,7 +200,7 @@ class makeDijetHists(processor.ProcessorABC):
                 trigsel, psweights = applyPrescales(events_corr, year = IOV)
                 weights=psweights
                 # print("Trigger: len of events ", len(events_corr), "len of weights ", len(trigsel))
-                print(weights)
+                logger.debug("Weights w/ prescales ", weights)
                 events_corr = events_corr[trigsel]
                 weights = weights[trigsel]
                 out['cutflow']['nEvents after trigger sel '+jetsyst] += (len(events.FatJet))
@@ -215,7 +216,7 @@ class makeDijetHists(processor.ProcessorABC):
             #### see CMS PAS SMP-20-010 for selections
             ####################################
             if (self.do_gen):
-                print("DOING GEN")
+                logger.debug("DOING GEN")
                 #### Select events with at least 2 jets
                 GenJetAK8 = events_corr.GenJetAK8
                 GenJetAK8['p4']= ak.with_name(events_corr.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
@@ -289,8 +290,25 @@ class makeDijetHists(processor.ProcessorABC):
             #### match jets, get syst weights, and fill final plots
             if self.do_gen:
                 fakes = ak.any(ak.is_none(events_corr.FatJet.matched_gen, axis = -1), axis = -1)
-                out["fakes"].fill(syst=jetsyst, ptreco = ak.flatten(events_corr[fakes].FatJet[:,:2].pt),
-                                  mreco = ak.flatten(events_corr[fakes].FatJet[:,:2].mass))
+                print("Fake weights ", weights[fakes])
+                print("Len of fake weights ", len(weights[fakes]))
+                # fake_weights = Weights(len(np.repeat(weights[fakes], 2)))
+                # self.weights[jetsyst] = Weights(len(dijet_weights))
+                # print("Intital gen weights: ", dijet_weights)
+                # fake_weights.add('fakeWeight', np.repeat(weights[fakes], 2))
+                # if "L1PreFiringWeight" in events.fields and "L1PreFiringWeight" in self.systematics:                
+                #     prefiringNom, prefiringUp, prefiringDown = GetL1PreFiringWeight(events_corr[fakes])
+                #     fake_weights.add("L1prefiring", weight=np.repeat(prefiringNom, 2), 
+                #                            weightUp=np.repeat(prefiringUp, 2), 
+                #                            weightDown=np.repeat(prefiringDown, 2),
+                #                )
+                # if "PUSF" in self.systematics:
+                #     puUp, puDown, puNom = GetPUSF(events_corr[fakes], IOV)
+                #     fake_weights.add("PUSF", weight=np.repeat(puNom, 2), weightUp=np.repeat(puUp, 2),
+                #                        weightDown=np.repeat(puDown, 2),) 
+                # print("Length of fakes jets ", ak.flatten(events_corr[fakes].FatJet[:,:2].mass), "length of fake weights", len(fake_weights.weight()))
+                # out["fakes"].fill(syst=jetsyst, ptreco = ak.flatten(events_corr[fakes].FatJet[:,:2].pt),
+                #                   mreco = ak.flatten(events_corr[fakes].FatJet[:,:2].mass), weight = fake_weights.weight())
                 #fakes = reco but no gen
                 out['cutflow']['fakes '+jetsyst] += (len(events_corr[fakes].FatJet))
                 matched_reco = ~fakes
@@ -302,9 +320,10 @@ class makeDijetHists(processor.ProcessorABC):
                 groomed_genjet1 = get_gen_sd_mass_jet(events_corr.GenJetAK8[:,1], events_corr.SubGenJetAK8)
                 groomed_gen_dijet = ak.concatenate([groomed_genjet0, groomed_genjet1], axis=0) 
                 dijet = ak.flatten(events_corr.FatJet[:,:2], axis =1)
+  
+                print("Length of FatJet after flattening: ", len(dijet))
+                gen_dijet = ak.flatten(events_corr.GenJetAK8[:,:2], axis=1)
                 dijet_weights = np.repeat(weights, 2)
-                print("LEngth of dijet weights: ", len(dijet_weights))
-                print("LEngth of weights: ", len(weights))
                 self.weights[jetsyst] = Weights(len(dijet_weights))
                 print("Intital gen weights: ", dijet_weights)
                 self.weights[jetsyst].add('dijetWeight', dijet_weights)
@@ -317,9 +336,7 @@ class makeDijetHists(processor.ProcessorABC):
                 if "PUSF" in self.systematics:
                     puUp, puDown, puNom = GetPUSF(events_corr, IOV)
                     self.weights[jetsyst].add("PUSF", weight=np.repeat(puNom, 2), weightUp=np.repeat(puUp, 2),
-                                       weightDown=np.repeat(puDown, 2),)   
-                print("Length of FatJet after flattening: ", len(dijet))
-                gen_dijet = ak.flatten(events_corr.GenJetAK8[:,:2], axis=1)
+                                       weightDown=np.repeat(puDown, 2),) 
                 out["jet_pt_gen"].fill(syst=jetsyst, ptgen=dijet.pt, weight=self.weights[jetsyst].weight())
                 out["jet_dr_gen_subjet"].fill(syst=jetsyst, 
                                         dr=events_corr.SubGenJetAK8[:,0].delta_r(events_corr.FatJet[:,0]),
@@ -337,6 +354,7 @@ class makeDijetHists(processor.ProcessorABC):
                 out["response_matrix_g"].fill( syst=jetsyst,
                                                ptreco=dijet.pt, ptgen=gen_dijet.pt,
                                                mreco=dijet.msoftdrop, mgen=groomed_gen_dijet.mass, weight=self.weights[jetsyst].weight())
+                dijet_weights = self.weights[jetsyst].weight()
                 if jetsyst == "nominal":
                     for syst in self.weights[jetsyst].variations:
                         print("Weight variation: ", syst)
@@ -371,120 +389,120 @@ class makeDijetHists(processor.ProcessorABC):
                 #                                                      weight=weights[~ak.is_none(drsub1) & ~ak.is_none(drsub2)])
                 
                 #flavour --> 21 is gluon
-                if jetsyst == "nominal":
-                    genjet1 = events_corr.GenJetAK8[:,0]
-                    genjet2 = events_corr.GenJetAK8[:,1]
-                    jet1 = events_corr.FatJet[:,0]
-                    jet2 = events_corr.FatJet[:,1]
-                    jet2_g     = jet2[np.abs(genjet2.partonFlavour) == 21]
-                    jet2_uds   = jet2[np.abs(genjet2.partonFlavour) < 4]
-                    jet2_c     = jet2[np.abs(genjet2.partonFlavour) == 4]
-                    jet2_b     = jet2[np.abs(genjet2.partonFlavour) == 5]
-                    jet2_other = jet2[(np.abs(genjet2.partonFlavour) > 5) & (np.abs(genjet2.partonFlavour) != 21)]
+                # if jetsyst == "nominal":
+                #     genjet1 = events_corr.GenJetAK8[:,0]
+                #     genjet2 = events_corr.GenJetAK8[:,1]
+                #     jet1 = events_corr.FatJet[:,0]
+                #     jet2 = events_corr.FatJet[:,1]
+                #     jet2_g     = jet2[np.abs(genjet2.partonFlavour) == 21]
+                #     jet2_uds   = jet2[np.abs(genjet2.partonFlavour) < 4]
+                #     jet2_c     = jet2[np.abs(genjet2.partonFlavour) == 4]
+                #     jet2_b     = jet2[np.abs(genjet2.partonFlavour) == 5]
+                #     jet2_other = jet2[(np.abs(genjet2.partonFlavour) > 5) & (np.abs(genjet2.partonFlavour) != 21)]
                     
-                    jet1_g     = jet1[np.abs(genjet1.partonFlavour) == 21]
-                    jet1_uds   = jet1[np.abs(genjet1.partonFlavour) < 4]
-                    jet1_c     = jet1[np.abs(genjet1.partonFlavour) == 4]
-                    jet1_b     = jet1[np.abs(genjet1.partonFlavour) == 5]
-                    jet1_other = jet1[(np.abs(genjet1.partonFlavour) > 5) & (np.abs(genjet1.partonFlavour) != 21)]
+                #     jet1_g     = jet1[np.abs(genjet1.partonFlavour) == 21]
+                #     jet1_uds   = jet1[np.abs(genjet1.partonFlavour) < 4]
+                #     jet1_c     = jet1[np.abs(genjet1.partonFlavour) == 4]
+                #     jet1_b     = jet1[np.abs(genjet1.partonFlavour) == 5]
+                #     jet1_other = jet1[(np.abs(genjet1.partonFlavour) > 5) & (np.abs(genjet1.partonFlavour) != 21)]
                     
                     #        #make central and forward categories instead of jet1 jet2
                     #### Plots for gluon purity studies
                     
-                    out['jet_mass'].fill(jetNumb = "jet1", partonFlav = "Gluon",  mreco = jet1_g.mass,
-                                         #weight = trijetEvents.Generator.weight
-                                     )
-                    out['jet_mass'].fill(jetNumb = "jet1", partonFlav = "UDS",    mreco = jet1_uds.mass,
-                                         #weight = trijetEvents.Generator.weight
-                                     )
-                    out['jet_mass'].fill(jetNumb = "jet1", partonFlav = "Charm",  mreco = jet1_c.mass,
-                                         #weight = trijetEvents.Generator.weight
-                                     )
-                    out['jet_mass'].fill(jetNumb = "jet1", partonFlav = "Bottom", mreco = jet1_b.mass,
-                                         #weight = trijetEvents.Generator.weight
-                                     )
-                    out['jet_mass'].fill(jetNumb = "jet1", partonFlav = "Other",  mreco = jet1_other.mass,
-                                         #weight = trijetEvents.Generator.weight
-                                     )
-                    out['jet_mass'].fill(jetNumb = "jet2", partonFlav = "Gluon",  mreco = jet2_g.mass,
-                                         #weight = trijetEvents.Generator.weight
-                                     )
-                    out['jet_mass'].fill(jetNumb = "jet2", partonFlav = "UDS",    mreco = jet2_uds.mass,
-                                         #weight = trijetEvents.Generator.weight
-                                     )
-                    out['jet_mass'].fill(jetNumb = "jet2", partonFlav = "Charm",  mreco = jet2_c.mass,
-                                         #weight = trijetEvents.Generator.weight
-                                     )
-                    out['jet_mass'].fill(jetNumb = "jet2", partonFlav = "Bottom", mreco = jet2_b.mass,
-                                         #weight = trijetEvents.Generator.weight
-                                     )
-                    out['jet_mass'].fill(jetNumb = "jet2", partonFlav = "Other",  mreco = jet2_other.mass,
-                                         #weight = trijetEvents.Generator.weight
-                                     )
+                    # out['jet_mass'].fill(jetNumb = "jet1", partonFlav = "Gluon",  mreco = jet1_g.mass,
+                    #                      #weight = trijetEvents.Generator.weight
+                    #                  )
+                    # out['jet_mass'].fill(jetNumb = "jet1", partonFlav = "UDS",    mreco = jet1_uds.mass,
+                    #                      #weight = trijetEvents.Generator.weight
+                    #                  )
+                    # out['jet_mass'].fill(jetNumb = "jet1", partonFlav = "Charm",  mreco = jet1_c.mass,
+                    #                      #weight = trijetEvents.Generator.weight
+                    #                  )
+                    # out['jet_mass'].fill(jetNumb = "jet1", partonFlav = "Bottom", mreco = jet1_b.mass,
+                    #                      #weight = trijetEvents.Generator.weight
+                    #                  )
+                    # out['jet_mass'].fill(jetNumb = "jet1", partonFlav = "Other",  mreco = jet1_other.mass,
+                    #                      #weight = trijetEvents.Generator.weight
+                    #                  )
+                    # out['jet_mass'].fill(jetNumb = "jet2", partonFlav = "Gluon",  mreco = jet2_g.mass,
+                    #                      #weight = trijetEvents.Generator.weight
+                    #                  )
+                    # out['jet_mass'].fill(jetNumb = "jet2", partonFlav = "UDS",    mreco = jet2_uds.mass,
+                    #                      #weight = trijetEvents.Generator.weight
+                    #                  )
+                    # out['jet_mass'].fill(jetNumb = "jet2", partonFlav = "Charm",  mreco = jet2_c.mass,
+                    #                      #weight = trijetEvents.Generator.weight
+                    #                  )
+                    # out['jet_mass'].fill(jetNumb = "jet2", partonFlav = "Bottom", mreco = jet2_b.mass,
+                    #                      #weight = trijetEvents.Generator.weight
+                    #                  )
+                    # out['jet_mass'].fill(jetNumb = "jet2", partonFlav = "Other",  mreco = jet2_other.mass,
+                    #                      #weight = trijetEvents.Generator.weight
+                    #                  )
                     
-                    out['jet_pt'].fill(jetNumb = "jet1", partonFlav = "Gluon",  ptreco = jet1_g.pt,
-                                       #weight = trijetEvents.Generator.weight
-                                   )
-                    out['jet_pt'].fill(jetNumb = "jet1", partonFlav = "UDS",    ptreco = jet1_uds.pt,
-                                       #weight = trijetEvents.Generator.weight
-                                   )
-                    out['jet_pt'].fill(jetNumb = "jet1", partonFlav = "Charm",  ptreco = jet1_c.pt,
-                                       #weight = trijetEvents.Generator.weight
-                                   )
-                    out['jet_pt'].fill(jetNumb = "jet1", partonFlav = "Bottom", ptreco = jet1_b.pt,
-                                       #weight = trijetEvents.Generator.weight
-                                   )
-                    out['jet_pt'].fill(jetNumb = "jet1", partonFlav = "Other",  ptreco = jet1_other.pt,
-                                       #weight = trijetEvents.Generator.weight
-                                   )
-                    out['jet_pt'].fill(jetNumb = "jet2", partonFlav = "Gluon",  ptreco = jet2_g.pt,
-                                   #weight = trijetEvents.Generator.weight
-                                   )
-                    out['jet_pt'].fill(jetNumb = "jet2", partonFlav = "UDS",    ptreco = jet2_uds.pt,
-                                       #weight = trijetEvents.Generator.weight
-                                   )
-                    out['jet_pt'].fill(jetNumb = "jet2", partonFlav = "Charm",  ptreco = jet2_c.pt,
-                                       #weight = trijetEvents.Generator.weight
-                                   )
-                    out['jet_pt'].fill(jetNumb = "jet2", partonFlav = "Bottom", ptreco = jet2_b.pt,
-                                       #weight = trijetEvents.Generator.weight
-                                   )
-                    out['jet_pt'].fill(jetNumb = "jet2", partonFlav = "Other",  ptreco = jet2_other.pt,
-                                       #weight = trijetEvents.Generator.weight
-                                   )
+                    # out['jet_pt'].fill(jetNumb = "jet1", partonFlav = "Gluon",  ptreco = jet1_g.pt,
+                    #                    #weight = trijetEvents.Generator.weight
+                    #                )
+                    # out['jet_pt'].fill(jetNumb = "jet1", partonFlav = "UDS",    ptreco = jet1_uds.pt,
+                    #                    #weight = trijetEvents.Generator.weight
+                    #                )
+                    # out['jet_pt'].fill(jetNumb = "jet1", partonFlav = "Charm",  ptreco = jet1_c.pt,
+                    #                    #weight = trijetEvents.Generator.weight
+                    #                )
+                    # out['jet_pt'].fill(jetNumb = "jet1", partonFlav = "Bottom", ptreco = jet1_b.pt,
+                    #                    #weight = trijetEvents.Generator.weight
+                    #                )
+                    # out['jet_pt'].fill(jetNumb = "jet1", partonFlav = "Other",  ptreco = jet1_other.pt,
+                    #                    #weight = trijetEvents.Generator.weight
+                    #                )
+                    # out['jet_pt'].fill(jetNumb = "jet2", partonFlav = "Gluon",  ptreco = jet2_g.pt,
+                    #                #weight = trijetEvents.Generator.weight
+                    #                )
+                    # out['jet_pt'].fill(jetNumb = "jet2", partonFlav = "UDS",    ptreco = jet2_uds.pt,
+                    #                    #weight = trijetEvents.Generator.weight
+                    #                )
+                    # out['jet_pt'].fill(jetNumb = "jet2", partonFlav = "Charm",  ptreco = jet2_c.pt,
+                    #                    #weight = trijetEvents.Generator.weight
+                    #                )
+                    # out['jet_pt'].fill(jetNumb = "jet2", partonFlav = "Bottom", ptreco = jet2_b.pt,
+                    #                    #weight = trijetEvents.Generator.weight
+                    #                )
+                    # out['jet_pt'].fill(jetNumb = "jet2", partonFlav = "Other",  ptreco = jet2_other.pt,
+                    #                    #weight = trijetEvents.Generator.weight
+                    #                )
                     
-                    out['jet_eta'].fill(jetNumb = "jet1", partonFlav = "Gluon",  eta = np.abs(jet1_g.eta),
-                                        #weight = trijetEvents.Generator.weight
-                                    )
-                    out['jet_eta'].fill(jetNumb = "jet1", partonFlav = "UDS",    eta = np.abs(jet1_uds.eta),
-                                        #weight = trijetEvents.Generator.weight
-                                    )
-                    out['jet_eta'].fill(jetNumb = "jet1", partonFlav = "Charm",  eta = np.abs(jet1_c.eta),
-                                        #weight = trijetEvents.Generator.weight
-                                    )
-                    out['jet_eta'].fill(jetNumb = "jet1", partonFlav = "Bottom", eta = np.abs(jet1_b.eta),
-                                        #weight = trijetEvents.Generator.weight
-                                    )
-                    out['jet_eta'].fill(jetNumb = "jet1", partonFlav = "Other",  eta = np.abs(jet1_other.eta),
-                                        #weight = trijetEvents.Generator.weight
-                                    )
-                    out['jet_eta'].fill(jetNumb = "jet2", partonFlav = "Gluon",  eta = np.abs(jet2_g.eta),
-                                        #weight = trijetEvents.Generator.weight
-                                    )
-                    out['jet_eta'].fill(jetNumb = "jet2", partonFlav = "UDS",    eta = np.abs(jet2_uds.eta),
-                                        #weight = trijetEvents.Generator.weight
-                                    )
-                    out['jet_eta'].fill(jetNumb = "jet2", partonFlav = "Charm",  eta = np.abs(jet2_c.eta),
-                                        #weight = trijetEvents.Generator.weight
-                                    )
-                    out['jet_eta'].fill(jetNumb = "jet2", partonFlav = "Bottom", eta = np.abs(jet2_b.eta),
-                                        #weight = trijetEvents.Generator.weight
-                                    )
-                    out['jet_eta'].fill(jetNumb = "jet2", partonFlav = "Other",  eta = np.abs(jet2_other.eta),
-                                        #weight = trijetEvents.Generator.weight
-                                    )
-                    out['cutflow']['nGluonJets '+ jetsyst] += (len(ak.flatten(dijet[np.abs(gen_dijet.partonFlavour) == 21].pt, axis=-1)))
-                    out['cutflow']['nJets '+ jetsyst] += (len(ak.flatten(jet1.pt, axis=-1)))
+                    # out['jet_eta'].fill(jetNumb = "jet1", partonFlav = "Gluon",  eta = np.abs(jet1_g.eta),
+                    #                     #weight = trijetEvents.Generator.weight
+                    #                 )
+                    # out['jet_eta'].fill(jetNumb = "jet1", partonFlav = "UDS",    eta = np.abs(jet1_uds.eta),
+                    #                     #weight = trijetEvents.Generator.weight
+                    #                 )
+                    # out['jet_eta'].fill(jetNumb = "jet1", partonFlav = "Charm",  eta = np.abs(jet1_c.eta),
+                    #                     #weight = trijetEvents.Generator.weight
+                    #                 )
+                    # out['jet_eta'].fill(jetNumb = "jet1", partonFlav = "Bottom", eta = np.abs(jet1_b.eta),
+                    #                     #weight = trijetEvents.Generator.weight
+                    #                 )
+                    # out['jet_eta'].fill(jetNumb = "jet1", partonFlav = "Other",  eta = np.abs(jet1_other.eta),
+                    #                     #weight = trijetEvents.Generator.weight
+                    #                 )
+                    # out['jet_eta'].fill(jetNumb = "jet2", partonFlav = "Gluon",  eta = np.abs(jet2_g.eta),
+                    #                     #weight = trijetEvents.Generator.weight
+                    #                 )
+                    # out['jet_eta'].fill(jetNumb = "jet2", partonFlav = "UDS",    eta = np.abs(jet2_uds.eta),
+                    #                     #weight = trijetEvents.Generator.weight
+                    #                 )
+                    # out['jet_eta'].fill(jetNumb = "jet2", partonFlav = "Charm",  eta = np.abs(jet2_c.eta),
+                    #                     #weight = trijetEvents.Generator.weight
+                    #                 )
+                    # out['jet_eta'].fill(jetNumb = "jet2", partonFlav = "Bottom", eta = np.abs(jet2_b.eta),
+                    #                     #weight = trijetEvents.Generator.weight
+                    #                 )
+                    # out['jet_eta'].fill(jetNumb = "jet2", partonFlav = "Other",  eta = np.abs(jet2_other.eta),
+                    #                     #weight = trijetEvents.Generator.weight
+                    #                 )
+                    # out['cutflow']['nGluonJets '+ jetsyst] += (len(ak.flatten(dijet[np.abs(gen_dijet.partonFlavour) == 21].pt, axis=-1)))
+                    # out['cutflow']['nJets '+ jetsyst] += (len(ak.flatten(jet1.pt, axis=-1)))
             #### Final RECO plots
             dijet = ak.flatten(events_corr.FatJet[:,:2], axis =1)
             dijet_weights = np.repeat(weights, 2)

@@ -20,8 +20,8 @@ class triggerProcessor(processor.ProcessorABC):
         dataset_cat = hist.axis.StrCategory([],growth=True,name="dataset", label="Dataset")
         HLT_cat = hist.axis.StrCategory([], growth=True, name="HLT_cat",label="")
         if data:
-            pt_bin = hist.axis.Regular(100, 0, 2400.,name="pt", label="Jet pT (GeV)")
-        else: pt_bin = hist.axis.Regular(100, 0, 3200.,name="pt", label="Jet pT (GeV)")
+            pt_bin = hist.axis.Regular(50, 0, 2400.,name="pt", label="Jet pT (GeV)")
+        else: pt_bin = hist.axis.Regular(50, 0, 3200.,name="pt", label="Jet pT (GeV)")
         self._histos = {
             'hist_trigEff': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
             'hist_trigEff_ptCut': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),

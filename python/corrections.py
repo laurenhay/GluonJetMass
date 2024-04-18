@@ -44,7 +44,11 @@ def HEMVeto(FatJets, runs):
     ## Reference: https://hypernews.cern.ch/HyperNews/CMS/get/JetMET/2000.html
     
     runid = (runs >= 319077)
-
+    print(runid)
+    # print("Fat jet phi ", FatJets.phi)
+    # print("Fat jet phi length ", len(FatJets.phi))
+    # print("Fat jet eta ", FatJets.eta)
+    # print("Fat jet eta length ", len(FatJets.eta))
     detector_region1 = ((FatJets.phi < -0.87) & (FatJets.phi > -1.57) &
                        (FatJets.eta < -1.3) & (FatJets.eta > -2.5))
     detector_region2 = ((FatJets.phi < -0.87) & (FatJets.phi > -1.57) &
@@ -52,7 +56,7 @@ def HEMVeto(FatJets, runs):
     jet_selection    = ((FatJets.jetId > 1) & (FatJets.pt > 15))
 
     vetoHEMFatJets = ak.any((detector_region1 & jet_selection & runid) ^ (detector_region2 & jet_selection & runid), axis=1)
-
+    print("Number of hem vetoed jets: ", ak.sum(vetoHEMFatJets))
     vetoHEM = ~(vetoHEMFatJets)
     
     return vetoHEM
@@ -62,7 +66,7 @@ def GetPUSF(events, IOV):
     ## json files from: https://gitlab.cern.ch/cms-nanoAOD/jsonpog-integration/-/tree/master/POG/LUM
         
     fname = "correctionFiles/puWeights/{0}_UL/puWeights.json.gz".format(IOV)
-    print("PU SF filename: ", fname)
+    # print("PU SF filename: ", fname)
     hname = {
         "2016APV": "Collisions16_UltraLegacy_goldenJSON",
         "2016"   : "Collisions16_UltraLegacy_goldenJSON",
@@ -77,12 +81,11 @@ def GetPUSF(events, IOV):
 
     return puNom, puUp, puDown
 def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = None):
-    if uncertainties != None:
-        uncertainty_sources = uncertainties
-    else:
+    if uncertainties == None:
         uncertainty_sources = ["AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF",
-"PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample",
-"RelativeStatEC","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
+"PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample", "RelativeStatEC","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
+    else:
+        uncertainty_cources = uncertainties
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/jmeCorrections.py
     jer_tag=None
     if (IOV=='2018'):
@@ -142,13 +145,13 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
         ])
         #### Do AK8PUPPI jer files exist??
         if jer_tag:
-            print("JER tag: ", jer_tag)
-            print("File "+'correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag)+" exists: ", os.path.exists('correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag)))
-            print("File "+'correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)+" exists: ", os.path.exists('correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)))
+            # print("JER tag: ", jer_tag)
+            # print("File "+'correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag)+" exists: ", os.path.exists('correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag)))
+            # print("File "+'correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)+" exists: ", os.path.exists('correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)))
             ext.add_weight_sets([
             '* * '+'correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag),
             '* * '+'correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)])
-            print("JER SF added")
+            # print("JER SF added")
     else:       
         #For data, make sure we don't duplicat
         tags_done = []
@@ -163,8 +166,6 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
                 tags_done += [tag]
     ext.finalize()
 
-    print("Making evaluator")
-
     evaluator = ext.make_evaluator()
 
     if (not isData):
@@ -172,6 +173,10 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
             '{0}_L1FastJet_AK8PFPuppi'.format(jec_tag),
             '{0}_L2Relative_AK8PFPuppi'.format(jec_tag),
             '{0}_L3Absolute_AK8PFPuppi'.format(jec_tag)]
+        #### if jes in arguments add total uncertainty values for comparison and easy plotting
+        if 'jes' in uncertainty_sources:
+            jec_names.extend(['{0}_Uncertainty_AK8PFPuppi'.format(jec_tag)])
+            uncertainty_sources.remove('jes')
         jec_names.extend(['{0}_UncertaintySources_AK8PFPuppi_{1}'.format(jec_tag, unc_src) for unc_src in uncertainty_sources])
 
         if jer_tag: 
@@ -221,3 +226,38 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     # print("Available uncertainties: ", jet_factory.uncertainties())
     # print("Corrected jets object: ", corrected_jets.fields)
     return corrected_jets
+
+def GetLHEWeight(events):
+    #### make sure to `pip3 install --user parton` in singularity shell
+    import parton
+    # os.environ['LHAPDF_DATA_PATH'] = '/cvmfs/sft.cern.ch/lcg/releases/MCGenerators/lhapdf/6.2.1-7149a/x86_64-centos7-gcc8-opt/share/LHAPDF/'
+    paths = ['/cvmfs/sft.cern.ch/lcg/external/lhapdfsets/current/']
+    from parton import mkPDF
+    # pdfset = PDFSet('PDF4LHC21_mc_pdfas', pdfdir=path[0])
+    # print("PDF set obj ", pdfset)
+    # print("PDF set info ", pdfset.info)
+    # pdfmembers = []
+    print("Length of events ", len(events))
+    pdf = mkPDF('PDF4LHC21_mc', pdfdir=paths[0])
+    # print("PDFSet info ", pdf.pdfset.info)
+    print("PDF grids ", pdf.pdfgrids)
+    
+    #### get pdf values from events
+    q2 = events.Generator.scalePDF
+    x1 = events.Generator.x1
+    x2 = events.Generator.x2
+    id1 = events.Generator.id1
+    id2 = events.Generator.id2
+    xfxq1 = pdf.xfxQ(id1, x1, q2, grid=False)
+    xfxq2 = pdf.xfxQ(id2, x2, q2, grid=False)
+    print("x*f(x) = ", xfxq1, xfxq2)
+    print("Length of xfxq1 ", len(xfxq1))
+    print("type of pdf weight ", type(xfxq1))
+    pdfNom = xfxq1*xfxq2
+    pdfUp = pdf.xfxQ(id1, x1, 2*q2, grid=False)*pdf.xfxQ(id1, x1, 2*q2, grid=False)
+    pdfDown = pdf.xfxQ(id1, x1, 0.5*q2, grid=False)*pdf.xfxQ(id1, x1, 0.5*q2, grid=False)
+    #### Dont know what alphas do
+        #     muRUp = self.lha.evalAlphas(2*q)**4
+        # muRDown = self.lha.evalAlphas(0.5*q)**4
+    return pdfNom, pdfUp, pdfDown
+    

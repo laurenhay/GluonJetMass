@@ -50,7 +50,6 @@ def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=ar
         year_str = year
     else:
         year_str = "All"
-    
     if processor.do_gen==True and arg.winterfell:
         filename = "QCD_flat_files.json"
     elif processor.do_gen==True:
@@ -58,11 +57,11 @@ def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=ar
     else:
         filename = "datasets_UL_NANOAOD.json"
     if arg.testing and not data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest_wXSscaling_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0],year_str)
+        fname = 'coffeaOutput/dijet/dijetHistsTest_wXSscaling_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0]+jet_syst[-1],year_str)
     elif arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0],year_str)
+        fname = 'coffeaOutput/dijet/dijetHistsTest{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0]+jet_syst[-1],year_str)
     elif not arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHists_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0], year_str)
+        fname = 'coffeaOutput/dijet/dijetHists_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0]+jet_syst[-1], year_str)
     else:
         fname = 'coffeaOutput/dijet/dijetHists_wXSscaling_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0], year_str)
     result = runCoffeaJob(processor, jsonFile = filename, casa = casa, winterfell = winterfell, testing = testing, dask = dask, year=year, data = not processor.do_gen, verbose=False)
@@ -72,12 +71,11 @@ if arg.allUncertaintySources:
     unc_srcs = ["nominal", "jer", "AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF",
 "PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample",
 "RelativeStatEC","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
-    for src in unc_srcs:
-        print("Running processor for ", src)
-        runDijetAnalysis(jet_syst=[src])
 else:
-    runDijetAnalysis()
-
+    unc_srcs = arg.jetSyst
+for src in unc_srcs:
+    print("Running processor for ", src)
+    runDijetAnalysis(jet_syst=[src])
 
 #Make plots
 import matplotlib.pyplot as plt

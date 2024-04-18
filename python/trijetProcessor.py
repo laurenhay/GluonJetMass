@@ -93,12 +93,14 @@ def applyBTag(events, btag):
 #              b_med(apply medium bTag to only the hardest jet), bb_med (apply medium bTag to leading two jets)
 
 class makeTrijetHists(processor.ProcessorABC):
-    def __init__(self, ptcut = 200., ycut = 2.5, btag = 'None', data = 'False', jet_systematics = ['nominal', 'jer', 'jes'], systematics = ['L1PreFiringWeight', 'PUSF']):
+    def __init__(self, ptcut = 200., ycut = 2.5, btag = 'None', data = 'False', jet_systematics = ['nominal', 'jer', 'jes'], systematics = ['L1PreFiringWeight', 'PUSF'], hem='False'):
         self.ptcut = ptcut
         self.ycut = ycut
         self.btag = btag
         self.do_gen = not data
+        self.hem = hem
         self.systematics = systematics
+        self.jet_systematics = systematics
         print("Data: ", data, " gen ", self.do_gen)
         jet_cat = hist.axis.StrCategory([], growth=True, name="jetNumb", label="Jet")
         parton_cat = hist.axis.StrCategory([],growth=True,name="partonFlav", label="Parton Flavour")
@@ -205,7 +207,9 @@ class makeTrijetHists(processor.ProcessorABC):
         #### Apply the good lumi mask
         #####################################
         if IOV == '2018':
+            nEvents = len(events)
             events = events[HEMVeto(events.FatJet, events.run)]
+            print("nEvents removed by HEMveto: ", len(events)- nEvents)
         FatJet=events.FatJet
         FatJet["p4"] = ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
         if self.do_gen:
@@ -223,12 +227,6 @@ class makeTrijetHists(processor.ProcessorABC):
         corrected_fatjets = GetJetCorrections(FatJet, events, era, IOV, isData=not self.do_gen)
         # corrected_fatjets = FatJet
         corrections = {"nominal": corrected_fatjets}
-        if (len(corrected_fatjets.pt[0]) > 1) and 'jes' in self.jet_systematics and self.do_gen:
-            print('JEC:%s:JES up, nom, down:%s:%s:%s',
-                         corrected_fatjets.JES_jes.up.pt[0][0],
-                         corrected_fatjets.pt[0][0],
-                         corrected_fatjets.JES_jes.down.pt[0][0])
-            print("JES up vals: ", corrected_fatjets.JES_jes.up)
         if 'jes' in self.jet_systematics and self.do_gen:
             for unc_src in (unc_src for unc_src in corrected_fatjets.fields if "JES" in unc_src):
                 print("Uncertainty source: ", unc_src)
@@ -241,6 +239,15 @@ class makeTrijetHists(processor.ProcessorABC):
             corrections.update({"jerUp": corrected_fatjets.JER.up,
                                 "jerDown": corrected_fatjets.JER.down
                             })
+        elif self.do_gen:
+            print("Getting sources: ", [unc_src for unc_src in self.jet_systematics if ("JES_"+unc_src in corrected_fatjets.fields)])
+            avail_srcs = [unc_src for unc_src in self.jet_systematics if ("JES_"+unc_src in corrected_fatjets.fields)]
+            for unc_src in avail_srcs:
+                print("Uncertainty source: ", unc_src)
+                print(corrected_fatjets["JES_"+unc_src])
+                jet_corrs.update({
+                    unc_src+"Up":corrected_fatjets["JES_"+unc_src].up,
+                    unc_src+"Down":corrected_fatjets["JES_"+unc_src].down  }) 
         #### Initialize dictionary to store weights for all jet correction objects
         self.weights = {}
         for jetsyst in corrections.keys():
