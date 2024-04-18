@@ -19,7 +19,7 @@ void testUnfold()
 {
   //open MC root file from coffea/uproot and get hists
   /* TFile *f = TFile::Open("trijetHistsQCDsim_jec2016.root"); */
-  TFile *f = TFile::Open("dijetHistsQCDsim_jec_2016.root");
+  TFile *f = TFile::Open("dijetHistsQCDsim_jesjecL1PU_2016.root");
   TH2D *ptgen_mgen_u = f->Get<TH2D>("ptgen_mgen_u_nominal");
   TH2D *ptgen_mgen_u_up = f->Get<TH2D>("ptgen_mgen_u_jerUp");
   TH2D *ptgen_mgen_u_dn = f->Get<TH2D>("ptgen_mgen_u_jerDown");
@@ -27,7 +27,7 @@ void testUnfold()
   TH2D *ptgen_mgen_g_up = f->Get<TH2D>("ptgen_mgen_g_jerUp");
   TH2D *ptgen_mgen_g_dn = f->Get<TH2D>("ptgen_mgen_g_jerDown");
   TH2D *fakes_ptreco_mreco = f->Get<TH2D>("fakes_ptreco_mreco_nominal");
-  //  TH2D *misses_ptgen_mgen = f->Get<TH2D>("misses_ptgen_mgen_nominal");
+  TH2D *misses_ptgen_mgen = f->Get<TH2D>("misses_ptgen_mgen_nominal");
   TH2D *ptreco_mreco_u = f->Get<TH2D>("ptreco_mreco_u_nominal");
   TH2D *ptreco_mreco_u_up = f->Get<TH2D>("ptreco_mreco_u_jerUp");
   TH2D *ptreco_mreco_u_dn = f->Get<TH2D>("ptreco_mreco_u_jerDown");
@@ -60,6 +60,7 @@ void testUnfold()
   TTreeReaderArray<Double_t> response_matrix_u_up(matrixReader, "ungroomed_jesUp");
   TTreeReaderArray<Double_t> response_matrix_u_dn(matrixReader, "ungroomed_jesDown");
   // Bin edge arrays
+  ptgen_mgen_u->GetXaxis()->Dump();
   TArrayD ptgen_low = *ptgen_mgen_u->GetXaxis()->GetXbins();
   TArrayD mgen_low = *ptgen_mgen_u->GetYaxis()->GetXbins();
   TArrayD ptreco_low = *ptreco_mreco_u->GetXaxis()->GetXbins();
@@ -74,7 +75,7 @@ void testUnfold()
   TUnfoldBinning *recoBinning = detectorBinning->AddBinning("reco");
   recoBinning->AddAxis(*ptreco_mreco_u->GetYaxis(), false, false); //mreco
   recoBinning->AddAxis(*ptreco_mreco_u->GetXaxis(), false, false); //ptreco
-    
+  detectorBinning->Dump();  
   
   TUnfoldBinning *generatorBinning = new TUnfoldBinning("generator");
   TUnfoldBinning *fakeBinning=generatorBinning->AddBinning("fakesBin", 1);
@@ -181,14 +182,14 @@ void testUnfold()
 	  for(int l=0; l<(mgen_low.GetSize()); l++){
 	    glob_genbin=(k)*(mgen_low.GetSize()+1)+l;
 	    genBin=genBinning->GetGlobalBinNumber(mgen_low[l],ptgen_low[k]);
-	    //cout<< genBin << " has lower edges mgen " << mgen_low[l] << " and ptgen " << ptgen_low[k] << endl;
-	    //fill MC truth for closure test
+	    	    //fill MC truth for closure test
 	    //ONLY FILL ONCE INSIDE i,j LOOP
 	    if(i==0 && j==0){
 	      // fill truth inputs for comparison
+	      cout<<"Bin l = " << l << " has edge mgen " << mgen_low[l] << "and  bin k " << k << " has ptgen edge "<< ptgen_low[k] << endl;
 	      Double_t truth_weight_u = ptgen_mgen_u->GetBinContent(k,l);
 	      histMCTruth_u->Fill(genBin, truth_weight_u);
-	      //cout << "Truth weight " << truth_weight_u << " for glob gen bin "<< glob_genbin << "and matrix gen bin " << genBin << endl;
+	      cout << "Truth weight " << truth_weight_u << " for glob gen bin "<< glob_genbin << "and matrix gen bin " << genBin << endl;
 	      Double_t truth_weight_g = ptgen_mgen_g->GetBinContent(k,l);
 	      histMCTruth_g->Fill(genBin, truth_weight_g);
 	      // do same for uncertainties
