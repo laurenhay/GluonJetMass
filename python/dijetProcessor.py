@@ -20,6 +20,7 @@ from python.corrections import *
 import hist
 print(hist.__version__)
 
+import time
 import logging
 logfile = 'dijetProc_' + str(int(time.time())) + '.log'
 print(logfile)
@@ -42,7 +43,7 @@ class makeDijetHists(processor.ProcessorABC):
         self.jet_systematics = jet_systematics
         self.systematics = systematics
         self.hem = hem
-        logger.debug("Data: ", data, " Gen: ", self.do_gen)
+        logger.debug("Data: %s Gen: %s ", data, self.do_gen)
         jet_cat = hist.axis.StrCategory([], growth=True, name="jetNumb", label="Jet")
         syst_cat = hist.axis.StrCategory([], growth=True, name='syst', label="Systematic")
         parton_cat = hist.axis.StrCategory([], growth=True,name="partonFlav", label="Parton Flavour")
@@ -124,8 +125,8 @@ class makeDijetHists(processor.ProcessorABC):
         out = self._histos
         dataset = events.metadata['dataset']
         filename = events.metadata['filename']
-        logger.debug("Filename: ", filename)
-        logger.debug("Dataset: ", dataset)
+        logger.debug("Filename: %s", filename)
+        logger.debug("Dataset: %s", dataset)
         out['cutflow']['nEvents initial'] += (len(events.FatJet))
         #####################################
         #### Find the IOV from the dataset name
@@ -153,7 +154,7 @@ class makeDijetHists(processor.ProcessorABC):
             fname2 = filename[firstidx:]
             fname_toks = fname2.split("/")
             era = fname_toks[ fname_toks.index("data") + 1]
-            logger.debug("IOV ", IOV, ", era ", era)
+            logger.debug("IOV %s, era %s", IOV, era)
         corrected_fatjets = GetJetCorrections(FatJet, events, era, IOV, isData=not self.do_gen)
         # print("Got jet corrections: ", corrected_fatjets)
         jet_corrs = {}
@@ -170,7 +171,7 @@ class makeDijetHists(processor.ProcessorABC):
             jet_corrs.update({"nominal": corrected_fatjets})
         if 'jes' in self.jet_systematics and self.do_gen:
             for unc_src in (unc_src for unc_src in corrected_fatjets.fields if "JES" in unc_src):
-                logger.debug("Uncertainty source: ", unc_src)
+                logger.debug("Uncertainty source: %s", unc_src)
                 jet_corrs.update({
                     unc_src+"Up":corrected_fatjets[unc_src].up,
                     unc_src+"Down":corrected_fatjets[unc_src].down, })
@@ -183,7 +184,7 @@ class makeDijetHists(processor.ProcessorABC):
                 jet_corrs.update({
                     unc_src+"Up":corrected_fatjets["JES_"+unc_src].up,
                     unc_src+"Down":corrected_fatjets["JES_"+unc_src].down                                    , })
-        logger.debug("Final jet corrs to run over: ", jet_corrs)
+        logger.debug("Final jet corrs to run over: %s", jet_corrs)
         for jetsyst in jet_corrs.keys():
             # print("Adding ", jetsyst, " values ", jet_corrs[jetsyst], " to output")
             events_corr = ak.with_field(events, jet_corrs[jetsyst], "FatJet")
@@ -200,7 +201,7 @@ class makeDijetHists(processor.ProcessorABC):
                 trigsel, psweights = applyPrescales(events_corr, year = IOV)
                 weights=psweights
                 # print("Trigger: len of events ", len(events_corr), "len of weights ", len(trigsel))
-                logger.debug("Weights w/ prescales ", weights)
+                logger.debug("Weights w/ prescales %s", weights)
                 events_corr = events_corr[trigsel]
                 weights = weights[trigsel]
                 out['cutflow']['nEvents after trigger sel '+jetsyst] += (len(events.FatJet))

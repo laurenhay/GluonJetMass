@@ -64,7 +64,7 @@ def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=ar
         fname = 'coffeaOutput/dijet/dijetHists_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0]+jet_syst[-1], year_str)
     else:
         fname = 'coffeaOutput/dijet/dijetHists_wXSscaling_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0], year_str)
-    result = runCoffeaJob(processor, jsonFile = filename, casa = casa, winterfell = winterfell, testing = testing, dask = dask, year=year, data = not processor.do_gen, verbose=False)
+    result = runCoffeaJob(processor, jsonFile = filename, casa = casa, winterfell = winterfell, testing = testing, dask = dask, year=year, data = not processor.do_gen, verbose=True)
     with open(fname, "wb") as f:
         pickle.dump( result, f)
 if arg.allUncertaintySources:

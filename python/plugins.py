@@ -81,6 +81,10 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         redirector = '/mnt/data/cms'
     else:
         redirector = 'root://cmsxrootd.fnal.gov/'
+        # redirector= 'root://xrootd-local.unl.edu:1094/'
+        #redirector='root://cmseos.fnal.gov:1094/'
+        # redirector='root://cmseos.fnal.gov/'
+        # redirector='root://cmsxrootd.hep.wisc.edu/'
     exe_args = {"schema": NanoAODSchema, 'skipbadfiles': True,}
     samples = handleData(jsonFile, redirector, year = year, testing = testing, data = data)
     #single files for testing
