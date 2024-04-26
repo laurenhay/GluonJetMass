@@ -10,10 +10,9 @@ import uproot
 import hist
 import coffea
 from coffea import processor
-from python.plugins import checkdir
 #import statistics as st
 ROOT.gStyle.SetOptStat(000000)
-ROOT.gInterpreter.ProcessLine('#include "MyTUnfoldDensity.h"')
+#ROOT.gInterpreter.ProcessLine('#include "MyTUnfoldDensity.h"')
 print(coffea.__version__)
 print(uproot.__version__)
 
@@ -26,7 +25,13 @@ parser.add_argument('--syst', default=['jer', 'PUSF', 'L1PreFiringWeight'], narg
 parser.add_argument('--allUncSrcs', action='store_true', help='Run processor for each unc. source separately')
 parser.add_argument('-i', '--input', required=False, help='MC input pkl file')
 parser.add_argument('-d', '--dataInput', default=None,  help='Data input pkl file; if none provided only run closure test')                    
-arg = parser.parse_args()
+arg = parser.parse_args("")
+
+import os
+def checkdir(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
 #### define plotting functions
 def plotinputsROOT(matrix, truth, reco, groom="", syst="", year="", ospath=''):
             histMCReco_M=matrix.ProjectionY("MCReco "+groom)
@@ -37,7 +42,7 @@ def plotinputsROOT(matrix, truth, reco, groom="", syst="", year="", ospath=''):
             histMCTruth_M.SetMarkerStyle(21)
             histMCTruth_M.SetLineColor(ROOT.kRed)
             histMCTruth_M.SetMarkerColor(ROOT.kRed)
-            histMCTruth_M.Draw()
+            histMCTruth_M.Draw("E")
             truth.SetMarkerStyle(24)
             truth.SetLineColor(ROOT.kBlue)
             truth.SetMarkerColor(ROOT.kBlue)
@@ -50,7 +55,7 @@ def plotinputsROOT(matrix, truth, reco, groom="", syst="", year="", ospath=''):
             histMCReco_M.SetMarkerStyle(21)
             histMCReco_M.SetLineColor(ROOT.kRed)
             histMCReco_M.SetMarkerColor(ROOT.kRed)
-            histMCReco_M.Draw()
+            histMCReco_M.Draw("E")
             reco.SetMarkerStyle(24)
             reco.SetLineColor(ROOT.kBlue)
             reco.SetMarkerColor(ROOT.kBlue)
@@ -59,160 +64,140 @@ def plotinputsROOT(matrix, truth, reco, groom="", syst="", year="", ospath=''):
             leg1_2.AddEntry(histMCReco_M, "MC Reco from M", "p")
             leg1_2.AddEntry(reco, "MC Reco", "p")
             leg1_2.Draw()
-
+            c1.Draw()
             c1.SaveAs(ospath+"MCInput_"+groom+"_"+syst+"flatmatrix"+year+".png")
             c1.Close()
-
-#### open files
-fname = "coffeaOutput/dijetHists_wXSscaling_QCDsim_pt200.0_rapidity2.5jesjecL1PU2016.pkl"
-with open(fname, "rb") as f:
-    result = pickle.load( f )
-fname = "coffeaOutput/dijetHists_JetHT_pt200.0_rapidity2.5jesjecL1PU2016.pkl"
-with open(fname, "rb") as f:
-    result_data = pickle.load( f )
-if "dijet" in fname:
-    os_path = "plots/unfolding/dijet/"
-else:
-    os_path = "plots/unfolding/trijet/"
-checkdir(os_path)
-year = fname[-8:-4]
-print(year)
-#### for data get results once
-data_pt_m_u =  result_data["jet_pt_mass_reco_u"][{'dataset':sum, 'syst':"nominal"}].values(flow=True)
-data_pt_m_g = result_data["jet_pt_mass_reco_g"][{'dataset':sum, 'syst':"nominal"}].values(flow=True)
-#### get 
-axis_names = [ax.name for ax in result['jet_pt_mass_reco_u'].axes]
-print("avail hists ", result.keys())
-print(axis_names)
-cats = [cat for cat in result['jet_pt_mass_reco_u'][{'ptreco':sum, 'dataset':sum, 'mreco':sum}].axes[0]]
-availSysts = [ax for ax in result['jet_pt_mass_reco_u'].project("syst").axes[0]]
-print("Available systs ", availSysts)
-print("Non nominal systs ", [syst for syst in availSysts if ("Up" in syst)])
-syst_hist_dict = {}
-for syst in [syst for syst in availSysts if ("Up" in syst)]:
-    syst = syst[:-2]
-    print("Running unfolding for systematic ", syst)
-    ptgen_mgen_u = result["jet_pt_mass_gen_u"][{'dataset':sum, 'syst':"nominal"}].values(flow=True)
-    ptgen_mgen_u_up = result["jet_pt_mass_gen_u"][{'dataset':sum, 'syst':syst+"Up"}].values(flow=True)
-    ptgen_mgen_u_dn = result["jet_pt_mass_gen_u"][{'dataset':sum, 'syst':syst+"Down"}].values(flow=True)
-    ptgen_mgen_g = result["jet_pt_mass_gen_g"][{'dataset':sum, 'syst':"nominal"}].values(flow=True)
-    ptgen_mgen_g_up = result["jet_pt_mass_gen_g"][{'dataset':sum, 'syst':syst+"Up"}].values(flow=True)
-    ptgen_mgen_g_dn = result["jet_pt_mass_gen_g"][{'dataset':sum, 'syst':syst+"Down"}].values(flow=True)
-    fakes_ptreco_mreco = uproot.pyroot.to_pyroot(uproot.writing.identify.to_writable(result["fakes"][{'dataset':sum, 'syst':"nominal"}]))
-    misses_ptgen_mgen = uproot.pyroot.to_pyroot(uproot.writing.identify.to_writable(result["misses"][{'dataset':sum, 'syst':"nominal"}]))
-    # open data root file and get hists
-    ptreco_mreco_uu  = uproot.pyroot.to_pyroot(uproot.writing.identify.to_writable(result["jet_pt_mass_reco_u"][{'dataset':sum, 'syst':"nominal"}]))
-    # ptreco_mreco_u_up  = uproot.pyroot.to_pyroot(uproot.writing.identify.to_writable(result["jet_pt_mass_reco_u"][{'dataset':sum, 'syst':syst+"Up"}]))
-    # ptreco_mreco_u_dn  = uproot.pyroot.to_pyroot(uproot.writing.identify.to_writable(result["jet_pt_mass_reco_u"][{'dataset':sum, 'syst':syst+"Down"}]))
-    ptreco_mreco_u  = result["jet_pt_mass_reco_u"][{'dataset':sum, 'syst':"nominal"}].values(flow=True)
-    ptreco_mreco_u_up  = result["jet_pt_mass_reco_u"][{'dataset':sum, 'syst':syst+"Up"}].values(flow=True)
-    ptreco_mreco_u_dn  = result["jet_pt_mass_reco_u"][{'dataset':sum, 'syst':syst+"Down"}].values(flow=True)
-    ptreco_mreco_g = result["jet_pt_mass_reco_g"][{'dataset':sum, 'syst':"nominal"}].values(flow=True)
-    ptreco_mreco_g_up  = result["jet_pt_mass_reco_g"][{'dataset':sum, 'syst':syst+"Up"}].values(flow=True)
-    ptreco_mreco_g_dn  = result["jet_pt_mass_reco_g"][{'dataset':sum, 'syst':syst+"Down"}].values(flow=True)
+def setupBinning(result):
+    binning_dict = {}
     response_matrix_u, ptreco_edges, mreco_edges, ptgen_edges, mgen_edges = result['response_matrix_u'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").to_numpy(flow=True)
-    response_matrix_g = result['response_matrix_g'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").values(flow=True)
-    response_matrix_u_up = result['response_matrix_u'][{'syst':syst+"Up"}].project("ptreco", "mreco", "ptgen", "mgen").values(flow=True)
-    response_matrix_u_dn = result['response_matrix_u'][{'syst':syst+"Down"}].project("ptreco", "mreco", "ptgen", "mgen").values(flow=True)
-    response_matrix_g_up = result['response_matrix_g'][{'syst':syst+"Up"}].project("ptreco", "mreco", "ptgen", "mgen").values(flow=True)
-    response_matrix_g_dn = result['response_matrix_g'][{'syst':syst+"Down"}].project("ptreco", "mreco", "ptgen", "mgen").values(flow=True)
     n_ptreco_bin = len(ptreco_edges)-1
     n_mreco_bin= len(mreco_edges)-1
     n_ptgen_bin = len(ptgen_edges)-1
     n_mgen_bin= len(mgen_edges)-1
     mreco_edges = mreco_edges[1:-1]
-    ptreco_edges = ptreco_edges[1:-1]
+    ptreco_edges = ptreco_edges[:-1]
+    ptreco_edges[0] = 0.
     mgen_edges = mgen_edges[1:-1]
-    ptgen_edges = ptgen_edges[1:-1]
-    print( "Size of ptreco bins: " , n_ptreco_bin)
-    print( "Size of mreco bins: ",n_mreco_bin)
-    print( "Size of ptgen bins: ", n_ptgen_bin)
-    print( "Size of mgen bins: ", n_mgen_bin)
-    print( "Size of response matrix ", len(response_matrix_u.flatten()))
-    
+    ptgen_edges = ptgen_edges[:-1]
+    ptgen_edges[0] = 0.
+    # print("ptgen edges ", ptgen_edges)
+    # print( "Size of response matrix ", len(response_matrix_u.flatten()))
     #### make TUnfold binning axes
-    
-    print("Nbins ptreco ", n_ptreco_bin, " Nbins mreco", n_mreco_bin)
-    print("Bins ptreco ", ptreco_edges, " bins mreco", mreco_edges)
+    # print("Nbins ptreco ", n_ptreco_bin, " Nbins mreco", n_mreco_bin)
+    # print("Bins ptreco ", ptreco_edges, " bins mreco", mreco_edges)
     detectorBinning = ROOT.TUnfoldBinning("detector")
     recoBinning = detectorBinning.AddBinning("reco")
-    #recoBinning.AddAxis(ptreco_mreco_uu.GetYaxis(), False, False) # mreco
-    #recoBinning.AddAxis(ptreco_mreco_uu.GetXaxis(), False, False) # ptreco
+    # recoBinning.AddAxis(ptreco_mreco_u.GetYaxis(), False, False) # mreco
+    # recoBinning.AddAxis(ptreco_mreco_u.GetXaxis(), False, False) # ptreco
     recoBinning.AddAxis("m_{RECO}", n_mreco_bin-2, mreco_edges, False, False) # mreco
-    recoBinning.AddAxis("pt_{RECO}", n_ptreco_bin-2, ptreco_edges, False, False) # ptreco
-
-    print("Nbins ptgen ", n_ptgen_bin, " Nbins mgen", n_mgen_bin)
-    print("Bins ptgen ", ptgen_edges, " bins mgen", mgen_edges)
+    recoBinning.AddAxis("pt_{RECO}", n_ptreco_bin-1, ptreco_edges, False, False) # ptreco
+    # print("Nbins ptgen ", n_ptgen_bin, " Nbins mgen", n_mgen_bin)
+    # print("Bins ptgen ", ptgen_edges, " bins mgen", mgen_edges)
     generatorBinning = ROOT.TUnfoldBinning("generator")
     fakeBinning=generatorBinning.AddBinning("fakesBin", 1)
     genBinning = generatorBinning.AddBinning("gen")
-#    genBinning.AddAxis(ptgen_mgen_u.GetYaxis(), False, False) # mgen
-#    genBinning.AddAxis(ptgen_mgen_u.GetXaxis(), False, False) # ptgen
+    # genBinning.AddAxis(ptgen_mgen_u.GetYaxis(), False, False) # mgen
+    # genBinning.AddAxis(ptgen_mgen_u.GetXaxis(), False, False) # ptgen
     genBinning.AddAxis("m_{GEN}", n_mgen_bin-2, mgen_edges, False, False) #mgen
-    genBinning.AddAxis("pt_{GEN}", n_ptgen_bin-2, ptgen_edges, False, False) #ptgen  
-    print("Test binning for ptreco = 250, mreco = 500", recoBinning.GetGlobalBinNumber(250,500))
-  
-    # create histogram of migrations and gen hists
-    histMCGenRec_u=ROOT.TUnfoldBinning.CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec Ungroomed")
-    histMCGenRec_u_up=ROOT.TUnfoldBinning.CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec+jerUp Ungroomed")
-    histMCGenRec_u_dn=ROOT.TUnfoldBinning.CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec-jerDn Ungroomed")
-    histMCGenRec_g=ROOT.TUnfoldBinning.CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec Groomed")
-    histMCGenRec_g_up=ROOT.TUnfoldBinning.CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec+jerUp Groomed")
-    histMCGenRec_g_dn=ROOT.TUnfoldBinning.CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec-jerDn Groomed")
+    genBinning.AddAxis("pt_{GEN}", n_ptgen_bin-1, ptgen_edges, False, False) #ptgen 
+    return detectorBinning, generatorBinning, mreco_edges, ptreco_edges, mgen_edges, ptgen_edges
+
+def fillData(result, detectorBinning, mreco_edges, ptreco_edges, new=True):
     #### create data histograms
-    histDataReco_u=recoBinning.CreateHistogram("histDataReco Ungroomed")  #data values in reco binnning --> input to unfolding
-    histDataReco_g=recoBinning.CreateHistogram("histDataReco Groomed")  #data values in reco binnning --> input to unfolding
-
+    if new:
+        reco_str = "ptreco_mreco"
+        gen_str = "ptgen_mgen"
+    else:
+        reco_str = "jet_pt_mass_reco"
+        gen_str = "jet_pt_mass_reco"
+    data_pt_m_u =  result[reco_str+"_u"][{'syst':"nominal"}].project('ptreco', 'mreco').values(flow=True)
+    data_pt_m_g = result[reco_str+"_g"][{'syst':"nominal"}].project('ptreco', 'mreco').values(flow=True)
+    recoBinning = detectorBinning.FindNode("reco")
+    DataReco_u=recoBinning.CreateHistogram("histDataReco Ungroomed")  #data values in reco binnning --> input to unfolding
+    DataReco_g=recoBinning.CreateHistogram("histDataReco Groomed")  #data values in reco binnning --> input to unfolding
+    n_ptreco_bin = len(ptreco_edges)-1
+    n_mreco_bin= len(mreco_edges)-1
+    for i in range(n_ptreco_bin-1):
+        for j in range(n_mreco_bin-1):
+    	    #### fill data hist
+            recoBin=recoBinning.GetGlobalBinNumber(mreco_edges[j],ptreco_edges[i])
+            data_weight_u=data_pt_m_u[i][j]
+            DataReco_u.SetBinContent(recoBin, data_weight_u)
+            data_weight_g=data_pt_m_g[i][j]
+            DataReco_g.SetBinContent(recoBin, data_weight_g)
+            #print("Data weight ", data_weight_u, " or ", ptreco_mreco_uu.GetBinContent(i, j) , " for matrix reco bin ", recoBin)
+    return DataReco_u, DataReco_g
+def getHists(result, syst, detectorBinning, generatorBinning, new=True):
+    if new:
+        reco_str = "ptreco_mreco"
+        gen_str = "ptgen_mgen"
+    else:
+        reco_str = "jet_pt_mass_reco"
+        gen_str = "jet_pt_mass_reco"
+    hist = {}
+    ptgen_mgen_u=result[gen_str+"_u"][{'syst':syst}].project('ptgen', 'mgen').values(flow=True)
+    ptgen_mgen_g=result[gen_str+"_g"][{'syst':syst}].project('ptgen', 'mgen').values(flow=True)
+    genErr_u=result[gen_str+"_u"][{'syst':syst}].project('ptgen', 'mgen').variances(flow=True)
+    genErr_g=result[gen_str+"_g"][{'syst':syst}].project('ptgen', 'mgen').variances(flow=True)
+    #### in future datasets input for fakes and misses depends on syst as well
+    fakes_ptreco_mreco = result["fakes"][{'syst':syst}].project('ptreco', 'mreco').values(flow=True)
+    fakesErr = result["fakes"][{'syst':syst}].project('ptreco', 'mreco').variances(flow=True)
+    hist['misses_ptgen_mgen'] = uproot.pyroot.to_pyroot(uproot.writing.identify.to_writable(result["misses"][{'syst':"nominal"}]))
+    ptreco_mreco_u  = result[reco_str+"_u"][{'syst':"nominal"}].project('ptreco', 'mreco').values(flow=True)
+    ptreco_mreco_g = result[reco_str+"_g"][{'syst':"nominal"}].project('ptreco', 'mreco').values(flow=True)
+    recoErr_u=result[reco_str+"_u"][{'syst':syst}].project('ptreco', 'mreco').variances(flow=True)
+    recoErr_g=result[reco_str+"_g"][{'syst':syst}].project('ptreco', 'mreco').variances(flow=True)
+    response_matrix_u, ptreco_edges, mreco_edges, ptgen_edges, mgen_edges = result['response_matrix_u'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").to_numpy(flow=True)
+    response_matrix_g = result['response_matrix_g'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").values(flow=True)
+    respErr_u = result['response_matrix_u'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").variances(flow=True)
+    respErr_g = result['response_matrix_g'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").variances(flow=True)
+    n_ptreco_bin = len(ptreco_edges)-1
+    n_mreco_bin= len(mreco_edges)-1
+    n_ptgen_bin = len(ptgen_edges)-1
+    n_mgen_bin= len(mgen_edges)-1
+    mreco_edges = mreco_edges[1:-1]
+    ptreco_edges = ptreco_edges[:-1]
+    ptreco_edges[0] = 0.
+    mgen_edges = mgen_edges[1:-1]
+    ptgen_edges = ptgen_edges[:-1]
+    ptgen_edges[0] = 0.
+    # print( "Size of response matrix ", len(response_matrix_u.flatten()))
+    # create histogram of migrations and gen hists
+    hist['MCGenRec_u']=ROOT.TUnfoldBinning.CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec Ungroomed "+syst)
+    hist['MCGenRec_g']=ROOT.TUnfoldBinning.CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec Groomed "+syst)
+    #### get gen, reco, and fake binning
+    recoBinning = detectorBinning.FindNode("reco")
+    genBinning = generatorBinning.FindNode("gen")
+    fakeBinning = generatorBinning.FindNode("fakesBin")
     #### create MC hists for comparison
-    histMCReco_u=recoBinning.CreateHistogram("histMCReco Ungroomed") #gen values in reco binning --> htruef in Sal's example
-    histMCReco_u_up=recoBinning.CreateHistogram("histMCReco w/ unc up Ungroomed")
-    histMCReco_u_dn=recoBinning.CreateHistogram("histMCReco w/ unc dn Ungroomed")
-    histMCTruth_u=genBinning.CreateHistogram("histMCTruth Ungroomed")  #gen values in gen binning
-    histMCTruth_u_up=genBinning.CreateHistogram("histMCTruth w/ unc up Ungroomed")
-    histMCTruth_u_dn=genBinning.CreateHistogram("histMCTruth w/ unc dn Ungroomed")
-    
-    histMCReco_g=recoBinning.CreateHistogram("histMCReco Groomed") #gen values in reco binning --> htruef in Sal's example
-    histMCReco_g_up=recoBinning.CreateHistogram("histMCReco w/ unc up Groomed")
-    histMCReco_g_dn=recoBinning.CreateHistogram("histMCReco w/ unc dn Groomed")
-    histMCTruth_g=genBinning.CreateHistogram("histMCTruth Groomed")  #gen values in gen binning 
-    histMCTruth_g_up=genBinning.CreateHistogram("histMCTruth w/ unc up Groomed")
-    histMCTruth_g_dn=genBinning.CreateHistogram("histMCTruth w/ unc dn Groomed")
-
-    histMCTruth_RecoBinned_u=recoBinning.CreateHistogram("histMCTruth Reco Binned, Ungroomed") #gen values in reco binning --> htruef in Sal's example  
-    histMCTruth_RecoBinned_g=recoBinning.CreateHistogram("histMCTruth Reco Binned, Groomed") #gen values in reco binning --> htruef in Sal's example  
+    hist['MCReco_u']=recoBinning.CreateHistogram("histMCReco Ungroomed "+syst) #gen values in reco binning --> htruef in Sal's example
+    hist['MCTruth_u']=genBinning.CreateHistogram("histMCTruth Ungroomed "+syst)  #gen values in gen binning    
+    hist['MCReco_g']=recoBinning.CreateHistogram("histMCReco Groomed "+syst) #gen values in reco binning --> htruef in Sal's example
+    hist['MCTruth_g']=genBinning.CreateHistogram("histMCTruth Groomed "+syst)  #gen values in gen binning
+    # hist['MCTruth_RecoBinned_u']=recoBinning.CreateHistogram("histMCTruth Reco Binned, Ungroomed") #gen values in reco binning --> htruef in Sal's example 
+    # hist['MCTruth_RecoBinned_g']=recoBinning.CreateHistogram("histMCTruth Reco Binned, Groomed") #gen values in reco binning --> htruef in Sal's example  
     #### Loop through reco and gen bins of MC input and fill hist of migrations
     #### reco loop: i is ptreco, j is mreco
     for i in range(n_ptreco_bin-1):
         for j in range(n_mreco_bin-1):
             glob_recobin=(i)*(n_mreco_bin)+j
-            print("Bin j = " , j , " has edge mreco " , mreco_edges[j] , "and  bin i " , i , " has ptreco edge " , ptreco_edges[i])
+            # print("Bin j = " , j , " has edge mreco " , mreco_edges[j] , "and  bin i " , i , " has ptreco edge " , ptreco_edges[i])
             recoBin=recoBinning.GetGlobalBinNumber(mreco_edges[j],ptreco_edges[i])
 	    #### only fill fakes in fake genBin
-            fake_weight = fakes_ptreco_mreco.GetBinContent(i,j)
+            fake_weight = fakes_ptreco_mreco[i][j]
             #print("Fake weight ", fake_weight," for i == ",i, " and j == ",j)
             fakeBin=fakeBinning.GetStartBin()
-            histMCGenRec_u.SetBinContent(fakeBin,recoBin,fake_weight)
-            histMCGenRec_u_up.SetBinContent(fakeBin,recoBin,fake_weight)
-            histMCGenRec_u_dn.SetBinContent(fakeBin,recoBin,fake_weight)
-	    #### fill data hist
-            data_weight_u=data_pt_m_u[i][j]
-            histDataReco_u.Fill(recoBin, data_weight_u)
-            #print("Data weight ", data_weight_u, " or ", ptreco_mreco_uu.GetBinContent(i, j) , " for matrix reco bin ", recoBin)
+            hist['MCGenRec_u'].SetBinContent(fakeBin,recoBin,fake_weight)
+            hist['MCGenRec_u'].SetBinError(fakeBin,recoBin,np.sqrt(fakesErr[i][j]))
             #### fill MC reco hist for comparison of inputs
             reco_weight_u=ptreco_mreco_u[i][j]
-            histMCReco_u.Fill(recoBin, reco_weight_u)
+            hist['MCReco_u'].SetBinContent(recoBin, reco_weight_u)
+            hist['MCReco_u'].SetBinError(recoBin, np.sqrt(recoErr_u[i][j]))
             #print("Reco weight ungroomed ", reco_weight_u ," for matrix reco bin " , recoBin)
             reco_weight_g=ptreco_mreco_g[i][j]
-            histMCReco_g.Fill(recoBin, reco_weight_g)
-            #print("Reco weight groomed " , reco_weight_g , " for matrix reco bin " , recoBin)
-            histMCReco_u_up.Fill(recoBin, reco_weight_u)
-            ####  do same for up and down uncertainties for checks
-            reco_weight_g_up=ptreco_mreco_g_up[i][j]
-            histMCReco_g_up.Fill(recoBin, reco_weight_g_up)
-            reco_weight_u_dn=ptreco_mreco_u_dn[i][j]
-            histMCReco_u_dn.Fill(recoBin, reco_weight_u_dn)
-            reco_weight_g_dn=ptreco_mreco_g_dn[i][j]
-            histMCReco_g_dn.Fill(recoBin, reco_weight_g_dn)
+            hist['MCReco_g'].SetBinContent(recoBin, reco_weight_g)
+            hist['MCReco_g'].SetBinError(recoBin, np.sqrt(recoErr_g[i][j]))
+            #print("Reco weight groomed " , reco_weight_g , " for matrix reco bin " , recoBin)            
 	    #### gen loop: k is ptgen, l is mgen
             for k in range(n_ptgen_bin-1):
                 for l in range(n_mgen_bin-1):
@@ -222,94 +207,152 @@ for syst in [syst for syst in availSysts if ("Up" in syst)]:
 	            #### ONLY FILL ONCE INSIDE i,j LOOP
                     if(i==0 and j==0):
                         #### fill Gen weights
-                        #print("Bin l = ", l, " has mgen edge ", mgen_edges[l], " and bin k = ", k, " has ptgen edge ", ptgen_edges[k])
-                        truth_weight_u = ptgen_mgen_u[k][l]
-                        histMCTruth_u.Fill(genBin, truth_weight_u)
+                        # print("Bin l = ", l, " has mgen edge ", mgen_edges[l], " and bin k = ", k, " has ptgen edge ", ptgen_edges[k])
+                        truth_weight_u = ptgen_mgen_u[k][l+1]
+                        hist['MCTruth_u'].SetBinContent(genBin, truth_weight_u)
+                        hist['MCTruth_u'].SetBinError(genBin, np.sqrt(genErr_u[k][l+1]))
                         #print("Truth weight ", truth_weight_u, " for matrix gen bin ", genBin)
-                        truth_weight_g = ptgen_mgen_g[k][l]
-                        histMCTruth_g.Fill(genBin, truth_weight_g)
-                        #### do same for uncertainties                                                                                                                    
-                        truth_weight_u_up = ptgen_mgen_u_up[k][l]
-                        histMCTruth_u_up.Fill(genBin, truth_weight_u_up)
-                        truth_weight_g_up = ptgen_mgen_g_up[k][l]
-                        histMCTruth_g_up.Fill(genBin, truth_weight_g_up)
-                        truth_weight_u_dn = ptgen_mgen_u_dn[k][l]
-                        histMCTruth_u_dn.Fill(genBin, truth_weight_u_dn)
-                        truth_weight_g_dn = ptgen_mgen_g_dn[k][l]
-                        histMCTruth_g_dn.Fill(genBin, truth_weight_g_dn)
-
-                        #### Fill truth but binned in reco for comparison                                                                                                  
-                        recoBin_genObj=recoBinning.GetGlobalBinNumber(mgen_edges[l],ptgen_edges[k])                                                                     
+                        truth_weight_g = ptgen_mgen_g[k][l+1]
+                        hist['MCTruth_g'].SetBinContent(genBin, truth_weight_g)
+                        hist['MCTruth_g'].SetBinError(genBin, np.sqrt(genErr_g[k][l+1]))
+                        #### SetBinContent truth but binned in reco for comparison
+                        recoBin_genObj=recoBinning.GetGlobalBinNumber(mgen_edges[l],ptgen_edges[k])
                         #### print("With pt edge " , ptgen_edges[k] , " for k == " , k , " and m edge " , mgen_edges[l]  ," for l ==  " , l , "and reco bin " , recoBin_genObj)
-                        histMCTruth_RecoBinned_u.Fill(recoBin_genObj, truth_weight_u)
-                        histMCTruth_RecoBinned_g.Fill(recoBin_genObj, truth_weight_g)
+                        # hist['MCTruth_RecoBinned_u'].SetBinContent(recoBin_genObj, truth_weight_u)
+                        # hist['MCTruth_RecoBinned_g'].SetBinContent(recoBin_genObj, truth_weight_g)
                     #### Get global bin number and ill response matrices
-                    glob_bin = glob_recobin*((n_mgen_bin)*(n_ptgen_bin))+glob_genbin
+                    glob_bin = glob_recobin*((n_mgen_bin)*(n_ptgen_bin+1))+glob_genbin
 	            #print("Global bin ", glob_bin, " for reco bin ", glob_recobin, " and gen bin ", glob_genbin)
 	            #print("TUnfold gen bin ", genBin, " and reco bin ", recoBin, "for value", response_matrix_u[glob_bin])
+                    
 	            #### fill ungroomed resp. matrices
-                    resp_weight_u = response_matrix_u[i][j][k][l]
+                    resp_weight_u = response_matrix_u[i][j][k][l+1]
                     #resp_weight_u = response_matrix_u.flatten()[glob_bin]
-                    print("Response weight for index i ",  i, " j ", j, " k ", k, " l ", l, " in unflattened matrix ", response_matrix_u[i][j][k][l])
-                    print("and weight for global index ", glob_bin, " in flattened matrix ", response_matrix_u.flatten()[glob_bin])
-                    histMCGenRec_u.Fill(genBin,recoBin,resp_weight_u)
-                    resp_weight_u_up = response_matrix_u_up[i][j][k][l]
-                    histMCGenRec_u_up.Fill(genBin,recoBin,resp_weight_u_up)
-                    resp_weight_u_dn = response_matrix_u_dn[i][j][k][l]
-                    histMCGenRec_u_dn.Fill(genBin,recoBin,resp_weight_u_dn)
+                    # print("Response weight for index i ",  i, " j ", j, " k ", k, " l ", l, " in unflattened matrix ", response_matrix_u[i][j][k][l])
+                    # print("and weight for global index ", glob_bin, " in flattened matrix ", response_matrix_u.flatten()[glob_bin])
+                    hist['MCGenRec_u'].SetBinContent(genBin,recoBin,resp_weight_u)
+                    hist['MCGenRec_u'].SetBinError(genBin,recoBin,np.sqrt(respErr_u[i][j][k][l+1]))
                     #### fill groomed resp. matrices
-                    resp_weight_g = response_matrix_g[i][j][k][l]
-                    histMCGenRec_g.Fill(genBin,recoBin,resp_weight_g)
-                    resp_weight_g_up = response_matrix_g_up[i][j][k][l]
-                    histMCGenRec_g_up.Fill(genBin,recoBin,resp_weight_g_up)
-                    resp_weight_g_dn = response_matrix_g_dn[i][j][k][l]
-                    histMCGenRec_g_dn.Fill(genBin,recoBin,resp_weight_g_dn)
-    print("MC Reco (filled with MC gen but reco bins)")
-    histMCReco_u.Print("base")
-    print("MC Truth (filled with MC gen and gen bins)")
-    histMCTruth_u.Print("base")
-    print("Response matrix")
-    histMCGenRec_u.Print("base")
-    
-    #### check that response matrix has been filled properly
-    histMCReco_u_M=histMCGenRec_u.ProjectionY("MCReco ungroomed")
-    histMCTruth_u_M=histMCGenRec_u.ProjectionX("MCTruth ungroomed")
-    histMCReco_u_M.Print("all")
-    histMCReco_g_M=histMCGenRec_g.ProjectionY("MCReco groomed")
-    histMCTruth_g_M=histMCGenRec_g.ProjectionX("MCTruth groomed")
-    
-    plotinputsROOT(histMCGenRec_u, histMCTruth_u, histMCReco_u, groom="ungroomed", syst=syst, year=year)
-    plotinputsROOT(histMCGenRec_g, histMCTruth_g, histMCReco_g, groom="groomed", syst=syst, year=year)
-    
+                    resp_weight_g = response_matrix_g[i][j][k][l+1]
+                    hist['MCGenRec_g'].SetBinContent(genBin,recoBin,resp_weight_g)
+                    hist['MCGenRec_g'].SetBinError(genBin,recoBin,np.sqrt(respErr_g[i][j][k][l+1]))
+    # print("Response matrix")
+    # hist['MCGenRec_u'].Print("base")
+    hist['fakes_ptreco_mreco'] = fakes_ptreco_mreco
+    hist['ptreco_mreco_u'] = ptreco_mreco_u
+    hist['ptreco_mreco_g'] = ptreco_mreco_g
+    hist['ptgen_mgen_u'] = ptgen_mgen_u
+    hist['ptgen_mgen_g'] = ptgen_mgen_g
+    hist['response_matrix_u'] = response_matrix_u
+    hist['response_matrix_g'] = response_matrix_g
+    del fakes_ptreco_mreco, ptreco_mreco_u, ptreco_mreco_g, ptgen_mgen_u, ptgen_mgen_g, response_matrix_u, response_matrix_g
+    return hist
+#### open files
+if __name__ == "__main__":
+    fname = "coffeaOutput/dijetHists_wXSscaling_QCDsim_pt200.0_rapidity2.5jesjecL1PU2016.pkl"
+    with open(fname, "rb") as f:
+        result = pickle.load( f )
+    fname = "coffeaOutput/dijetHists_JetHT_pt200.0_rapidity2.5jesjecL1PU2016.pkl"
+    with open(fname, "rb") as f:
+        result_data = pickle.load( f )
+    if "dijet" in fname:
+        os_path = "plots/unfolding/dijet/"
+    else:
+        os_path = "plots/unfolding/trijet/"
+    checkdir(os_path)
+    year = fname[-8:-4]
+    print(year)
+    #### get 
+    axis_names = [ax.name for ax in result['jet_pt_mass_reco_u'].axes]
+    print("avail hists ", result.keys())
+    print(axis_names)
+    cats = [cat for cat in result['jet_pt_mass_reco_u'].project('ptreco', 'mreco').axes[0]]
+    availSysts = [ax for ax in result['jet_pt_mass_reco_u'].project("syst").axes[0]]
+    print("Available systs ", availSysts)
+    print("Non nominal systs ", [syst for syst in availSysts if ("Up" in syst)])
+    detectorBinning, generatorBinning, mreco_edges, ptreco_edges, mgen_edges, ptgen_edges = setupBinning(result)
+    #### for data get results once
+    DataReco_u, DataReco_g = fillData(result_data, detectorBinning, mreco_edges, ptreco_edges)
+    syst_hist_dict = {}
+    #hist = getHists(result, "nominal", detectorBinning, generatorBinning)
+    #syst_hist_dict["nominal"]=hist
+    #for syst in [syst for syst in availSysts if ("Up" in syst)]:
+    for syst in ["nominal"]:
+        ROOT.TH1.SetDefaultSumw2(False)
+        #syst = syst[:-2]
+        hist = getHists(result, syst, detectorBinning, generatorBinning)
+        syst_hist_dict[syst]=hist
+        print("Building respone matrices for systematic ", syst)
+        #### check that response matrix has been filled properly
+        MCReco_u_M=hist['MCGenRec_u'].ProjectionY("MCReco ungroomed")
+        MCTruth_u_M=hist['MCGenRec_u'].ProjectionX("MCTruth ungroomed")
+        #MCReco_u_M.Print("all")
+        MCReco_g_M=hist['MCGenRec_g'].ProjectionY("MCReco groomed")
+        MCTruth_g_M=hist['MCGenRec_g'].ProjectionX("MCTruth groomed")
+        plotinputsROOT(hist['MCGenRec_u'], hist['MCTruth_u'], hist['MCReco_u'], groom="ungroomed", syst=syst, year=year)
+        plotinputsROOT(hist['MCGenRec_g'], hist['MCTruth_g'], hist['MCReco_g'], groom="groomed", syst=syst, year=year)
+        hist['MCTruth_u'].Print("all")
+        #### plot inputs and check that they match matrix
+        for ipt in range(len(ptgen_edges)-1): 
+            ci = ROOT.TCanvas("c" + str(ipt), "c" + str(ipt))
+            ci.cd()
+            hcopy = ROOT.TH1D("inputGenPt" + str(ipt), "Input Gen pT " + str(ptgen_edges[ipt]) +" - " +str(ptgen_edges[ipt+1]), len(mgen_edges)-1, mgen_edges )
+            hcopy_M = ROOT.TH1D("inputMATRIXGenPt" + str(ipt), "InputMATRIX Gen pT " + str(ptgen_edges[ipt]) +" - " +str(ptgen_edges[ipt+1]), len(mgen_edges)-1, mgen_edges )
+            # print("Length of mgen edges: ", len(mgen_edges), "mgen edges", mgen_edges)
+            #        hcopy.Print("all")
+            for im in range(len(mgen_edges)):
+                # print("Bin value: ", hist['MCTruth_u'].GetBinContent(im+1+ipt*(len(mgen_edges)-1)), " for pt bin ", ipt, " and mass bin ", im, " ", mgen_edges[im])
+                # print("Error value: ", np.sqrt(hist['MCTruth_u'].GetBinError(im+1+ipt*(len(mgen_edges)-1))), " from truth bin ", im+2+ipt*(len(mgen_edges)-1))
+                hcopy.SetBinContent(im, hist['MCTruth_u'].GetBinContent(im+1+ipt*(len(mgen_edges)-1))) 
+                hcopy.SetBinError(im, hist['MCTruth_u'].GetBinError(im+1 + ipt*(len(mgen_edges)-1)))
+                # hcopy_M.SetBinContent(im, MCTruth_u_M.GetBinContent(im+1+ipt*(len(mgen_edges)-1)))
+                # hcopy_M.SetBinError(im, np.sqrt(MCTruth_u_M.GetBinError(im+1 + ipt*(len(mgen_edges)-1))))
+                # hcopy.SetMarkerStyle(24)
+            hcopy.SetLineColor(ROOT.kBlue)
+            hcopy.SetMarkerColor(ROOT.kBlue)
+            hcopy.GetXaxis().SetTitle("Gen Mass TeV")
+            hcopy.Draw()
+            # hcopy_M.SetMarkerStyle(21)
+            # hcopy_M.SetLineColor(ROOT.kRed)
+            # hcopy_M.SetMarkerColor(ROOT.kRed)
+            # hcopy_M.GetXaxis().SetTitle("Gen Mass TeV")
+            # hcopy_M.Draw("SAME")
+            leg1 = ROOT.TLegend(0.7, 0.7, 0.86, 0.86)
+            # leg1.AddEntry(hcopy_M, "MC Gen from M", "p")
+            leg1.AddEntry(hcopy, "MC Gen", "p")
+            leg1.Draw()
+            #ci.Draw()
+            hist[hcopy.GetName()]=hcopy
+            ci.SaveAs(os_path+"MCInput_ungroomed_"+syst+'_pt'+str(ptgen_edges[ipt])+"_"+year+".png")
+            ci.Close()
+            #### add resp matrices and other hists to dictionary for final result
+            syst_hist_dict[syst]=hist
     #### convert from pyroot to hist for easy plotting
-    resp_u=uproot.pyroot.from_pyroot(histMCGenRec_u)
-    print(type(resp_u), resp_u.title)
-    print("Hist object: ", resp_u.to_hist())
-    print("Axes names ", [ax.name for ax in resp_u.to_hist().axes])
-    print("Gen bins: ", [bin for bin in resp_u.to_hist().project("xaxis").axes[0]])
-    print("Reco bins: ", [bin for bin in resp_u.to_hist().project("yaxis").axes[0]])
-    resp_g = uproot.pyroot.from_pyroot(histMCGenRec_g).to_hist()
-    mctruth_u= uproot.pyroot.from_pyroot(histMCTruth_u).to_hist()
-    mctruth_g= uproot.pyroot.from_pyroot(histMCTruth_g).to_hist()
-    mcreco_u= uproot.pyroot.from_pyroot(histMCReco_u).to_hist()
-    mcreco_g = uproot.pyroot.from_pyroot(histMCReco_g).to_hist()
-    ugly_axes = [ax.name for ax in resp_u.to_hist().axes]
-    fig, ax = plt.subplots()
-    hep.hist2dplot(resp_g, ax=ax)
-    plt.savefig(os_path+"/histrespmatrix_g"+syst+".png")
-    fig, ax = plt.subplots()
-    hep.histplot(mctruth_g, ax=ax, label="MC truth")
-    hep.histplot(resp_g.project('xaxis'), ax=ax, label="MC truth from Matrix")
-    leg = ax.legend(loc='best', labelspacing=0.25)
-    leg.set_visible(True)
-    plt.savefig(os_path+"/histmcinput_truth_g"+syst+year+".png")
-    fig, ax = plt.subplots()
-    hep.histplot(mcreco_g, ax=ax, label="MC reco")
-    hep.histplot(resp_g.project('yaxis'), ax=ax, label="MC reco from Matrix")
-    leg = ax.legend(loc='best', labelspacing=0.25)
-    leg.set_visible(True)
-    plt.savefig(os_path+"/histmcinput_reco_g"+syst+year+".png")
-    plt.show()
-    #### plot same checks for each bin
-    for i in range(n_ptreco_bin):
-        print("IDK YET")
+    # resp_u=uproot.pyroot.from_pyroot(histMCGenRec_u)
+    # print(type(resp_u), resp_u.title)
+    # print("Hist object: ", resp_u.to_hist())
+    # print("Axes names ", [ax.name for ax in resp_u.to_hist().axes])
+    # print("Gen bins: ", [bin for bin in resp_u.to_hist().project("xaxis").axes[0]])
+    # print("Reco bins: ", [bin for bin in resp_u.to_hist().project("yaxis").axes[0]])
+    # resp_g = uproot.pyroot.from_pyroot(histMCGenRec_g).to_hist()
+    # mctruth_u= uproot.pyroot.from_pyroot(histMCTruth_u).to_hist()
+    # mctruth_g= uproot.pyroot.from_pyroot(histMCTruth_g).to_hist()
+    # mcreco_u= uproot.pyroot.from_pyroot(histMCReco_u).to_hist()
+    # mcreco_g = uproot.pyroot.from_pyroot(histMCReco_g).to_hist()
+    # ugly_axes = [ax.name for ax in resp_u.to_hist().axes]
+    # fig, ax = plt.subplots()
+    # hep.hist2dplot(resp_g, ax=ax)
+    # plt.savefig(os_path+"/histrespmatrix_g"+syst+".png")
+    # fig, ax = plt.subplots()
+    # hep.histplot(mctruth_g, ax=ax, label="MC truth")
+    # hep.histplot(resp_g.project('xaxis'), ax=ax, label="MC truth from Matrix")
+    # leg = ax.legend(loc='best', labelspacing=0.25)
+    # leg.set_visible(True)
+    # plt.savefig(os_path+"/histmcinput_truth_g"+syst+year+".png")
+    # fig, ax = plt.subplots()
+    # hep.histplot(mcreco_g, ax=ax, label="MC reco")
+    # hep.histplot(resp_g.project('yaxis'), ax=ax, label="MC reco from Matrix")
+    # leg = ax.legend(loc='best', labelspacing=0.25)
+    # leg.set_visible(True)
+    # plt.savefig(os_path+"/histmcinput_reco_g"+syst+year+".png")
+    # plt.show()
