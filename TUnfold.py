@@ -67,6 +67,111 @@ def plotinputsROOT(matrix, truth, reco, groom="", syst="", year="", ospath=''):
             c1.Draw()
             c1.SaveAs(ospath+"MCInput_"+groom+"_"+syst+"flatmatrix"+year+".png")
             c1.Close()
+def CompareCoffeaROOT(result, syst_hist_dict, os_path, groomed=False, syst="nominal"):
+    if groomed:
+        end = "_g"
+    else:
+        end = "_u"
+    m_coffea = result["response_matrix"+end][{'syst':syst}]
+    
+    h_coffea = result["ptreco_mreco"+end][{'syst':syst}]
+    htrue_coffea = result["ptgen_mgen"+end][{'syst':syst}]
+    
+    h_root = syst_hist_dict[syst]["MCReco"+end]
+    htrue_root = syst_hist_dict[syst]["MCTruth"+end]
+    
+    h_m_root = syst_hist_dict[syst]['MCGenRec'+end].ProjectionY("MCReco")
+    htrue_m_root = syst_hist_dict[syst]['MCGenRec'+end].ProjectionX("MCTruth")
+    
+    ptreco_edges = [bin[0] for bin in result["ptreco_mreco"+end].project('ptreco').axes[0]] + [result["ptreco_mreco"+end].project('ptreco').axes[0][-1][1]]
+    ptgen_edges = [bin[0] for bin in result["ptgen_mgen"+end].project('ptgen').axes[0]] + [result["ptgen_mgen"+end].project('ptgen').axes[0][-1][1]]
+    mreco_edges = [bin[0] for bin in result["ptreco_mreco"+end].project('mreco').axes[0]] + [result["ptreco_mreco"+end].project('mreco').axes[0][-1][1]]
+    mgen_edges = [bin[0] for bin in result["ptgen_mgen"+end].project('mgen').axes[0]]+ [result["ptgen_mgen"+end].project('mgen').axes[0][-1][1]]
+    for ipt in range(len(ptreco_edges)-1):
+        fig, (ax, rax) = plt.subplots(
+            nrows=2,
+            ncols=1,
+            figsize=(7,7),
+            gridspec_kw={"height_ratios": (3, 1)},
+            sharex=True)
+        root_reco_vals = np.zeros(len(mreco_edges)-1)
+        root_m_reco_vals = np.zeros(len(mreco_edges)-1)
+        root_reco_errs = np.zeros(len(mreco_edges)-1)
+        root_m_reco_errs = np.zeros(len(mreco_edges)-1)
+        for im in range(len(mreco_edges)-1):
+            root_reco_vals[im] = h_root.GetBinContent(im+2+(ipt+1)*(len(mreco_edges)-1))
+            root_m_reco_vals[im] = h_m_root.GetBinContent(im+2+(ipt+1)*(len(mreco_edges)-1))
+            root_reco_errs[im] = h_root.GetBinError(im+2+(ipt+1)*(len(mreco_edges)-1))
+            root_m_reco_errs[im] = h_m_root.GetBinError(im+2+(ipt+1)*(len(mreco_edges)-1))
+        ratio_vals = np.divide(m_coffea[{'ptreco':ipt}].project('mreco').values(), root_m_reco_vals,
+                out=np.empty(np.array(root_m_reco_vals.shape)).fill(np.nan),
+                where=root_m_reco_vals!= 0)
+        ratio_errs = np.divide(m_coffea[{'ptreco':ipt}].project('mreco').variances()**0.5, root_m_reco_vals,
+                out=np.empty(np.array(root_m_reco_vals.shape)).fill(np.nan),
+                where=root_m_reco_vals!= 0)
+        hep.histplot(h_coffea[{'ptreco':ipt}].project('mreco'), stack=False, histtype='errorbar',
+                         ax=ax, density=False, marker =["o"], color = 'blue', binwnorm=True,
+                         label=['Coffea hist ' + str(ptreco_edges[ipt])])
+        hep.histplot(root_reco_vals, mreco_edges, stack=False, histtype='errorbar', yerr= root_reco_errs,
+                         ax=ax, density=False, marker =["*"], color = 'green', binwnorm=True,
+                         label=['Root hist ' + str(ptreco_edges[ipt])])
+        hep.histplot(m_coffea[{'ptreco':ipt}].project('mreco'), stack=False, histtype='errorbar',
+                         ax=ax, density=False, marker =["."], color = 'red', binwnorm=True,
+                         label=['Coffea matrix ' + str(ptreco_edges[ipt])])
+        hep.histplot(root_m_reco_vals, mreco_edges, stack=False, histtype='step', yerr= root_m_reco_errs,
+                         ax=ax, density=False, color = 'magenta', binwnorm=True,
+                         label=['Root hist ' + str(ptreco_edges[ipt])])
+        hep.histplot(ratio_vals,mreco_edges, stack=False, histtype='errorbar',yerr=ratio_errs,
+                         ax=rax, density=False, marker =["."], color = 'red',
+                         label=['Coffea/Root matrix ' + str(ptreco_edges[ipt])])
+        rax.set_ylabel("Coffea/Root")
+        ax.set_ylabel("Events/Bin Width (Gev^-1)")
+        leg = ax.legend(loc='best', labelspacing=0.25)
+        leg.set_visible(True)
+        fig.savefig(os_path+"CoffeaROOT_reco_"+syst+'_pt'+str(ptreco_edges[ipt])+end+".png")
+    for ipt in range(len(ptgen_edges)-1):
+        fig, (ax, rax) = plt.subplots(
+            nrows=2,
+            ncols=1,
+            figsize=(7,7),
+            gridspec_kw={"height_ratios": (3, 1)},
+            sharex=True)
+        root_gen_vals = np.zeros(len(mgen_edges)-1)
+        root_m_gen_vals = np.zeros(len(mgen_edges)-1)
+        root_gen_errs = np.zeros(len(mgen_edges)-1)
+        root_m_gen_errs = np.zeros(len(mgen_edges)-1)
+        for im in range(len(mgen_edges)-1):
+            root_gen_vals[im] = htrue_root.GetBinContent(im+2+(ipt+1)*(len(mgen_edges)-1))
+            root_m_gen_vals[im] = htrue_m_root.GetBinContent(im+2+(ipt+1)*(len(mgen_edges)-1))
+            root_gen_errs[im] = htrue_root.GetBinError(im+2+(ipt+1)*(len(mgen_edges)-1))
+            root_m_gen_errs[im] = htrue_m_root.GetBinError(im+2+(ipt+1)*(len(mgen_edges)-1))
+        ratio_vals = np.divide(m_coffea[{'ptgen':ipt}].project('mgen').values(), root_m_gen_vals,
+                out=np.empty(np.array(root_m_gen_vals.shape)).fill(np.nan),
+                where=root_m_gen_vals!= 0)
+        ratio_errs = np.divide(m_coffea[{'ptgen':ipt}].project('mgen').variances()**0.5, root_m_gen_vals,
+                out=np.empty(np.array(root_m_gen_vals.shape)).fill(np.nan),
+                where=root_m_gen_vals!= 0)
+        hep.histplot(htrue_coffea[{'ptgen':ipt}].project('mgen'), stack=False, histtype='errorbar',
+                         ax=ax, density=False, marker =["o"], color = 'blue', binwnorm=True,
+                         label=['Coffea hist ' + str(ptgen_edges[ipt])])
+        hep.histplot(root_gen_vals, mgen_edges, stack=False, histtype='errorbar', yerr= root_gen_errs,
+                         ax=ax, density=False, marker =["*"], color = 'green', binwnorm=True,
+                         label=['Root hist ' + str(ptgen_edges[ipt])])
+        hep.histplot(m_coffea[{'ptgen':ipt}].project('mgen'), stack=False, histtype='errorbar',
+                         ax=ax, density=False, marker =["."], color = 'red', binwnorm=True,
+                         label=['Coffea matrix ' + str(ptgen_edges[ipt])])
+        hep.histplot(root_m_gen_vals, mgen_edges, stack=False, histtype='step', yerr= root_m_gen_errs,
+                         ax=ax, density=False, color = 'magenta', binwnorm=True,
+                         label=['Root hist ' + str(ptgen_edges[ipt])])
+        hep.histplot(ratio_vals,mgen_edges, stack=False, histtype='errorbar',yerr=ratio_errs,
+                         ax=rax, density=False, marker =["."], color = 'red',
+                         label=['Coffea/Root matrix ' + str(ptreco_edges[ipt])])
+        rax.set_ylabel("Cfea/ROOT")
+        ax.set_ylabel("Events/Bin Width (Gev^-1)")
+        leg = ax.legend(loc='best', labelspacing=0.25)
+        leg.set_visible(True)
+        fig.savefig(os_path+"CoffeaROOT_GEN_"+syst+'_pt'+str(ptgen_edges[ipt])+end+".png")
+#### functions for setting up response matrix
 def setupBinning(result):
     binning_dict = {}
     response_matrix_u, ptreco_edges, mreco_edges, ptgen_edges, mgen_edges = result['response_matrix_u'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").to_numpy(flow=True)
@@ -133,24 +238,24 @@ def getHists(result, syst, detectorBinning, generatorBinning, new=True):
         gen_str = "ptgen_mgen"
     else:
         reco_str = "jet_pt_mass_reco"
-        gen_str = "jet_pt_mass_reco"
+        gen_str = "jet_pt_mass_gen"
     hist = {}
     ptgen_mgen_u=result[gen_str+"_u"][{'syst':syst}].project('ptgen', 'mgen').values(flow=True)
     ptgen_mgen_g=result[gen_str+"_g"][{'syst':syst}].project('ptgen', 'mgen').values(flow=True)
-    genErr_u=result[gen_str+"_u"][{'syst':syst}].project('ptgen', 'mgen').variances(flow=True)
-    genErr_g=result[gen_str+"_g"][{'syst':syst}].project('ptgen', 'mgen').variances(flow=True)
+    genErr_u=np.sqrt(result[gen_str+"_u"][{'syst':syst}].project('ptgen', 'mgen').variances(flow=True))
+    genErr_g=np.sqrt(result[gen_str+"_g"][{'syst':syst}].project('ptgen', 'mgen').variances(flow=True))
     #### in future datasets input for fakes and misses depends on syst as well
     fakes_ptreco_mreco = result["fakes"][{'syst':syst}].project('ptreco', 'mreco').values(flow=True)
-    fakesErr = result["fakes"][{'syst':syst}].project('ptreco', 'mreco').variances(flow=True)
+    fakesErr = np.sqrt(result["fakes"][{'syst':syst}].project('ptreco', 'mreco').variances(flow=True))
     hist['misses_ptgen_mgen'] = uproot.pyroot.to_pyroot(uproot.writing.identify.to_writable(result["misses"][{'syst':"nominal"}]))
-    ptreco_mreco_u  = result[reco_str+"_u"][{'syst':"nominal"}].project('ptreco', 'mreco').values(flow=True)
-    ptreco_mreco_g = result[reco_str+"_g"][{'syst':"nominal"}].project('ptreco', 'mreco').values(flow=True)
-    recoErr_u=result[reco_str+"_u"][{'syst':syst}].project('ptreco', 'mreco').variances(flow=True)
-    recoErr_g=result[reco_str+"_g"][{'syst':syst}].project('ptreco', 'mreco').variances(flow=True)
-    response_matrix_u, ptreco_edges, mreco_edges, ptgen_edges, mgen_edges = result['response_matrix_u'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").to_numpy(flow=True)
-    response_matrix_g = result['response_matrix_g'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").values(flow=True)
-    respErr_u = result['response_matrix_u'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").variances(flow=True)
-    respErr_g = result['response_matrix_g'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").variances(flow=True)
+    ptreco_mreco_u  = result[reco_str+"_u"][{'syst':syst}].project('ptreco', 'mreco').values(flow=True)
+    ptreco_mreco_g = result[reco_str+"_g"][{'syst':syst}].project('ptreco', 'mreco').values(flow=True)
+    recoErr_u=np.sqrt(result[reco_str+"_u"][{'syst':syst}].project('ptreco', 'mreco').variances(flow=True))
+    recoErr_g=np.sqrt(result[reco_str+"_g"][{'syst':syst}].project('ptreco', 'mreco').variances(flow=True))
+    response_matrix_u, ptreco_edges, mreco_edges, ptgen_edges, mgen_edges = result['response_matrix_u'][{'syst':syst}].project("ptreco", "mreco", "ptgen", "mgen").to_numpy(flow=True)
+    response_matrix_g = result['response_matrix_g'][{'syst':syst}].project("ptreco", "mreco", "ptgen", "mgen").values(flow=True)
+    respErr_u = np.sqrt(result['response_matrix_u'][{'syst':syst}].project("ptreco", "mreco", "ptgen", "mgen").variances(flow=True))
+    respErr_g = np.sqrt(result['response_matrix_g'][{'syst':syst}].project("ptreco", "mreco", "ptgen", "mgen").variances(flow=True))
     n_ptreco_bin = len(ptreco_edges)-1
     n_mreco_bin= len(mreco_edges)-1
     n_ptgen_bin = len(ptgen_edges)-1
@@ -188,15 +293,15 @@ def getHists(result, syst, detectorBinning, generatorBinning, new=True):
             #print("Fake weight ", fake_weight," for i == ",i, " and j == ",j)
             fakeBin=fakeBinning.GetStartBin()
             hist['MCGenRec_u'].SetBinContent(fakeBin,recoBin,fake_weight)
-            hist['MCGenRec_u'].SetBinError(fakeBin,recoBin,np.sqrt(fakesErr[i][j]))
+            hist['MCGenRec_u'].SetBinError(fakeBin,recoBin,fakesErr[i][j])
             #### fill MC reco hist for comparison of inputs
             reco_weight_u=ptreco_mreco_u[i][j]
             hist['MCReco_u'].SetBinContent(recoBin, reco_weight_u)
-            hist['MCReco_u'].SetBinError(recoBin, np.sqrt(recoErr_u[i][j]))
+            hist['MCReco_u'].SetBinError(recoBin, recoErr_u[i][j])
             #print("Reco weight ungroomed ", reco_weight_u ," for matrix reco bin " , recoBin)
             reco_weight_g=ptreco_mreco_g[i][j]
             hist['MCReco_g'].SetBinContent(recoBin, reco_weight_g)
-            hist['MCReco_g'].SetBinError(recoBin, np.sqrt(recoErr_g[i][j]))
+            hist['MCReco_g'].SetBinError(recoBin, recoErr_g[i][j])
             #print("Reco weight groomed " , reco_weight_g , " for matrix reco bin " , recoBin)            
 	    #### gen loop: k is ptgen, l is mgen
             for k in range(n_ptgen_bin-1):
@@ -210,11 +315,11 @@ def getHists(result, syst, detectorBinning, generatorBinning, new=True):
                         # print("Bin l = ", l, " has mgen edge ", mgen_edges[l], " and bin k = ", k, " has ptgen edge ", ptgen_edges[k])
                         truth_weight_u = ptgen_mgen_u[k][l+1]
                         hist['MCTruth_u'].SetBinContent(genBin, truth_weight_u)
-                        hist['MCTruth_u'].SetBinError(genBin, np.sqrt(genErr_u[k][l+1]))
+                        hist['MCTruth_u'].SetBinError(genBin, genErr_u[k][l+1])
                         #print("Truth weight ", truth_weight_u, " for matrix gen bin ", genBin)
                         truth_weight_g = ptgen_mgen_g[k][l+1]
                         hist['MCTruth_g'].SetBinContent(genBin, truth_weight_g)
-                        hist['MCTruth_g'].SetBinError(genBin, np.sqrt(genErr_g[k][l+1]))
+                        hist['MCTruth_g'].SetBinError(genBin, genErr_g[k][l+1])
                         #### SetBinContent truth but binned in reco for comparison
                         recoBin_genObj=recoBinning.GetGlobalBinNumber(mgen_edges[l],ptgen_edges[k])
                         #### print("With pt edge " , ptgen_edges[k] , " for k == " , k , " and m edge " , mgen_edges[l]  ," for l ==  " , l , "and reco bin " , recoBin_genObj)
@@ -231,11 +336,11 @@ def getHists(result, syst, detectorBinning, generatorBinning, new=True):
                     # print("Response weight for index i ",  i, " j ", j, " k ", k, " l ", l, " in unflattened matrix ", response_matrix_u[i][j][k][l])
                     # print("and weight for global index ", glob_bin, " in flattened matrix ", response_matrix_u.flatten()[glob_bin])
                     hist['MCGenRec_u'].SetBinContent(genBin,recoBin,resp_weight_u)
-                    hist['MCGenRec_u'].SetBinError(genBin,recoBin,np.sqrt(respErr_u[i][j][k][l+1]))
+                    hist['MCGenRec_u'].SetBinError(genBin,recoBin,respErr_u[i][j][k][l+1])
                     #### fill groomed resp. matrices
                     resp_weight_g = response_matrix_g[i][j][k][l+1]
                     hist['MCGenRec_g'].SetBinContent(genBin,recoBin,resp_weight_g)
-                    hist['MCGenRec_g'].SetBinError(genBin,recoBin,np.sqrt(respErr_g[i][j][k][l+1]))
+                    hist['MCGenRec_g'].SetBinError(genBin,recoBin,respErr_g[i][j][k][l+1])
     # print("Response matrix")
     # hist['MCGenRec_u'].Print("base")
     hist['fakes_ptreco_mreco'] = fakes_ptreco_mreco
