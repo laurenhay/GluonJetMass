@@ -22,15 +22,16 @@ environmentGroup.add_argument('--casa', action='store_true', help='Use Coffea-Ca
 environmentGroup.add_argument('--lpc', action='store_true', help='Use CMSLPC redirector: root://cmsxrootd.fnal.gov/')
 environmentGroup.add_argument('--winterfell', action='store_true', help='Get available files from UB Winterfell /mnt/data/cms')
 
-parser.add_argument('--btag', choices=['bbloose', 'bloose', 'bbmed', 'bmed', 'None'], default="bloose") 
+parser.add_argument('--btag', choices=['bbloose', 'bloose', 'bbmed', 'bmed', 'None'], default="None") 
 parser.add_argument('--year', choices=['2016', '2017', '2018', '2016APV', 'None'], default="None", help="Year to run on")
-parser.add_argument('--data', action='store_true', help="Run on data") 
+parser.add_argument('--data', action='store_true') 
 parser.add_argument('--dask', action='store_true', help='Run on dask')
 parser.add_argument('--testing', action='store_true', help='Testing; run on only a subset of data')
 parser.add_argument('--verbose', type=bool, help='Have processor output status; set false if making log files', default='True')
 parser.add_argument('--allUncertaintySources', action='store_true', help='Run processor for each unc. source separately')
 parser.add_argument('--jetSyst', default=['nominal', 'jer'], nargs='+')
 parser.add_argument('--syst', default=['PUSF', 'L1PreFiringWeight'], nargs='+')
+parser.add_argument('--datasetRange', default=None, help="Run on subset of available datasets")
 arg = parser.parse_args()
 
 environments = [arg.casa, arg.lpc, arg.winterfell]
@@ -41,15 +42,17 @@ if not np.any(environments): #if user forgets to assign something here
 
 #### WE'RE MISSING 2016B ver2 -- AK8 PF HLT is missing need to use AK4 trigger isntead
 ### Run coffea processor and make plots
-def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, syst=arg.syst):
+def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, syst=arg.syst, range = arg.datasetRange):
     processor = makeTrijetHists(data = arg.data, btag = arg.btag, jet_systematics = jet_syst, systematics = syst)
     datastring = "JetHT" if processor.do_gen == False else "QCDsim"
     if processor.do_gen==True and arg.winterfell:
         filename = "QCD_flat_files.json"
     elif processor.do_gen==True:
-        filename = "fileset_QCD.json"
+        # filename = "fileset_QCD.json"
+        filename = "fileset_QCD_wRedirs.json"
     else:
-        filename = "datasets_UL_NANOAOD.json"
+        #filename = "datasets_UL_NANOAOD.json"
+        filename = "fileset_JetHT_wRedirs.json"
     if year == 2016 or year == 2017 or year == 2018:
         year_str = str(year)
     elif year == "2016" or year == "2016APV" or year == "2017" or year == "2018":
@@ -58,27 +61,31 @@ def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=a
         year_str = "All"
 
     if arg.testing and not arg.data:
-        fname = 'coffeaOutput/trijetHistsTest_wXSscaling_{}_pt{}_rapidity{}_{}{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, processor.btag, jet_syst[0],year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest_wXSscaling_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0],year_str)
     elif arg.testing and arg.data:
-        fname = 'coffeaOutput/trijetHistsTest{}_pt{}_rapidity{}_{}{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, processor.btag, jet_syst[0],year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut,jet_syst[0],year_str)
     elif not arg.testing and arg.data:
-        fname = 'coffeaOutput/trijetHists_{}_pt{}_rappidity{}_{}{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, processor.btag,jet_syst[0], year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut,jet_syst[0], year_str)
     else:
-        fname = 'coffeaOutput/trijetHists_wXSscaling_{}_pt{}rapidity{}_{}{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, processor.btag, jet_syst[0],year_str)
-
-    result = runCoffeaJob(processor, jsonFile = filename, casa = casa, winterfell = winterfell, testing = testing, dask = dask, data = not processor.do_gen, verbose = verbose)
+        fname = 'coffeaOutput/trijet/trijetHists_wXSscaling_{}_pt{}rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut,jet_syst[0],year_str)
+    if range!=None:
+        print("Range input: ", range)
+        fname=fname[:-4]+"_"+range[0]+"_"+range[1]+".pkl"
+        print("New ranged fname ", fname)
+        result = runCoffeaJob(processor, jsonFile = filename, casa = casa, winterfell = winterfell, testing = testing, dask = dask, data = not processor.do_gen, verbose = verbose, year=year, datasetRange = range)
+    else:
+        result = runCoffeaJob(processor, jsonFile = filename, casa = casa, winterfell = winterfell, testing = testing, dask = dask, data = not processor.do_gen, verbose = verbose, year=year)
     with open(fname, "wb") as f:
         pickle.dump( result, f)
 
 if arg.allUncertaintySources:
-    unc_srcs = ["nominal", "jer", "AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF",
-"PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample",
-"RelativeStatEC","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
-    for src in unc_srcs:
-        print("Running processor for ", src)
-        runTrijetAnalysis(jet_syst=[src])
+    #"nominal","jer","RelativeStatEC","RelativeStatFSR","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample",
+    unc_srcs =["RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
 else:
-    runTrijetAnalysis()
+    unc_srcs = arg.jetSyst
+for src in unc_srcs:
+    print("Running processor for ", src)
+    runTrijetAnalysis(jet_syst=[src])
 
 #Make plots
 import matplotlib.pyplot as plt

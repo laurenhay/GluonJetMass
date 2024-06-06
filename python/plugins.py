@@ -19,13 +19,14 @@ def checkdir(directory):
 
 
 #reads in files and adds redirector, can specify year, default is all years
-def handleData(jsonFile, redirector, year = '', testing = True, data = False):
+def handleData(jsonFile, redirector, year = '', testing = True, data = False, chunks = None):
     eras_data = {'2016':   '-UL2016',
                  '2016APV':'HIPM_UL2016', 
                  '2017':   'UL2017',
                  '2018':   'UL2018'
                     }
-    eras_mc = {'2016':'UL16', 
+    eras_mc = {'2016APV':'UL16NanoAODAPV', 
+               '2016':'UL16NanoAODv9', 
                '2017':'UL17NanoAODv9', 
                '2018':'UL18NanoAODv9'
               }
@@ -46,9 +47,8 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
             jsonFile = "QCD_flat_files.json"
             inputs = 'QCD_flat'
         else:
-            jsonFile = "fileset_QCD.json"
             inputs = 'QCD_binned'
-        if year == '2016' or year == '2017' or year == '2018':
+        if year == '2016' or year == '2017' or year == '2018' or year == '2016APV':
             qualifiers.append(eras_mc[year])
         elif year == 2016 or year == 2017 or year == 2018:
             qualifiers.append(eras_mc[str(year)])
@@ -60,7 +60,6 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
     for key in df[inputs].keys():
         for qualifier in qualifiers:
             if qualifier in key:
-                # print("dataset = ", key)
                 if testing:
                     dict[key] = [redirector +  df[inputs][key][0]]
                 else:
@@ -70,7 +69,7 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False):
 #initiate dask client and run coffea job
 from dask.distributed import Client
 
-def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing = False, year = '', data = False, winterfell = False, verbose = True):
+def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing = False, year = '', data = False, winterfell = False, verbose = True, datasetRange = None):
     #default is to run locally
     tstart = time.time()
     executor = processor.futures_executor
@@ -79,18 +78,28 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     elif winterfell:
         #### only data (not mc/sim) is on winterfell atm -- make sure using data json file and arguments
         redirector = '/mnt/data/cms'
+    # elif data and not winterfell and not casa:
+    #     redirector = 'root://cmsxrootd.fnal.gov/'
+        #### default redirector
     else:
-        redirector = 'root://cmsxrootd.fnal.gov/'
+        redirector = ''
+        #### Nebraska redirector
         # redirector= 'root://xrootd-local.unl.edu:1094/'
-        #redirector='root://cmseos.fnal.gov:1094/'
+        #### MIT redirector
+        # redirecotr='root://xrootd.cmsaf.mit.edu:1094/'
+        # redirector='root://cmseos.fnal.gov:1094/'
         # redirector='root://cmseos.fnal.gov/'
         # redirector='root://cmsxrootd.hep.wisc.edu/'
-    exe_args = {"schema": NanoAODSchema, 'skipbadfiles': True,}
+    exe_args = {"schema": NanoAODSchema, 'skipbadfiles': False,}
     samples = handleData(jsonFile, redirector, year = year, testing = testing, data = data)
+    if datasetRange!=None:
+        print("Total avail datasets ", len(samples.keys()))
+        samples = {key:samples[key] for key in list(samples.keys())[datasetRange[0]:datasetRange[1]]}
     #single files for testing
     # samples = {'/JetHT/Run2016E-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD': [redirector+'/store/data/Run2016E/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/40000/0402FC45-D69F-BE47-A2BF-10394485E06E.root']}
-    # samples = {'/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/RunIISummer20UL17NanoAODv9-106X_mc2017_realistic_v9-v1/NANOAODSIM': [redirector+'/store/mc/RunIISummer20UL17NanoAODv9/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_mc2017_realistic_v9-v1/270000/00DD1153-F006-3446-ABBC-7CA23A020566.root']}
-#    print("Samples = ", samples, " executor = ", executor)
+    # samples = {'/QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/280000/2CD900FB-1F6B-664F-8A26-C125B36C2B58.root']}
+    
+    print("Running over datasets ", samples.keys())
     client = None
     cluster = None
     if casa and dask:
@@ -136,9 +145,9 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         from lpcjobqueue import LPCCondorCluster
         #### make list of files and directories to upload to dask
         upload_to_dask = ['correctionFiles', 'python']
-        cluster = LPCCondorCluster(memory='5 GiB', transfer_input_files=upload_to_dask)
+        cluster = LPCCondorCluster(memory='5 GiB', transfer_input_files=upload_to_dask, scheduler_options={"dashboard_address": year})#, ship_env=False)
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
-        cluster.adapt(minimum=1, maximum=10)
+        cluster.adapt(minimum=1, maximum=100)
         with Client(cluster) as client:
             if verbose:
                 run_instance = processor.Runner(
@@ -146,8 +155,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
                                 schema=NanoAODSchema,
                                 savemetrics=True,
                                 skipbadfiles=False,
-                                # chunksize=10000,
-                                # maxchunks=10,
+                                chunksize=20000,
                             )
             else:
                 run_instance = processor.Runner(
@@ -155,8 +163,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
                                 schema=NanoAODSchema,
                                 savemetrics=True,
                                 skipbadfiles=False,
-                                # chunksize=10000,
-                                # maxchunks=10,
+                                chunksize=20000,
                             )
             # result, metrics = run_instance(samples,
             #                                "Events",
@@ -182,15 +189,20 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     print("Time taken to run over samples ", elapsed)
     del cluster
     return result
-def addFiles(files):
+def addFiles(files, RespOnly=False):
     results = pickle.load( open(files[0], "rb") )
+    respHists = ['response_matrix_u', 'response_matrix_g', 'ptreco_mreco_u', 'ptreco_mreco_g', 'ptgen_mgen_u', 'ptgen_mgen_g','fakes', 'misses']
     for fname in files[1:]:
         print(fname)
         with open(fname, "rb") as f:
             result = pickle.load( f )
-            for hist in result:
-                print("Hist ", hist, " with syst cats ",[bin for bin in result['response_matrix_u'].project("syst").axes[0]])
-                results[hist] += result[hist]
+            for hist in [res for res in result if res in results]:
+                if RespOnly and hist in respHists:
+                    print("Hist ", hist, " with syst cats ",[bin for bin in result['response_matrix_u'].project("syst").axes])
+                    results[hist] += result[hist]
+                else:
+                    print("Hist ", hist, " with syst cats ",[bin for bin in result['response_matrix_u'].project("syst").axes])
+                    results[hist] += result[hist]
                 print("Successfully added")
     print("Done")
     return(results)

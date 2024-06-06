@@ -17,6 +17,9 @@ environmentGroup.add_argument('--casa', action='store_true', help='Use Coffea-Ca
 environmentGroup.add_argument('--lpc', action='store_true', help='Use CMSLPC redirector: root://cmsxrootd.fnal.gov/')
 environmentGroup.add_argument('--winterfell', action='store_true', help='Get available files from UB Winterfell /mnt/data/cms')
 
+def list_of_ints(arg):
+    return list(map(int, arg.split(',')))
+
 parser.add_argument('--year', choices=['2016', '2017', '2018', '2016APV', None], default="None", help="Year to run on")
 parser.add_argument('--data', action='store_true', help="Run on data") 
 parser.add_argument('--dask', action='store_true', help='Run on dask')
@@ -25,6 +28,7 @@ parser.add_argument('--verbose', type=bool, help='Have processor output status; 
 parser.add_argument('--allUncertaintySources', action='store_true', help='Run processor for each unc. source separately')
 parser.add_argument('--jetSyst', default=['nominal', 'jer'], nargs='+')
 parser.add_argument('--syst', default=['PUSF', 'L1PreFiringWeight'], nargs='+')
+parser.add_argument('--datasetRange', default=None, help="Run on subset of available datasets", type=list_of_ints)
 
 arg = parser.parse_args()
 
@@ -41,7 +45,7 @@ import pickle
 #### WE'RE MISSING 2016B ver2 -- AK8 PF HLT is missing need to use AK4 trigger isntead
 ### Run coffea processor and make plots
         
-def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, syst=arg.syst):
+def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, syst=arg.syst, range=arg.datasetRange):
     processor = makeDijetHists(data = data, jet_systematics = jet_syst, systematics = syst)
     datastring = "JetHT" if processor.do_gen == False else "QCDsim"
     if year == 2016 or year == 2017 or year == 2018:
@@ -53,29 +57,36 @@ def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=ar
     if processor.do_gen==True and arg.winterfell:
         filename = "QCD_flat_files.json"
     elif processor.do_gen==True:
-        filename = "fileset_QCD.json"
+        # filename = "fileset_QCD.json"
+        filename = "fileset_QCD_wRedirs.json"
     else:
-        filename = "datasets_UL_NANOAOD.json"
+        # filename = "datasets_UL_NANOAOD.json"
+        filename = "fileset_JetHT_wRedirs.json"
     if arg.testing and not data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest_wXSscaling_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0]+jet_syst[-1],year_str)
+        fname = 'coffeaOutput/dijet/dijetHistsTest_wXSscaling_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0],year_str)
     elif arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0]+jet_syst[-1],year_str)
+        fname = 'coffeaOutput/dijet/dijetHistsTest{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0],year_str)
     elif not arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHists_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0]+jet_syst[-1], year_str)
+        fname = 'coffeaOutput/dijet/dijetHists_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0], year_str)
     else:
         fname = 'coffeaOutput/dijet/dijetHists_wXSscaling_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0], year_str)
-    result = runCoffeaJob(processor, jsonFile = filename, casa = casa, winterfell = winterfell, testing = testing, dask = dask, year=year, data = not processor.do_gen, verbose=True)
+    if range!=None:
+        print("Range input: ", range)
+        fname=fname[:-4]+"_"+str(range[0])+"_"+str(range[1])+".pkl"
+        print("New ranged fname ", fname)
+        result = runCoffeaJob(processor, jsonFile = filename, casa = casa, winterfell = winterfell, testing = testing, dask = dask, data = not processor.do_gen, verbose = verbose, year=year, datasetRange = range)
+    else:
+        result = runCoffeaJob(processor, jsonFile = filename, casa = casa, winterfell = winterfell, testing = testing, dask = dask, data = not processor.do_gen, verbose = verbose, year=year)
     with open(fname, "wb") as f:
         pickle.dump( result, f)
 if arg.allUncertaintySources:
-    unc_srcs = ["nominal", "jer", "AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF",
-"PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample",
-"RelativeStatEC","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
+    #
+    unc_srcs =["nominal","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","jer", "Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample","RelativeStatEC","RelativeStatFSR","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
 else:
     unc_srcs = arg.jetSyst
 for src in unc_srcs:
     print("Running processor for ", src)
-    runDijetAnalysis(jet_syst=[src])
+    runDijetAnalysis(data=arg.data, jet_syst=[src])
 
 #Make plots
 import matplotlib.pyplot as plt
@@ -116,4 +127,5 @@ if not data:
     plt.ylabel("RECO", fontsize=50)
     plt.tick_params(labelsize=40)
     plt.savefig(os_path+'response_matrix_g.png')
+
 

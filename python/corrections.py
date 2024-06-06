@@ -8,6 +8,16 @@ from coffea.lookup_tools import extractor
 import copy
 import os
 
+from contextlib import contextmanager,redirect_stderr,redirect_stdout
+from os import devnull
+
+@contextmanager
+def suppress_stdout_stderr():
+    """A context manager that redirects stdout and stderr to devnull"""
+    with open(devnull, 'w') as fnull:
+        with redirect_stderr(fnull) as err, redirect_stdout(fnull) as out:
+            yield (err, out)
+
 #based heavily on https://github.com/b2g-nano/TTbarAllHadUproot/blob/optimize/python/corrections.py and https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/corrections.py?ref_type=heads and https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/jmeCorrections.py?ref_type=heads
 
 def GetL1PreFiringWeight(events):
@@ -226,21 +236,20 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     # print("Available uncertainties: ", jet_factory.uncertainties())
     # print("Corrected jets object: ", corrected_jets.fields)
     return corrected_jets
-
 def GetLHEWeight(events):
+    from parton import mkPDF
     #### make sure to `pip3 install --user parton` in singularity shell
-    import parton
     # os.environ['LHAPDF_DATA_PATH'] = '/cvmfs/sft.cern.ch/lcg/releases/MCGenerators/lhapdf/6.2.1-7149a/x86_64-centos7-gcc8-opt/share/LHAPDF/'
     paths = ['/cvmfs/sft.cern.ch/lcg/external/lhapdfsets/current/']
-    from parton import mkPDF
     # pdfset = PDFSet('PDF4LHC21_mc_pdfas', pdfdir=path[0])
     # print("PDF set obj ", pdfset)
     # print("PDF set info ", pdfset.info)
     # pdfmembers = []
     print("Length of events ", len(events))
-    pdf = mkPDF('PDF4LHC21_mc', pdfdir=paths[0])
+    with suppress_stdout_stderr():
+        pdf = mkPDF('PDF4LHC21_mc', pdfdir=paths[0])
     # print("PDFSet info ", pdf.pdfset.info)
-    print("PDF grids ", pdf.pdfgrids)
+    # print("PDF grids ", pdf.pdfgrids)
     
     #### get pdf values from events
     q2 = events.Generator.scalePDF
@@ -250,9 +259,9 @@ def GetLHEWeight(events):
     id2 = events.Generator.id2
     xfxq1 = pdf.xfxQ(id1, x1, q2, grid=False)
     xfxq2 = pdf.xfxQ(id2, x2, q2, grid=False)
-    print("x*f(x) = ", xfxq1, xfxq2)
-    print("Length of xfxq1 ", len(xfxq1))
-    print("type of pdf weight ", type(xfxq1))
+    # print("x*f(x) = ", xfxq1, xfxq2)
+    # print("Length of xfxq1 ", len(xfxq1))
+    # print("type of pdf weight ", type(xfxq1))
     pdfNom = xfxq1*xfxq2
     pdfUp = pdf.xfxQ(id1, x1, 2*q2, grid=False)*pdf.xfxQ(id1, x1, 2*q2, grid=False)
     pdfDown = pdf.xfxQ(id1, x1, 0.5*q2, grid=False)*pdf.xfxQ(id1, x1, 0.5*q2, grid=False)
