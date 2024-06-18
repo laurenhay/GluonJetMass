@@ -36,7 +36,9 @@ def checkdir(directory):
 def plotinputsROOT(matrix, truth, reco, groom="", syst="", year="", ospath=''):
             histMCReco_M=matrix.ProjectionY("MCReco "+groom)
             histMCTruth_M=matrix.ProjectionX("MCTruth "+groom)
-            c1 = ROOT.TCanvas("c1","Plot MC input "+groom+" binned by pt (outer) and mass (inner)",1200,400)
+            print(histMCTruth_M.GetName())
+            print(matrix.GetName())
+            c1 = ROOT.TCanvas("c"+groom,"Plot MC input "+groom+" binned by pt (outer) and mass (inner)",1200,400)
             c1.Divide(2,1)
             c1.cd(1)
             histMCTruth_M.SetMarkerStyle(21)
@@ -49,7 +51,7 @@ def plotinputsROOT(matrix, truth, reco, groom="", syst="", year="", ospath=''):
             truth.Draw("SAME")
             leg1 = ROOT.TLegend(0.7, 0.7, 0.86, 0.86)
             leg1.AddEntry(histMCTruth_M, "MC Gen from M", "p")
-            leg1.AddEntry(truth, "MC Grn", "p")
+            leg1.AddEntry(truth, "MC Gen", "p")
             leg1.Draw()
             c1.cd(2)
             histMCReco_M.SetMarkerStyle(21)
@@ -66,7 +68,117 @@ def plotinputsROOT(matrix, truth, reco, groom="", syst="", year="", ospath=''):
             leg1_2.Draw()
             c1.Draw()
             c1.SaveAs(ospath+"MCInput_"+groom+"_"+syst+"flatmatrix"+year+".png")
-            c1.Close()
+            return c1
+def plotUnfoldOutputHist(htrue, u, groomed=False, norm=True, os_path='', channel=''): #, oMat, oSys, oTotal):
+    #### plotting options
+    tot_error_opts = {
+            'label': 'Stat. Unc.',
+            'facecolor': 'powderblue',
+            'linewidth': 0
+        }
+    stat_error_opts = {
+            'label': 'Stat. Unc.',
+                    'hatch': '///',
+                    'edgecolor': 'black',
+            'facecolor': 'none',
+            'linewidth': 0
+        }
+    data_err_opts = {
+            'linestyle': 'none',
+            'marker': '.',
+            'markersize': 10.,
+            'color': 'k',
+            'elinewidth': 1,
+        }
+    #### u is total unfolding object, htrue is truth hist from coffea
+    o = u.GetOutput("u")
+    mCovInput = u.GetEmatrixInput("Input unc")
+    inputErrTot = np.array([mCovInput.GetBinContent(i,i)**0.5 for i in range(1, o.GetNbinsX()+1)])
+    ptedges = [bin[0] for bin in htrue.project("ptgen").axes[0]] + [htrue.project("ptgen").axes[0][-1][1]]
+    medges = [bin[0] for bin in htrue.project('mgen').axes[0]]+ [htrue.project('mgen').axes[0][-1][1]]
+    widths = htrue.project("mgen").axes[0].widths
+    xlim = medges[-1]
+    for ipt in range(1,len(ptedges)-1):
+        j = ipt-1 #index for coffea bc no underflow bin
+        inputErr = np.array([inputErrTot[(im+1+ipt*(len(medges)-1))] for im in range(1, len(medges))])
+        oErr = np.array([o.GetBinError(im+1+ipt*(len(medges)-1)) for im in range(1, len(medges))])
+        oVals = np.array([o.GetBinContent(im+1+ipt*(len(medges)-1)) for im in range(1, len(medges))])
+        oHistVals = np.array([o.GetBinContent(im+1+ipt*(len(medges)-1)) for im in range(1, len(medges))])
+        oHistErr = oErr
+        hist = htrue[{'ptgen':j, 'syst':"nominal"}].project("mgen")
+        #### set up figure
+        fig, (ax, rax) = plt.subplots(
+                nrows=2,
+                ncols=1,
+                figsize=(7,7),
+                gridspec_kw={"height_ratios": (3, 1)},
+                sharex=True)
+        ax.set_ylabel(r'$\frac{Events}{Bin Size} (GeV^{-1})$', loc = 'top')
+        ax.text(0.60, 0.70, str(ptedges[j])+r"$<p_{T}<$" +str(ptedges[j+1]) + " GeV",
+        verticalalignment='bottom', horizontalalignment='left',
+        transform=ax.transAxes,
+        color='green', fontsize=14)
+        rax.set_ylim(0.5, 2)
+        ax.set_xlim(0.0, 1000.)
+        rax.set_xlim(0.0, 1000.)
+        if groomed:
+            ax.set_xlabel(r'$m_{SD, RECO} (GeV)$' )
+        if norm:
+            print("Check that sum of values ", np.sum(hist.values())," is same as integrate ", hist.integrate("mgen").value)
+            hist = hist*1.0/hist.integrate("mgen").value
+            oVals_sum = np.sum(oVals)
+            oHistVals = oVals*1.0/oVals_sum
+            oHistErr = np.where(oVals!=0,oErr*1.0/oVals_sum, 0)
+            inputErr = inputErr*1.0/oVals_sum
+            print("oVals after norm ", oVals, " by value ", np.sum(oVals))
+        ratio = np.divide(hist.values(),oHistVals,
+                      out=np.empty(np.array(hist.project("mgen").values()).shape).fill(1),
+                      where= oHistVals!=0,)
+        # ratio_staterr_up = np.divide(mcvals.values()+stat_unc_up+syst_unc_up,datavals.values(),
+        #               out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
+        #               where=datavals.values()!= 0,)
+        # ratio_staterr_down = np.divide(mcvals.values()-stat_unc_down-syst_unc_down,datavals.values(),
+        #               out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
+        #               where=datavals.values()!= 0,)
+        ratio_toterr_up = np.divide(oHistVals+oHistErr,oHistVals,
+                      out=np.empty(np.array(oVals.shape)).fill(np.nan),
+                      where=oHistVals!= 0,)
+        ratio_toterr_down = np.divide(oHistVals-oHistErr,oHistVals,
+                      out=np.empty(np.array(oVals.shape)).fill(np.nan),
+                      where=oHistVals!= 0,)
+        ratio_err = np.abs(np.divide(oHistErr,oHistVals,
+                      out=np.empty(np.array(oVals.shape)).fill(np.nan),
+                      where=oHistVals!= 0,))
+        rax.stairs(values=ratio_toterr_up, edges = medges, baseline= ratio_toterr_down,
+                fill=True,
+                **tot_error_opts,
+            )
+        # rax.stairs(values=ratio_statterr_up, edges = medges, baseline= ratio_statterr_down,
+        #         fill=True,
+        #         **stat_error_opts,
+        #     )                               
+        ax.stairs(values=(oHistVals+oHistErr)/widths, edges = medges, baseline= (oHistVals-oHistErr)/widths,
+                fill=True,
+                **tot_error_opts,
+            )
+        # ax.stairs(values=(mcvals.values()+stat_unc_up)/widths, edges = edges, baseline= (mcvals.values()-stat_unc_down)/widths,
+        #         fill=True,
+        #         **stat_error_opts,
+        #     )
+        hep.histplot(oHistVals, medges, stack=False, histtype='errorbar', yerr = abs(oHistErr),
+                 ax=ax, marker =["."], color = 'Black', linewidth=1, binwnorm=True,
+                 label="Unfolded "+channel+" Data")
+        hep.histplot(hist, stack=False, histtype='step',
+                 ax=ax, linestyle ='--', color = 'Black', linewidth=1, binwnorm=True,
+                     label="MC Truth "+channel)
+        hep.histplot(ratio, medges, histtype='step', ax=rax, linestyle ="--", color = 'black', linewidth=1)
+        hep.histplot(np.ones_like(ratio), medges, histtype='errorbar',ax=rax,marker=['.'], color = 'black', linewidth=1, yerr = ratio_err)
+        leg = ax.legend(loc='best', fontsize=14, labelspacing=0.25)
+        leg.set_visible(True)
+        if norm:
+            fig.savefig(os_path+"UnfoldOutputRatioPt{}_{}_normed.png".format(ptedges[j], ptedges[j+1])) 
+        else:
+            fig.savefig(os_path+"UnfoldOutputRatioPt{}_{}.png".format(ptedges[j], ptedges[j+1])) 
 def CompareCoffeaROOT(result, syst_hist_dict, os_path, groomed=False, syst="nominal"):
     if groomed:
         end = "_g"
@@ -228,8 +340,10 @@ def fillData(result, detectorBinning, mreco_edges, ptreco_edges, new=True):
             recoBin=recoBinning.GetGlobalBinNumber(mreco_edges[j],ptreco_edges[i])
             data_weight_u=data_pt_m_u[i][j]
             DataReco_u.SetBinContent(recoBin, data_weight_u)
+            DataReco_u.SetBinError(recoBin, data_weight_u**0.5)
             data_weight_g=data_pt_m_g[i][j]
             DataReco_g.SetBinContent(recoBin, data_weight_g)
+            DataReco_g.SetBinError(recoBin, data_weight_g**0.5)
             #print("Data weight ", data_weight_u, " or ", ptreco_mreco_uu.GetBinContent(i, j) , " for matrix reco bin ", recoBin)
     return DataReco_u, DataReco_g
 def getHists(result, syst, detectorBinning, generatorBinning, new=True):
