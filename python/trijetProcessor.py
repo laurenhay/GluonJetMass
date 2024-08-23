@@ -114,7 +114,7 @@ class makeTrijetHists(processor.ProcessorABC):
         parton_cat = hist.axis.StrCategory([],growth=True,name="partonFlav", label="Parton Flavour")
         syst_cat = hist.axis.StrCategory([], growth=True, name='syst', label="Systematic")
         #### if using specific bin edges use hist.axis.Variable() instead
-        mgen_bin_edges = np.array([0,1,5,10,20,40,60,80,100,150,200,250,1000])
+        mgen_bin_edges = np.array([0,10,20,40,60,80,100,150,200,250,1000])
         mreco_bin_edges = np.sort(np.append(mgen_bin_edges,[(mgen_bin_edges[i]+mgen_bin_edges[i+1])/2 for i in range(len(mgen_bin_edges)-1)]))
         print("mreco bins: ", mreco_bin_edges)
         mass_gen_bin =  hist.axis.Variable(mgen_bin_edges, name="mgen", label=r"m_{GEN} (GeV)")                         
@@ -271,7 +271,7 @@ class makeTrijetHists(processor.ProcessorABC):
             print("Length of events before any cuts", len(events_corr), "length of weights ", len(weights))
             if self.do_gen and 'herwig' in dataset:
                 era = None
-                weights = events_corrs.LHEWeight.originalXWGTUP
+                weights = events_corr.LHEWeight.originalXWGTUP
             elif (self.do_gen):
                 era = None
                 print("XS weight: ", getXSweight(dataset, IOV))
@@ -330,14 +330,13 @@ class makeTrijetHists(processor.ProcessorABC):
                 asymm_gen  = np.abs(genjet1.pt - genjet2.pt)/(genjet1.pt + genjet2.pt)
                 out["asymm_gen"].fill(syst=jetsyst, frac = asymm_gen, weight=weights)
                 out['cutflow']['nEvents after gen dphi cut only '+jetsyst] += (len(events_corr[dphimin_gen<1.0].FatJet))
-                out['cutflow']['nEvents after gen asymm cut only '+jetsyst] += (len(events_corr[asymm_gen<0.3].FatJet))
-                events_corr = events_corr[(dphimin_gen > 0.5) & (asymm_gen < 0.3)]
-                weights = weights[(dphimin_gen > 0.5) & (asymm_gen < 0.3)]
+                events_corr = events_corr[(dphimin_gen > 0.5)]
+                weights = weights[(dphimin_gen > 0.5)]
                 out['cutflow']['nEvents after gen dphi and ptasymm selection '+jetsyst] += (len(events_corr.FatJet))
                 print('nEvents after gen dphi and ptasymm selection ',jetsyst,' ',(len(events_corr.FatJet)))
                 gensubjets = events_corr.SubGenJetAK8
                 groomed_genjet = get_gen_sd_mass_jet(events_corr.GenJetAK8, gensubjets)
-                matches = ak.all(events_corr.GenJetAK8.delta_r(events_corr.GenJetAK8.nearest(events_corr.FatJet)) < 0.4, axis = -1)
+                matches = ak.all(events_corr.GenJetAK8.delta_r(events_corr.GenJetAK8.nearest(events_corr.FatJet)) < 0.2, axis = -1)
                 # matches_g = ak.all(groomed_genjet.delta_r(groomed_genjet.nearest(events.FatJet)) < 0.15, axis = -1)
                 misses = ~matches
                 # gen but no reco
@@ -390,8 +389,8 @@ class makeTrijetHists(processor.ProcessorABC):
             out["dphimin_reco"].fill(syst=jetsyst, dphi = dphimin, weight = weights)
             asymm = np.abs(jet1.pt - jet2.pt)/(jet1.pt + jet2.pt)
             out["asymm_reco"].fill(syst=jetsyst, frac = asymm, weight=weights)
-            events_corr = events_corr[(dphimin > 1.0) & (asymm < 0.3)]
-            weights = weights[(dphimin > 1.0) & (asymm < 0.3)]
+            events_corr = events_corr[(dphimin > 1.0)]
+            weights = weights[(dphimin > 1.0)]
             out['cutflow']['nEvents after reco topo selection '+jetsyst] += (len(events_corr.FatJet))
             print('nEvents after reco topo selection ',jetsyst,' ',len(events_corr.FatJet))
             #### Apply btag 
@@ -399,7 +398,6 @@ class makeTrijetHists(processor.ProcessorABC):
             weights = weights[btagSel]
             out['cutflow']['nEvents after reco btag '+jetsyst] += (len(events_corr.FatJet))
             print('nEvents after reco btag ',jetsyst, ' ', len(events_corr.FatJet))
-            
             #### Find fakes and make response matrices
             if self.do_gen:
                 #### fakes = reco but no gen
@@ -409,7 +407,7 @@ class makeTrijetHists(processor.ProcessorABC):
                 if ak.sum(fakes)>0:
                     fake_events = events_corr[fakes]
                     fake_weights = Weights(len(weights[fakes]))
-                    dphimin = dphimin[(dphimin > 1.0) & (asymm < 0.3)]
+                    dphimin = dphimin[(dphimin > 1.0)]
                     dphimin_fakes = dphimin[fakes]
                     print("Intital fake weights: ", fake_weights)
                     fake_weights.add('fakeWeight', weights[fakes])
@@ -423,9 +421,16 @@ class makeTrijetHists(processor.ProcessorABC):
                         puUp, puDown, puNom = GetPUSF(events_corr[fakes], IOV)
                         fake_weights.add("PUSF", weight=puNom, weightUp=puUp,
                                            weightDown=puDown,) 
-                    if "PDF" in self.systematics:
+                    if "PDF" in self.systematics and 'herwig' not in dataset:
                         pdfNom, pdfUp, pdfDown = GetLHEWeight(events_corr[fakes])
                         fake_weights.add("PDF", weight=pdfNom, weightUp=pdfUp, weightDown=pdfDown)
+                    if 'herwig' in dataset:
+                        pdfNom, pdfUp, pdfDown = GetPDFWeights(events_corr[fakes])
+                        fake_weights.add("PDF", weight=pdfNom, weightUp=pdfUp,
+                                       weightDown=pdfDown) 
+                        q2Nom, q2Up, q2Down = GetQ2Weights(events_corr[fakes])
+                        fake_weights.add("Q2", weight=q2Nom, weightUp=q2Up,
+                                       weightDown=q2Down) 
                     print("Length of fakes jets ", ak.flatten(events_corr[fakes].FatJet[:,:2].mass, axis=1), "length of fake weights", len(fake_weights.weight()))
                     out["fakes"].fill(syst=jetsyst, ptreco = events_corr[fakes].FatJet[:,2].pt, mreco = events_corr[fakes].FatJet[:,2].mass, weight=fake_weights.weight())
                     out['fakes_eta_phi'].fill(syst=jetsyst, phi = events_corr[fakes].FatJet[:,2].phi, eta = events_corr[fakes].FatJet[:,2].eta, weight=fake_weights.weight())
@@ -452,21 +457,28 @@ class makeTrijetHists(processor.ProcessorABC):
                     prefiringNom, prefiringUp, prefiringDown = GetL1PreFiringWeight(events_corr)
                     self.weights[jetsyst].add("L1prefiring", weight=prefiringNom, weightUp=prefiringUp, weightDown=prefiringDown)
                 if "PUSF" in self.systematics:
-                    puUp, puDown, puNom = GetPUSF(events_corr, IOV)
+                    puNom, puUp, puDown = GetPUSF(events_corr, IOV)
                     self.weights[jetsyst].add("PUSF", weight=puNom, weightUp=puUp, weightDown=puDown)
                 if "PDF" in self.systematics:
                     if herwig in dataset:
                         pdfNom, pdfUp, pdfDown = GetLHEWeight(events_corr)
                         # print("Nominal pdf: ", pdfNom, " pdf up: ", pdfUp, " pdf down: ", pdfDown)
                         self.weights[jetsyst].add("PDF", weight=pdfNom, weightUp=pdfUp, weightDown=pdfDown)
+                if 'herwig' in dataset:
+                    pdfNom, pdfUp, pdfDown = GetPDFWeights(events_corr)
+                    self.weights[jetsyst].add("PDF", weight=pdfNom, weightUp=pdfUp,
+                                       weightDown=pdfDown) 
+                    q2Nom, q2Up, q2Down = GetQ2Weights(events_corr)
+                    self.weights[jetsyst].add("Q2", weight=q2Nom, weightUp=q2Up,
+                                       weightDown=q2Down) 
                 out["ptgen_mgen_u"].fill(syst=jetsyst, ptgen=genjet.pt, mgen=genjet.mass, weight=self.weights[jetsyst].weight() )
-                out["ptgen_mgen_g"].fill(syst=jetsyst, ptgen=groomed_genjet.pt, mgen=groomed_genjet.mass, weight=self.weights[jetsyst].weight() )
+                out["ptgen_mgen_g"].fill(syst=jetsyst, ptgen=genjet.pt, mgen=groomed_genjet.mass, weight=self.weights[jetsyst].weight() )
                 #### Get dr between gen and reco jets (should be all < 0.4)
                 jet = events_corr.FatJet[:,2]
                 out["jet_dr_reco_gen"].fill(syst=jetsyst, dr=jet.delta_r(genjet), weight=self.weights[jetsyst].weight())
                 #### Final plots
                 out["response_matrix_u"].fill(syst=jetsyst, ptreco=jet.pt, ptgen=genjet.pt, mreco=jet.mass, mgen=genjet.mass, weight = self.weights[jetsyst].weight())
-                out["response_matrix_g"].fill(syst=jetsyst, ptreco=jet.pt, ptgen=groomed_genjet.pt, mreco=jet.msoftdrop, mgen=groomed_genjet.mass, weight = self.weights[jetsyst].weight() )
+                out["response_matrix_g"].fill(syst=jetsyst, ptreco=jet.pt, ptgen=genjet.pt, mreco=jet.msoftdrop, mgen=groomed_genjet.mass, weight = self.weights[jetsyst].weight() )
                 #### Outliers
                 weird = (np.abs(jet.msoftdrop - groomed_genjet.mass) > 20.0) & (jet.msoftdrop > 10.)
                 out['cutflow']['Number of outliers '+jetsyst] += (len(events_corr[weird].FatJet))
@@ -476,13 +488,13 @@ class makeTrijetHists(processor.ProcessorABC):
                         print("Weight variation: ", syst)
                         #fill nominal, up, and down variations for each
                         out['ptgen_mgen_u'].fill(syst=syst, ptgen=genjet.pt, mgen=genjet.mass, weight=self.weights[jetsyst].weight(syst) )
-                        out['ptgen_mgen_g'].fill(syst=syst, ptgen=groomed_genjet.pt, mgen=groomed_genjet.mass, 
+                        out['ptgen_mgen_g'].fill(syst=syst, ptgen=genjet.pt, mgen=groomed_genjet.mass, 
                                                       weight=self.weights[jetsyst].weight(syst) )           
                         out["response_matrix_u"].fill(syst=syst,
                                                ptreco=jet.pt, ptgen=genjet.pt,
                                                mreco=jet.mass, mgen=genjet.mass, weight=self.weights[jetsyst].weight(syst))
                         out["response_matrix_g"].fill(syst=syst,
-                                               ptreco=jet.pt, ptgen=groomed_genjet.pt,
+                                               ptreco=jet.pt, ptgen=genjet.pt,
                                                mreco=jet.msoftdrop, mgen=groomed_genjet.mass, weight=self.weights[jetsyst].weight(syst))
                         out["ptreco_mreco_u"].fill( syst=syst, ptreco=events_corr.FatJet[:,2].pt, mreco=events_corr.FatJet[:,2].mass, weight=self.weights[jetsyst].weight(syst) )
                         out["ptreco_mreco_g"].fill( syst=syst, ptreco=events_corr.FatJet[:,2].pt, mreco=events_corr.FatJet[:,2].msoftdrop, weight=self.weights[jetsyst].weight(syst) )

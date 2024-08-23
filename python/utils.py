@@ -48,6 +48,52 @@ turnOnPts_JetHT = {'2016': {'AK8PFJet40':0.,
                              'AK8PFJet500': 750., 
                              'AK8PFJet550': 810.}
             }
+
+#### LATEST VALUES TO SWITCH TO
+# JetHT2016_L1 = {'AK8PFJet40':0.,
+#                  'AK8PFJet60': 140., 
+#                  'AK8PFJet80': 210., 
+#                  'AK8PFJet140': 290., 
+#                  'AK8PFJet200': 380., 
+#                  'AK8PFJet260': 450., 
+#                  'AK8PFJet320': 550., 
+#                  'AK8PFJet400': 640., 
+#                  'AK8PFJet450': 690., 
+#                  'AK8PFJet500': 820.}
+# JetHT2016APV_L1 = {'AK8PFJet40':0., 
+#                      'AK8PFJet60': 140, 
+#                      'AK8PFJet80': 210., 
+#                      'AK8PFJet140': 290., 
+#                      'AK8PFJet200': 380., 
+#                      'AK8PFJet260': 450., 
+#                      'AK8PFJet320': 550., 
+#                      'AK8PFJet400': 640., 
+#                      'AK8PFJet450': 730., 
+#                      'AK8PFJet500': 820.}
+# JetHT2017_L1 = {'AK8PFJet40':0.,
+#                  'AK8PFJet60': 0., 
+#                  'AK8PFJet80': 160., 
+#                  'AK8PFJet140': 270., 
+#                  'AK8PFJet200': 310., 
+#                  'AK8PFJet260': 450., 
+#                  'AK8PFJet320': 560., 
+#                  'AK8PFJet400': 640., 
+#                  'AK8PFJet450': 700., 
+#                  'AK8PFJet500': 760., 
+#                  'AK8PFJet550': 810.}
+# JetHT2018_L1 = {'AK8PFJet15': 0.,
+#                  'AK8PFJet25': 0.,
+#                  'AK8PFJet40': 0.,
+#                  'AK8PFJet60': 0.,
+#                  'AK8PFJet80': 160., 
+#                  'AK8PFJet140': 270., 
+#                  'AK8PFJet200': 390., 
+#                  'AK8PFJet260': 470., 
+#                  'AK8PFJet320': 570., 
+#                  'AK8PFJet400': 650., 
+#                  'AK8PFJet450': 710., 
+#                  'AK8PFJet500': 760., 
+#                  'AK8PFJet550': 820.}
 # in 
 xsdb= { 'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 104000.0,
 'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 6806.0,
@@ -58,19 +104,75 @@ xsdb= { 'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 104000.0,
 'QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8' : 0.6419,
 'QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8' : 0.0877,
 'QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8' : 0.005241,
-'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' : 0.0001346
+'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' : 0.0001346,
+'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7': 11370.0,
+'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7': 883.5,
+'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7': 259.6,
+'QCD_HT500to700_TuneCH3_13TeV-madgraphMLM-herwig7': 23.63,
+'QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7':  4.943,
+'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7': 0.8013,
+'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7': 0.06815,
+'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7': 0.01245,
  }
 
 # in fb^-1 taken from https://twiki.cern.ch/twiki/bin/viewauth/CMS/PdmVAnalysisSummaryTable
 lumi = {'2018' : 59.74,
         '2017': 41.48,
-        '2016': 36.33 
+        # '2016': 36.33 ####combined
+        '2016APV':19.5,
+        "2016":16.8
        }
 
-#'2016APV':19.5
-#"2016":16.8
 
-num_gen = { '2016': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 29758000,
+#### Missing 2016APV XS's
+num_gen_herwig = { "2016APV": {'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7': 3005498,
+                               'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7': 1967563,
+                               'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7': 1000485,
+                               'QCD_HT500to700_TuneCH3_13TeV-madgraphMLM-herwig7': 496454,
+                               'QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7':  488128,
+                               'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7': 506141,
+                               'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7': 492965,
+                               'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7': 496469,
+                              },
+                  "2016": {'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7': 2942671,
+                               'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7': 2006720,
+                               'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7': 1006059,
+                               'QCD_HT500to700_TuneCH3_13TeV-madgraphMLM-herwig7': 511149,
+                               'QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7':  499379,
+                               'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7': 493891,
+                               'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7': 492975,
+                               'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7':  488875,
+                              },
+                  "2017": {'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7': 2889515,
+                               'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7': 1992969,
+                               'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7': 1003410,
+                               'QCD_HT500to700_TuneCH3_13TeV-madgraphMLM-herwig7': 516397,
+                               'QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7':  501738,
+                               'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7': 499775,
+                               'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7': 507301,
+                               'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7': 497985,
+                              },
+                  "2018": {'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7': 2934193,
+                               'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7': 1990195,
+                               'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7': 999343,
+                               'QCD_HT500to700_TuneCH3_13TeV-madgraphMLM-herwig7': 497722,
+                               'QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7':  495400,
+                               'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7': 506420,
+                               'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7': 507791,
+                               'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7': 492537,
+                              },
+}
+num_gen = { '2016APV': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 27885000,
+'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 54028000,
+'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 50782000,
+'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 61904000,
+'QCD_Pt_800to1000_TuneCP5_13TeV_pythia8' : 35459000,
+'QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8' : 19077000,
+'QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8' : 11000000,
+'QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8' : 5262000,
+'QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8' : 2999000,
+'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' : 1000000},
+    '2016': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 29758000,
 'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 55264000,
 'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 52408000,
 'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 64584000,
@@ -115,8 +217,12 @@ def getXSweight(dataset, IOV):
             for process in np.array(list(xsdb.keys())):
                 if process in dataset:
                     xs = xsdb[process]
-                    print("Number of gen events for year: ", num_gen[year][process])
-                    weight = xs * lum * 1000 / num_gen[year][process]
+                    if 'herwig' in process:
+                        print("Number of gen events for ", year, " ", process, ": ", num_gen_herwig[year][process])
+                        weight = xs * lum * 1000 / num_gen_herwig[year][process]
+                    else:
+                        print("Number of gen events for ", year, " ", process, ": ", num_gen[year][process])
+                        weight = xs * lum * 1000 / num_gen[year][process]
                     return weight
 
 

@@ -61,13 +61,13 @@ def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=a
         year_str = "All"
 
     if arg.testing and not arg.data:
-        fname = 'coffeaOutput/trijet/trijetHistsTest_wXSscaling_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut, jet_syst[0],year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest_wXSscaling_{}_newMBins_rapidity{}_{}{}.pkl'.format(datastring, processor.ycut, jet_syst[0],year_str)
     elif arg.testing and arg.data:
-        fname = 'coffeaOutput/trijet/trijetHistsTest{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut,jet_syst[0],year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest{}_newMBins_rapidity{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0],year_str)
     elif not arg.testing and arg.data:
-        fname = 'coffeaOutput/trijet/trijetHists_{}_pt{}_rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut,jet_syst[0], year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_{}_newMBins_rapidity{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0], year_str)
     else:
-        fname = 'coffeaOutput/trijet/trijetHists_wXSscaling_{}_pt{}rapidity{}_{}{}.pkl'.format(datastring, processor.ptcut, processor.ycut,jet_syst[0],year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_wXSscaling_{}_newMBins_rapidity{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0],year_str)
     if range!=None:
         print("Range input: ", range)
         fname=fname[:-4]+"_"+range[0]+"_"+range[1]+".pkl"
@@ -79,8 +79,8 @@ def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=a
         pickle.dump( result, f)
 
 if arg.allUncertaintySources:
-    #"nominal","jer","RelativeStatEC","RelativeStatFSR","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample",
-    unc_srcs =["RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
+    
+    unc_srcs =["nominal","jer","RelativeStatEC","RelativeStatFSR","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
 else:
     unc_srcs = arg.jetSyst
 for src in unc_srcs:

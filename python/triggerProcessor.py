@@ -74,7 +74,7 @@ class triggerProcessor(processor.ProcessorABC):
                 # print("Number of events w/ trigger ", ak.count_nonzero(events.HLT[HLT_paths[i]]))
                 # print("HLT ref path: ", HLT_paths[i-1], " Number of Trues ", ak.count_nonzero(events.HLT[HLT_paths[i-1]]))
                 #### choose jets belonging to ref trigger (i-1) and passing pt cut of trigger of trigger of interest (i)
-                efficiencies[path] = events.FatJet[:,0].pt[(events.HLT[HLT_paths[i-1]]) & (trigObj.pt[:,0] > trigThresh[i])]
+                efficiencies[path] = events.FatJet[:,0].pt[(events.HLT[HLT_paths[i-1]]) & (trigObj.pt[:,0] > trigThresh[i]) & (trigObj.l1pt[:,0] >trigThresh[i-1])]
                 #### trig eff
                 out['hist_trigEff_ptCut'].fill(dataset = datastring + str(year), HLT_cat = path, pt = efficiencies[path])
                 #### gives ratio of trigger paths (do not add to 1)
@@ -106,6 +106,7 @@ class applyPrescales(processor.ProcessorABC):
         dataset_cat = hist.axis.StrCategory([],growth=True,name="dataset", label="Dataset")
         HLT_cat = hist.axis.StrCategory([], growth=True, name="HLT_cat",label="")
         self._histos = {
+            'hist_pt': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
             'hist_pt': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
             'hist_pt_byHLTpath': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
             'cutflow':      processor.defaultdict_accumulator(int),

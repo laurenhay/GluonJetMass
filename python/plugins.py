@@ -87,6 +87,10 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         # redirector= 'root://xrootd-local.unl.edu:1094/'
         #### MIT redirector
         # redirecotr='root://xrootd.cmsaf.mit.edu:1094/'
+        #### DESY redirector
+        # redirector = 'root://dcache-cms-webdav-wan.desy.de/'
+        #### CERN T2 redirector
+        # redirector = 'root://eoscms.cern.ch:443/'
         # redirector='root://cmseos.fnal.gov:1094/'
         # redirector='root://cmseos.fnal.gov/'
         # redirector='root://cmsxrootd.hep.wisc.edu/'
@@ -98,7 +102,8 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     #single files for testing
     # samples = {'/JetHT/Run2016E-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD': [redirector+'/store/data/Run2016E/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/40000/0402FC45-D69F-BE47-A2BF-10394485E06E.root']}
     # samples = {'/QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/280000/2CD900FB-1F6B-664F-8A26-C125B36C2B58.root']}
-    
+    # samples = {"/QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7/RunIISummer20UL16NanoAODAPVv9-106X_mcRun2_asymptotic_preVFP_v11-v1/NANOAODSIM":["root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL16NanoAODAPVv9/QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7/NANOAODSIM/106X_mcRun2_asymptotic_preVFP_v11-v1/60000/143F431C-1923-5A44-9210-F4294A4A3B4A.root"]}
+    # samples = {'/QCD_Pt_800to1000_TuneCP5_13TeV_pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://xrootd-local.unl.edu:1094//store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_800to1000_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/130000/4DB42A76-73B5-934E-BB28-88B35C9529C5.root']}
     print("Running over datasets ", samples.keys())
     client = None
     cluster = None
@@ -145,7 +150,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         from lpcjobqueue import LPCCondorCluster
         #### make list of files and directories to upload to dask
         upload_to_dask = ['correctionFiles', 'python']
-        cluster = LPCCondorCluster(memory='5 GiB', transfer_input_files=upload_to_dask, scheduler_options={"dashboard_address": year})#, ship_env=False)
+        cluster = LPCCondorCluster(memory='5 GiB', transfer_input_files=upload_to_dask, scheduler_options={"dashboard_address": year[:4]})#, ship_env=False)
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
         cluster.adapt(minimum=1, maximum=100)
         with Client(cluster) as client:

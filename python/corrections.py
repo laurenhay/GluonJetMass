@@ -20,6 +20,75 @@ def suppress_stdout_stderr():
 
 #based heavily on https://github.com/b2g-nano/TTbarAllHadUproot/blob/optimize/python/corrections.py and https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/corrections.py?ref_type=heads and https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/jmeCorrections.py?ref_type=heads
 
+def ApplyVetoMap(IOV, jets, mapname='jetvetomap'):
+    if IOV=="2016APV":
+        IOV="2016"
+    fname = "correctionFiles/jetvetomap/jetvetomaps_UL"+IOV+".json.gz"
+    hname = {
+        "2016"   : "Summer19UL16_V1",
+        "2017"   : "Summer19UL17_V1",
+        "2018"   : "Summer19UL18_V1"
+    }
+    print("Len of jets before veto", len(jets))
+    evaluator = correctionlib.CorrectionSet.from_file(fname)
+    jetphi = np.where(jets.phi<3.141592, jets.phi, 3.141592)
+    jetphi = np.where(jetphi>-3.141592, jetphi, -3.141592)
+    vetoedjets = np.array(evaluator[hname[IOV]].evaluate(mapname, np.array(jets.eta), jetphi), dtype=bool)
+    print("vetoed jets", vetoedjets)
+    print("Sum of vetoed jets ", ak.sum(vetoedjets), " len of veto jets ", len(vetoedjets))
+    print("Len of jets AFTER veto", len(jets[~vetoedjets]))
+    return ~vetoedjets
+    
+def applyjmsSF(IOV, FatJet,  var = ''):
+    jmsSF = {
+
+        "2016APV":{"sf": 1.00, "sfup": 1.0794, "sfdown": 0.9906}, 
+
+        "2016"   :{"sf": 1.00, "sfup": 1.0794, "sfdown": 0.9906}, 
+
+        "2017"   :{"sf": 0.982, "sfup": 0.986, "sfdown": 0.978},
+
+        "2018"   :{"sf": 0.999, "sfup": 1.001, "sfdown": 0.997}} 
+    
+    out = jmsSF[IOV]["sf"+var]
+    
+
+    FatJet = ak.with_field(FatJet, FatJet.mass * out, 'mass')
+    FatJet = ak.with_field(FatJet, FatJet.msoftdrop * out, 'msoftdrop')
+    return FatJet
+
+def applyjmrSF(IOV, FatJet, var = ''):
+    jmrSF = {
+
+       #"2016APV":{"sf": 1.00, "sfup": 1.2, "sfdown": 0.8}, 
+        "2016APV":{"sf": 1.00, "sfup": 1.2, "sfdown": 0.8}, 
+        "2016"   :{"sf": 1.00, "sfup": 1.2, "sfdown": 0.8}, 
+
+        "2017"   :{"sf": 1.09, "sfup": 1.14, "sfdown": 1.04},
+
+        "2018"   :{"sf": 1.108, "sfup": 1.142, "sfdown": 1.074}}     
+    
+    jmrvalnom = jmrSF[IOV]["sf"+var]
+    
+    recomass = FatJet.mass
+    genmass = FatJet.matched_gen.mass
+
+
+    # counts = ak.num(recomass)
+    # recomass = ak.flatten(recomass)
+    # genmass = ak.flatten(genmass)
+    
+    
+    deltamass = (recomass-genmass)*(jmrvalnom-1.0)
+    condition = ((recomass+deltamass)/recomass) > 0
+    jmrnom = ak.where( recomass <= 0.0, 0 , ak.where( condition , (recomass+deltamass)/recomass, 0 ))
+
+
+    FatJet = ak.with_field(FatJet, FatJet.mass * jmrnom, 'mass')
+    FatJet = ak.with_field(FatJet, FatJet.msoftdrop * jmrnom, 'msoftdrop')
+
+    return FatJet
+
 def GetL1PreFiringWeight(events):
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/TTbarDileptonProcessor.py#L50
     ## Reference: https://twiki.cern.ch/twiki/bin/viewauth/CMS/L1PrefiringWeightRecipe
@@ -228,13 +297,13 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     name_map['massRaw'] = 'mass_raw'
     name_map['Rho'] = 'rho'
 
-
     events_cache = events.caches[0]
 
     jet_factory = CorrectedJetsFactory(name_map, jec_stack)
     corrected_jets = jet_factory.build(FatJets, lazy_cache=events_cache)
     # print("Available uncertainties: ", jet_factory.uncertainties())
     # print("Corrected jets object: ", corrected_jets.fields)
+    print("pt and mass before correction ", FatJets['pt_raw'], ", ", FatJets['mass_raw'], " and after correction ", corrected_jets["pt"], ", ", corrected_jets["mass"])
     return corrected_jets
 def GetLHEWeight(events):
     from parton import mkPDF
@@ -269,4 +338,54 @@ def GetLHEWeight(events):
         #     muRUp = self.lha.evalAlphas(2*q)**4
         # muRDown = self.lha.evalAlphas(0.5*q)**4
     return pdfNom, pdfUp, pdfDown
+
+def GetQ2Weights(events):
+# https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/corrections.py
+
+    q2Nom = np.ones(len(events))
+    q2Up = np.ones(len(events))
+    q2Down = np.ones(len(events))
+    if ("LHEScaleWeight" in events.fields):
+        if ak.all(ak.num(events.LHEScaleWeight, axis=1)==9):
+            nom = events.LHEScaleWeight[:,4]
+            scales = events.LHEScaleWeight[:,[0,1,3,5,7,8]]
+            q2Up = ak.max(scales,axis=1)/nom
+            q2Down = ak.min(scales,axis=1)/nom 
+        elif ak.all(ak.num(events.LHEScaleWeight, axis=1)==8):
+            scales = events.LHEScaleWeight[:,[0,1,3,4,6,7]]
+            q2Up = ak.max(scales,axis=1)
+            q2Down = ak.min(scales,axis=1)
+
+    return q2Nom, q2Up, q2Down
+
+def GetPDFWeights(events):
     
+    # hessian pdf weights https://arxiv.org/pdf/1510.03865v1.pdf
+    # https://github.com/nsmith-/boostedhiggs/blob/master/boostedhiggs/corrections.py#L60
+    
+    pdf_nom = np.ones(len(events))
+
+    if "LHEPdfWeight" in events.fields:
+        
+        pdfUnc = ak.std(events.LHEPdfWeight,axis=1)/ak.mean(events.LHEPdfWeight,axis=1)
+        pdfUnc = ak.fill_none(pdfUnc, 0.00)
+        
+        pdf_up = pdf_nom + pdfUnc
+        pdf_down = pdf_nom - pdfUnc
+        
+        
+#         arg = events.LHEPdfWeight[:, 1:-2] - np.ones((len(events), 100))
+#         summed = ak.sum(np.square(arg), axis=1)
+#         pdf_unc = np.sqrt((1. / 99.) * summed)
+        
+#         pdf_nom = np.ones(len(events))
+#         pdf_up = pdf_nom + pdf_unc
+#         pdf_down = np.ones(len(events))
+
+    else:
+        
+        pdf_up = np.ones(len(events))
+        pdf_down = np.ones(len(events))
+        
+
+    return pdf_nom, pdf_up, pdf_down
