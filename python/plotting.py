@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import mplhep as hep
 import matplotlib as mpl
 
-def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel=''):
+def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os_path=""):
     from cycler import cycler
     colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c', '#9F79EE']
     fill_opts = {
@@ -125,12 +125,12 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel=''):
                         verticalalignment='bottom',
                         transform=ax.transAxes
                        )
-            fig.savefig("plots/syst/{}/UL{}{}_{}_{}_{}.png".format(IOV,IOV,channel, histname, axVar, syst), bbox_inches='tight') 
+            fig.savefig(os_path+"/UL{}{}_{}_{}_{}.png".format(IOV,channel, histname, axVar, syst), bbox_inches='tight') 
         elif syst in availSysts and "nominal" not in availSysts:
             fig, ax, = plt.subplots(nrows=1,ncols=1,figsize=(7,7))
             mc = [result[histname][{'syst':syst}].project(axVar),  result[histname][{'syst':syst}].project(axVar)]
             hep.histplot(mc, stack=False, histtype='step', binwnorm=True, ax=ax, density=False, linestyle =lines, color = cols, linewidth=1,label=syst)
-            fig.savefig("plots/syst/{}/UL{}_{}_{}_{}.png".format(IOV,IOV,channel, histname, axVar, syst), bbox_inches='tight')
+            fig.savefig(os_path+"{}/UL{}_{}_{}_{}.png".format(IOV,IOV,channel, histname, axVar, syst), bbox_inches='tight')
         elif (syst in availSysts) and ("nominal" in availSysts) and (syst[-4:]=="Down"):
             print("Down -- plot both variations for up")
         else:
@@ -138,7 +138,7 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel=''):
         ax_tot.set_ylabel(r'Events', loc = 'top')
         # leg_tot = ax_tot.legend(loc='best', labelspacing=0.25)
         # add some labels
-        fig_tot.savefig("plots/syst/{}/UL{}{}_{}_{}_allSyst.png".format(IOV,IOV,channel, histname, axVar), bbox_inches='tight')   
+        fig_tot.savefig(os_path+"UL{}{}_{}_{}_allSyst.png".format(IOV,channel, histname, axVar), bbox_inches='tight')   
 
 def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, IOV="", channel = "", rax_lim = [0.,2.0], norm = False):
     fill_opts = {

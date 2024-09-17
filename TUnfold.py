@@ -54,13 +54,13 @@ def plotinputsROOT(matrix, truth, reco, groom="", syst="", year="", ospath=''):
             leg1.AddEntry(truth, "MC Gen", "p")
             leg1.Draw()
             c1.cd(2)
+            reco.SetMarkerStyle(24)
+            reco.SetLineColor(ROOT.kBlue)
+            reco.SetMarkerColor(ROOT.kBlue)
             histMCReco_M.SetMarkerStyle(21)
             histMCReco_M.SetLineColor(ROOT.kRed)
             histMCReco_M.SetMarkerColor(ROOT.kRed)
             histMCReco_M.Draw("E")
-            reco.SetMarkerStyle(24)
-            reco.SetLineColor(ROOT.kBlue)
-            reco.SetMarkerColor(ROOT.kBlue)
             reco.Draw("SAME")
             leg1_2 = ROOT.TLegend(0.7, 0.7, 0.86, 0.86)
             leg1_2.AddEntry(histMCReco_M, "MC Reco from M", "p")
@@ -69,8 +69,8 @@ def plotinputsROOT(matrix, truth, reco, groom="", syst="", year="", ospath=''):
             c1.Draw()
             c1.SaveAs(ospath+"MCInput_"+groom+"_"+syst+"flatmatrix"+year+".png")
             return c1
-def plotUnfoldOutputHist(htrue, u, groomed=False, norm=True, os_path='', channel=''): #, oMat, oSys, oTotal):
-    #### plotting options
+def plotUnfoldOutputHist(htrue, u, groomed=False, norm=True, os_path='', channel='', IOV=''): #, oMat, oSys, oTotal):                                                 
+    #### plotting options                                                                                                                                     
     tot_error_opts = {
             'label': 'Stat. Unc.',
             'facecolor': 'powderblue',
@@ -90,23 +90,25 @@ def plotUnfoldOutputHist(htrue, u, groomed=False, norm=True, os_path='', channel
             'color': 'k',
             'elinewidth': 1,
         }
-    #### u is total unfolding object, htrue is truth hist from coffea
+    #### u is total unfolding object, htrue is truth hist from coffea                                                                                         
     o = u.GetOutput("u")
     mCovInput = u.GetEmatrixInput("Input unc")
-    inputErrTot = np.array([mCovInput.GetBinContent(i,i)**0.5 for i in range(1, o.GetNbinsX()+1)])
+    inputErrTot = np.array([mCovInput.GetBinContent(i,i)**0.5 for i in range(0, o.GetNbinsX()+1)])
     ptedges = [bin[0] for bin in htrue.project("ptgen").axes[0]] + [htrue.project("ptgen").axes[0][-1][1]]
+    print(ptedges)
     medges = [bin[0] for bin in htrue.project('mgen').axes[0]]+ [htrue.project('mgen').axes[0][-1][1]]
     widths = htrue.project("mgen").axes[0].widths
     xlim = medges[-1]
-    for ipt in range(1,len(ptedges)-1):
-        j = ipt-1 #index for coffea bc no underflow bin
-        inputErr = np.array([inputErrTot[(im+1+ipt*(len(medges)-1))] for im in range(1, len(medges))])
-        oErr = np.array([o.GetBinError(im+1+ipt*(len(medges)-1)) for im in range(1, len(medges))])
-        oVals = np.array([o.GetBinContent(im+1+ipt*(len(medges)-1)) for im in range(1, len(medges))])
-        oHistVals = np.array([o.GetBinContent(im+1+ipt*(len(medges)-1)) for im in range(1, len(medges))])
+    if groomed: os_path=os_path+"Groomed"
+    for ipt in range(1,len(ptedges)):
+        j = ipt-1 #index for coffea bc no underflow bin                                                                                                       
+        inputErr = np.array([inputErrTot[(im+2+ipt*(len(medges)-1))] for im in range(0, len(medges)-1)])
+        oErr = np.array([o.GetBinError(im+2+ipt*(len(medges)-1)) for im in range(0, len(medges)-1)])
+        oVals = np.array([o.GetBinContent(im+2+ipt*(len(medges)-1)) for im in range(0, len(medges)-1)])
+        oHistVals = np.array([o.GetBinContent(im+2+ipt*(len(medges)-1)) for im in range(0, len(medges)-1)])
         oHistErr = oErr
         hist = htrue[{'ptgen':j, 'syst':"nominal"}].project("mgen")
-        #### set up figure
+        #### set up figure                                                                                                                                    
         fig, (ax, rax) = plt.subplots(
                 nrows=2,
                 ncols=1,
@@ -119,8 +121,10 @@ def plotUnfoldOutputHist(htrue, u, groomed=False, norm=True, os_path='', channel
         transform=ax.transAxes,
         color='green', fontsize=14)
         rax.set_ylim(0.5, 2)
-        ax.set_xlim(0.0, 1000.)
-        rax.set_xlim(0.0, 1000.)
+        ax.set_xlim(5, 1000.)
+        ax.set_yscale('log')
+        rax.set_xlim(5, 1000.)
+        hep.cms.label("Preliminary", year=IOV, data = True, loc=0, ax=ax, fontsize=18);
         if groomed:
             ax.set_xlabel(r'$m_{SD, RECO} (GeV)$' )
         if norm:
@@ -128,18 +132,18 @@ def plotUnfoldOutputHist(htrue, u, groomed=False, norm=True, os_path='', channel
             hist = hist*1.0/hist.integrate("mgen").value
             oVals_sum = np.sum(oVals)
             oHistVals = oVals*1.0/oVals_sum
-            oHistErr = np.where(oVals!=0,oErr*1.0/oVals_sum, 0)
-            inputErr = inputErr*1.0/oVals_sum
+            oHistErr = np.sqrt(oVals)/oVals_sum
+            #inputErr = inputErr*1.0/oVals_sum
             print("oVals after norm ", oVals, " by value ", np.sum(oVals))
         ratio = np.divide(hist.values(),oHistVals,
                       out=np.empty(np.array(hist.project("mgen").values()).shape).fill(1),
                       where= oHistVals!=0,)
-        # ratio_staterr_up = np.divide(mcvals.values()+stat_unc_up+syst_unc_up,datavals.values(),
-        #               out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
-        #               where=datavals.values()!= 0,)
-        # ratio_staterr_down = np.divide(mcvals.values()-stat_unc_down-syst_unc_down,datavals.values(),
-        #               out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
-        #               where=datavals.values()!= 0,)
+        # ratio_staterr_up = np.divide(mcvals.values()+stat_unc_up+syst_unc_up,datavals.values(),                                                             
+        #               out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),                                                                           
+        #               where=datavals.values()!= 0,)                                                                                                         
+        # ratio_staterr_down = np.divide(mcvals.values()-stat_unc_down-syst_unc_down,datavals.values(),                                                       
+        #               out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),                                                                           
+        #               where=datavals.values()!= 0,)         
         ratio_toterr_up = np.divide(oHistVals+oHistErr,oHistVals,
                       out=np.empty(np.array(oVals.shape)).fill(np.nan),
                       where=oHistVals!= 0,)
@@ -153,18 +157,18 @@ def plotUnfoldOutputHist(htrue, u, groomed=False, norm=True, os_path='', channel
                 fill=True,
                 **tot_error_opts,
             )
-        # rax.stairs(values=ratio_statterr_up, edges = medges, baseline= ratio_statterr_down,
-        #         fill=True,
-        #         **stat_error_opts,
-        #     )                               
+        # rax.stairs(values=ratio_statterr_up, edges = medges, baseline= ratio_statterr_down,                                                                 
+        #         fill=True,                                                                                                                                  
+        #         **stat_error_opts,                                                                                                                          
+        #     )                                                                                                                                               
         ax.stairs(values=(oHistVals+oHistErr)/widths, edges = medges, baseline= (oHistVals-oHistErr)/widths,
                 fill=True,
                 **tot_error_opts,
             )
-        # ax.stairs(values=(mcvals.values()+stat_unc_up)/widths, edges = edges, baseline= (mcvals.values()-stat_unc_down)/widths,
-        #         fill=True,
-        #         **stat_error_opts,
-        #     )
+        # ax.stairs(values=(mcvals.values()+stat_unc_up)/widths, edges = edges, baseline= (mcvals.values()-stat_unc_down)/widths,                             
+        #         fill=True,                                                                                                                                  
+        #         **stat_error_opts,                         
+        #     )                                                                                                                                               
         hep.histplot(oHistVals, medges, stack=False, histtype='errorbar', yerr = abs(oHistErr),
                  ax=ax, marker =["."], color = 'Black', linewidth=1, binwnorm=True,
                  label="Unfolded "+channel+" Data")
@@ -176,9 +180,9 @@ def plotUnfoldOutputHist(htrue, u, groomed=False, norm=True, os_path='', channel
         leg = ax.legend(loc='best', fontsize=14, labelspacing=0.25)
         leg.set_visible(True)
         if norm:
-            fig.savefig(os_path+"UnfoldOutputRatioPt{}_{}_normed.png".format(ptedges[j], ptedges[j+1])) 
+            fig.savefig(os_path+"UnfoldOutputRatioPt{}_{}_normed.png".format(ptedges[j], ptedges[j+1]), bbox_inches="tight") 
         else:
-            fig.savefig(os_path+"UnfoldOutputRatioPt{}_{}.png".format(ptedges[j], ptedges[j+1])) 
+            fig.savefig(os_path+"UnfoldOutputRatioPt{}_{}.png".format(ptedges[j], ptedges[j+1]), bbox_inches="tight") 
 def CompareCoffeaROOT(result, syst_hist_dict, os_path, groomed=False, syst="nominal"):
     if groomed:
         end = "_g"
@@ -286,17 +290,15 @@ def CompareCoffeaROOT(result, syst_hist_dict, os_path, groomed=False, syst="nomi
 #### functions for setting up response matrix
 def setupBinning(result):
     binning_dict = {}
-    response_matrix_u, ptreco_edges, mreco_edges, ptgen_edges, mgen_edges = result['response_matrix_u'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").to_numpy(flow=True)
+    response_matrix_u, ptreco_edges, mreco_edges, ptgen_edges, mgen_edges = result['response_matrix_u'][{'syst':"nominal"}].project("ptreco", "mreco", "ptgen", "mgen").to_numpy()
     n_ptreco_bin = len(ptreco_edges)-1
     n_mreco_bin= len(mreco_edges)-1
     n_ptgen_bin = len(ptgen_edges)-1
     n_mgen_bin= len(mgen_edges)-1
-    mreco_edges = mreco_edges[1:-1]
-    ptreco_edges = ptreco_edges[:-1]
-    ptreco_edges[0] = 0.
-    mgen_edges = mgen_edges[1:-1]
-    ptgen_edges = ptgen_edges[:-1]
-    ptgen_edges[0] = 0.
+    # mreco_edges = mreco_edges[1:-1]
+    # ptreco_edges = ptreco_edges[1:-1]
+    # mgen_edges = mgen_edges[1:-1]
+    # ptgen_edges = ptgen_edges[1:-1]
     # print("ptgen edges ", ptgen_edges)
     # print( "Size of response matrix ", len(response_matrix_u.flatten()))
     #### make TUnfold binning axes
@@ -306,17 +308,17 @@ def setupBinning(result):
     recoBinning = detectorBinning.AddBinning("reco")
     # recoBinning.AddAxis(ptreco_mreco_u.GetYaxis(), False, False) # mreco
     # recoBinning.AddAxis(ptreco_mreco_u.GetXaxis(), False, False) # ptreco
-    recoBinning.AddAxis("m_{RECO}", n_mreco_bin-2, mreco_edges, False, False) # mreco
-    recoBinning.AddAxis("pt_{RECO}", n_ptreco_bin-1, ptreco_edges, False, False) # ptreco
+    recoBinning.AddAxis("m_{RECO}", n_mreco_bin, mreco_edges, False, False) # mreco
+    recoBinning.AddAxis("pt_{RECO}", n_ptreco_bin, ptreco_edges, False, False) # ptreco
     # print("Nbins ptgen ", n_ptgen_bin, " Nbins mgen", n_mgen_bin)
     # print("Bins ptgen ", ptgen_edges, " bins mgen", mgen_edges)
     generatorBinning = ROOT.TUnfoldBinning("generator")
-    fakeBinning=generatorBinning.AddBinning("fakesBin", 1)
+    # fakeBinning=generatorBinning.AddBinning("fakesBin", 1)
     genBinning = generatorBinning.AddBinning("gen")
     # genBinning.AddAxis(ptgen_mgen_u.GetYaxis(), False, False) # mgen
     # genBinning.AddAxis(ptgen_mgen_u.GetXaxis(), False, False) # ptgen
-    genBinning.AddAxis("m_{GEN}", n_mgen_bin-2, mgen_edges, False, False) #mgen
-    genBinning.AddAxis("pt_{GEN}", n_ptgen_bin-1, ptgen_edges, False, False) #ptgen 
+    genBinning.AddAxis("m_{GEN}", n_mgen_bin, mgen_edges, False, False) #mgen
+    genBinning.AddAxis("pt_{GEN}", n_ptgen_bin, ptgen_edges, False, False) #ptgen 
     return detectorBinning, generatorBinning, mreco_edges, ptreco_edges, mgen_edges, ptgen_edges
 
 def fillData(result, detectorBinning, mreco_edges, ptreco_edges, new=True):
@@ -327,15 +329,15 @@ def fillData(result, detectorBinning, mreco_edges, ptreco_edges, new=True):
     else:
         reco_str = "jet_pt_mass_reco"
         gen_str = "jet_pt_mass_reco"
-    data_pt_m_u =  result[reco_str+"_u"][{'syst':"nominal"}].project('ptreco', 'mreco').values(flow=True)
-    data_pt_m_g = result[reco_str+"_g"][{'syst':"nominal"}].project('ptreco', 'mreco').values(flow=True)
+    data_pt_m_u =  result[reco_str+"_u"][{'syst':"nominal"}].project('ptreco', 'mreco').values()
+    data_pt_m_g = result[reco_str+"_g"][{'syst':"nominal"}].project('ptreco', 'mreco').values()
     recoBinning = detectorBinning.FindNode("reco")
     DataReco_u=recoBinning.CreateHistogram("histDataReco Ungroomed")  #data values in reco binnning --> input to unfolding
     DataReco_g=recoBinning.CreateHistogram("histDataReco Groomed")  #data values in reco binnning --> input to unfolding
     n_ptreco_bin = len(ptreco_edges)-1
     n_mreco_bin= len(mreco_edges)-1
-    for i in range(n_ptreco_bin-1):
-        for j in range(n_mreco_bin-1):
+    for i in range(n_ptreco_bin):
+        for j in range(n_mreco_bin):
     	    #### fill data hist
             recoBin=recoBinning.GetGlobalBinNumber(mreco_edges[j],ptreco_edges[i])
             data_weight_u=data_pt_m_u[i][j]
@@ -354,32 +356,35 @@ def getHists(result, syst, detectorBinning, generatorBinning, new=True):
         reco_str = "jet_pt_mass_reco"
         gen_str = "jet_pt_mass_gen"
     hist = {}
-    ptgen_mgen_u=result[gen_str+"_u"][{'syst':syst}].project('ptgen', 'mgen').values(flow=True)
-    ptgen_mgen_g=result[gen_str+"_g"][{'syst':syst}].project('ptgen', 'mgen').values(flow=True)
-    genErr_u=np.sqrt(result[gen_str+"_u"][{'syst':syst}].project('ptgen', 'mgen').variances(flow=True))
-    genErr_g=np.sqrt(result[gen_str+"_g"][{'syst':syst}].project('ptgen', 'mgen').variances(flow=True))
+    ptgen_mgen_u=result[gen_str+"_u"][{'syst':syst}].project('ptgen', 'mgen').values()
+    ptgen_mgen_g=result[gen_str+"_g"][{'syst':syst}].project('ptgen', 'mgen').values()
+    genErr_u=np.sqrt(result[gen_str+"_u"][{'syst':syst}].project('ptgen', 'mgen').variances())
+    genErr_g=np.sqrt(result[gen_str+"_g"][{'syst':syst}].project('ptgen', 'mgen').variances())
     #### in future datasets input for fakes and misses depends on syst as well
-    fakes_ptreco_mreco = result["fakes"][{'syst':syst}].project('ptreco', 'mreco').values(flow=True)
-    fakesErr = np.sqrt(result["fakes"][{'syst':syst}].project('ptreco', 'mreco').variances(flow=True))
+    if syst in [ax for ax in result['fakes'].project("syst").axes[0]]:
+        fakes_ptreco_mreco = result["fakes"][{'syst':syst}].project('ptreco', 'mreco').values()
+        fakesErr = np.sqrt(result["fakes"][{'syst':syst}].project('ptreco', 'mreco').variances())
+    else:
+        fakes_ptreco_mreco = np.zeros_like(result["ptreco_mreco_u"][{'syst':syst}].project('ptreco', 'mreco').values())
+        fakesErr = np.zeros_like(np.sqrt(result["ptreco_mreco_u"][{'syst':syst}].project('ptreco', 'mreco').variances()))
     hist['misses_ptgen_mgen'] = uproot.pyroot.to_pyroot(uproot.writing.identify.to_writable(result["misses"][{'syst':"nominal"}]))
-    ptreco_mreco_u  = result[reco_str+"_u"][{'syst':syst}].project('ptreco', 'mreco').values(flow=True)
-    ptreco_mreco_g = result[reco_str+"_g"][{'syst':syst}].project('ptreco', 'mreco').values(flow=True)
-    recoErr_u=np.sqrt(result[reco_str+"_u"][{'syst':syst}].project('ptreco', 'mreco').variances(flow=True))
-    recoErr_g=np.sqrt(result[reco_str+"_g"][{'syst':syst}].project('ptreco', 'mreco').variances(flow=True))
-    response_matrix_u, ptreco_edges, mreco_edges, ptgen_edges, mgen_edges = result['response_matrix_u'][{'syst':syst}].project("ptreco", "mreco", "ptgen", "mgen").to_numpy(flow=True)
-    response_matrix_g = result['response_matrix_g'][{'syst':syst}].project("ptreco", "mreco", "ptgen", "mgen").values(flow=True)
-    respErr_u = np.sqrt(result['response_matrix_u'][{'syst':syst}].project("ptreco", "mreco", "ptgen", "mgen").variances(flow=True))
-    respErr_g = np.sqrt(result['response_matrix_g'][{'syst':syst}].project("ptreco", "mreco", "ptgen", "mgen").variances(flow=True))
+    ptreco_mreco_u  = result[reco_str+"_u"][{'syst':syst}].project('ptreco', 'mreco').values()
+    ptreco_mreco_g = result[reco_str+"_g"][{'syst':syst}].project('ptreco', 'mreco').values()
+    recoErr_u=np.sqrt(result[reco_str+"_u"][{'syst':syst}].project('ptreco', 'mreco').variances())
+    recoErr_g=np.sqrt(result[reco_str+"_g"][{'syst':syst}].project('ptreco', 'mreco').variances())
+    response_matrix_u, ptreco_edges, mreco_edges, ptgen_edges, mgen_edges = result['response_matrix_u'][{'syst':syst}].project("ptreco", "mreco", "ptgen", "mgen").to_numpy()
+    response_matrix_g = result['response_matrix_g'][{'syst':syst}].project("ptreco", "mreco", "ptgen", "mgen").values()
+    respErr_u = np.sqrt(result['response_matrix_u'][{'syst':syst}].project("ptreco", "mreco", "ptgen", "mgen").variances())
+    respErr_g = np.sqrt(result['response_matrix_g'][{'syst':syst}].project("ptreco", "mreco", "ptgen", "mgen").variances())
     n_ptreco_bin = len(ptreco_edges)-1
     n_mreco_bin= len(mreco_edges)-1
     n_ptgen_bin = len(ptgen_edges)-1
     n_mgen_bin= len(mgen_edges)-1
-    mreco_edges = mreco_edges[1:-1]
-    ptreco_edges = ptreco_edges[:-1]
-    ptreco_edges[0] = 0.
-    mgen_edges = mgen_edges[1:-1]
-    ptgen_edges = ptgen_edges[:-1]
-    ptgen_edges[0] = 0.
+    # mreco_edges = mreco_edges[1:-1]
+    # ptreco_edges = ptreco_edges[1:-1]
+    # mgen_edges = mgen_edges[1:-1]
+    # ptgen_edges = ptgen_edges[1:-1]
+    print("Ptreco_edges", ptreco_edges)
     # print( "Size of response matrix ", len(response_matrix_u.flatten()))
     # create histogram of migrations and gen hists
     hist['MCGenRec_u']=ROOT.TUnfoldBinning.CreateHistogramOfMigrations(generatorBinning,detectorBinning,"histMCGenRec Ungroomed "+syst)
@@ -387,7 +392,7 @@ def getHists(result, syst, detectorBinning, generatorBinning, new=True):
     #### get gen, reco, and fake binning
     recoBinning = detectorBinning.FindNode("reco")
     genBinning = generatorBinning.FindNode("gen")
-    fakeBinning = generatorBinning.FindNode("fakesBin")
+    # fakeBinning = generatorBinning.FindNode("fakesBin")
     #### create MC hists for comparison
     hist['MCReco_u']=recoBinning.CreateHistogram("histMCReco Ungroomed "+syst) #gen values in reco binning --> htruef in Sal's example
     hist['MCTruth_u']=genBinning.CreateHistogram("histMCTruth Ungroomed "+syst)  #gen values in gen binning    
@@ -397,17 +402,17 @@ def getHists(result, syst, detectorBinning, generatorBinning, new=True):
     # hist['MCTruth_RecoBinned_g']=recoBinning.CreateHistogram("histMCTruth Reco Binned, Groomed") #gen values in reco binning --> htruef in Sal's example  
     #### Loop through reco and gen bins of MC input and fill hist of migrations
     #### reco loop: i is ptreco, j is mreco
-    for i in range(n_ptreco_bin-1):
-        for j in range(n_mreco_bin-1):
+    for i in range(n_ptreco_bin):
+        for j in range(n_mreco_bin):
             glob_recobin=(i)*(n_mreco_bin)+j
             # print("Bin j = " , j , " has edge mreco " , mreco_edges[j] , "and  bin i " , i , " has ptreco edge " , ptreco_edges[i])
             recoBin=recoBinning.GetGlobalBinNumber(mreco_edges[j],ptreco_edges[i])
 	    #### only fill fakes in fake genBin
-            fake_weight = fakes_ptreco_mreco[i][j]
+            # fake_weight = fakes_ptreco_mreco[i][j]
             #print("Fake weight ", fake_weight," for i == ",i, " and j == ",j)
-            fakeBin=fakeBinning.GetStartBin()
-            hist['MCGenRec_u'].SetBinContent(fakeBin,recoBin,fake_weight)
-            hist['MCGenRec_u'].SetBinError(fakeBin,recoBin,fakesErr[i][j])
+            # fakeBin=fakeBinning.GetStartBin()
+            # hist['MCGenRec_u'].SetBinContent(fakeBin,recoBin,fake_weight)
+            # hist['MCGenRec_u'].SetBinError(fakeBin,recoBin,fakesErr[i][j])
             #### fill MC reco hist for comparison of inputs
             reco_weight_u=ptreco_mreco_u[i][j]
             hist['MCReco_u'].SetBinContent(recoBin, reco_weight_u)
@@ -418,22 +423,22 @@ def getHists(result, syst, detectorBinning, generatorBinning, new=True):
             hist['MCReco_g'].SetBinError(recoBin, recoErr_g[i][j])
             #print("Reco weight groomed " , reco_weight_g , " for matrix reco bin " , recoBin)            
 	    #### gen loop: k is ptgen, l is mgen
-            for k in range(n_ptgen_bin-1):
-                for l in range(n_mgen_bin-1):
+            for k in range(n_ptgen_bin):
+                for l in range(n_mgen_bin):
                     glob_genbin=(k)*(n_mgen_bin)+l
                     genBin=genBinning.GetGlobalBinNumber(mgen_edges[l],ptgen_edges[k])
      	            #### fill MC truth for closure test
 	            #### ONLY FILL ONCE INSIDE i,j LOOP
-                    if(i==0 and j==0):
+                    if(i==1 and j==1):
                         #### fill Gen weights
                         # print("Bin l = ", l, " has mgen edge ", mgen_edges[l], " and bin k = ", k, " has ptgen edge ", ptgen_edges[k])
-                        truth_weight_u = ptgen_mgen_u[k][l+1]
+                        truth_weight_u = ptgen_mgen_u[k][l]
                         hist['MCTruth_u'].SetBinContent(genBin, truth_weight_u)
-                        hist['MCTruth_u'].SetBinError(genBin, genErr_u[k][l+1])
+                        hist['MCTruth_u'].SetBinError(genBin, genErr_u[k][l])
                         #print("Truth weight ", truth_weight_u, " for matrix gen bin ", genBin)
-                        truth_weight_g = ptgen_mgen_g[k][l+1]
+                        truth_weight_g = ptgen_mgen_g[k][l]
                         hist['MCTruth_g'].SetBinContent(genBin, truth_weight_g)
-                        hist['MCTruth_g'].SetBinError(genBin, genErr_g[k][l+1])
+                        hist['MCTruth_g'].SetBinError(genBin, genErr_g[k][l])
                         #### SetBinContent truth but binned in reco for comparison
                         recoBin_genObj=recoBinning.GetGlobalBinNumber(mgen_edges[l],ptgen_edges[k])
                         #### print("With pt edge " , ptgen_edges[k] , " for k == " , k , " and m edge " , mgen_edges[l]  ," for l ==  " , l , "and reco bin " , recoBin_genObj)
@@ -445,16 +450,16 @@ def getHists(result, syst, detectorBinning, generatorBinning, new=True):
 	            #print("TUnfold gen bin ", genBin, " and reco bin ", recoBin, "for value", response_matrix_u[glob_bin])
                     
 	            #### fill ungroomed resp. matrices
-                    resp_weight_u = response_matrix_u[i][j][k][l+1]
+                    resp_weight_u = response_matrix_u[i][j][k][l]
                     #resp_weight_u = response_matrix_u.flatten()[glob_bin]
                     # print("Response weight for index i ",  i, " j ", j, " k ", k, " l ", l, " in unflattened matrix ", response_matrix_u[i][j][k][l])
                     # print("and weight for global index ", glob_bin, " in flattened matrix ", response_matrix_u.flatten()[glob_bin])
                     hist['MCGenRec_u'].SetBinContent(genBin,recoBin,resp_weight_u)
-                    hist['MCGenRec_u'].SetBinError(genBin,recoBin,respErr_u[i][j][k][l+1])
+                    hist['MCGenRec_u'].SetBinError(genBin,recoBin,respErr_u[i][j][k][l])
                     #### fill groomed resp. matrices
-                    resp_weight_g = response_matrix_g[i][j][k][l+1]
+                    resp_weight_g = response_matrix_g[i][j][k][l]
                     hist['MCGenRec_g'].SetBinContent(genBin,recoBin,resp_weight_g)
-                    hist['MCGenRec_g'].SetBinError(genBin,recoBin,respErr_g[i][j][k][l+1])
+                    hist['MCGenRec_g'].SetBinError(genBin,recoBin,respErr_g[i][j][k][l])
     # print("Response matrix")
     # hist['MCGenRec_u'].Print("base")
     hist['fakes_ptreco_mreco'] = fakes_ptreco_mreco

@@ -11,7 +11,7 @@ import pickle
 import os
 import warnings
 warnings.filterwarnings("ignore")
-from distributed.diagnostics.plugin import UploadDirectory
+#from distributed.diagnostics.plugin import UploadDirectory
 
 def checkdir(directory):
     if not os.path.exists(directory):
@@ -67,9 +67,9 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False, ch
     return dict
 
 #initiate dask client and run coffea job
-from dask.distributed import Client
 
 def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing = False, year = '', data = False, winterfell = False, verbose = True, datasetRange = None):
+    from dask.distributed import Client
     #default is to run locally
     tstart = time.time()
     executor = processor.futures_executor
