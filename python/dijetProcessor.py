@@ -48,7 +48,6 @@ class makeDijetHists(processor.ProcessorABC):
         mass_bin = hist.axis.Variable(mreco_bin_edges, name="mreco", label=r"m_{RECO} (GeV)")
         ptgen_edges = np.array([200,260,350,430,540,630,690,750,810,13000]) 
         # ptgen_edges = np.array([200,280,380,460,560,640,700,800,13000]) #### NEW VALUES TO SWITCH TO
-        # ptreco_edges = np.sort(np.append(ptgen_edges,[(ptgen_edges[i]+ptgen_edges[i+1])/2 for i in range(len(ptgen_edges)-1)]))
         pt_bin = hist.axis.Variable(ptgen_edges, name="ptreco", label=r"p_{T,RECO} (GeV)")     
         pt_gen_bin = hist.axis.Variable(ptgen_edges, name="ptgen", label=r"p_{T,GEN} (GeV)") 
         y_bin = hist.axis.Regular(25, 0., 2.5, name="rapidity", label=r"$y$")

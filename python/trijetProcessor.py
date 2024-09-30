@@ -107,6 +107,7 @@ class makeTrijetHists(processor.ProcessorABC):
         self.btag = btag
         self.do_gen = not data
         self.hem = hem
+        self.jk = jk
         self.systematics = systematics
         self.jet_systematics = jet_systematics
         print("Data: ", data, " gen ", self.do_gen)
@@ -114,13 +115,13 @@ class makeTrijetHists(processor.ProcessorABC):
         parton_cat = hist.axis.StrCategory([],growth=True,name="partonFlav", label="Parton Flavour")
         syst_cat = hist.axis.StrCategory([], growth=True, name='syst', label="Systematic")
         #### if using specific bin edges use hist.axis.Variable() instead
-        mgen_bin_edges = np.array([0,10,20,40,60,80,100,150,200,250,1000])
+        mgen_bin_edges = np.array([0,10,20,40,60,80,100,150,200,300,1300])
         mreco_bin_edges = np.sort(np.append(mgen_bin_edges,[(mgen_bin_edges[i]+mgen_bin_edges[i+1])/2 for i in range(len(mgen_bin_edges)-1)]))
         print("mreco bins: ", mreco_bin_edges)
         mass_gen_bin =  hist.axis.Variable(mgen_bin_edges, name="mgen", label=r"m_{GEN} (GeV)")                         
         mass_bin = hist.axis.Variable(mreco_bin_edges, name="mreco", label=r"m_{RECO} (GeV)")
-        ptgen_edges = np.array([200,280,360,450,520,630,690,750,800,1300,13000])
-        # ptreco_edges = np.sort(np.append(ptgen_edges,[(ptgen_edges[i]+ptgen_edges[i+1])/2 for i in range(len(ptgen_edges)-1)]))
+        ptgen_edges = np.array([200,260,350,430,540,630,690,750,810,13000]) 
+        # ptgen_edges = np.array([200,280,380,460,560,640,700,800,13000]) #### NEW VALUES TO SWITCH TO
         pt_bin = hist.axis.Variable(ptgen_edges, name="ptreco", label=r"p_{T,RECO} (GeV)")  
         pt_gen_bin = hist.axis.Variable(ptgen_edges, name="ptgen", label=r"p_{T,GEN} (GeV)") 
 #         mass_bin = hist.axis.Regular(60, 0, 1000.,name="mreco", label="Jet Mass (GeV)")
@@ -135,21 +136,49 @@ class makeTrijetHists(processor.ProcessorABC):
         dphi_axis = hist.axis.Regular(150, -2*np.pi, 2*np.pi, name="dphi", label=r"$\Delta \phi$")
         phi_axis = hist.axis.Regular(150, -2*np.pi, 2*np.pi, name="phi", label=r"$\phi$")
         weight_bin = hist.axis.Regular(100, 0, 5, name="corrWeight", label="Weight")
-
+        jk_axis = hist.axis.IntCategory([], growth = True, name = 'jk', label = "Jackknife section" )
+        
         self._histos = {
+            #### For jackknife only need resp. matrix hists
+                'misses':                    hist.Hist(syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
+                'misses_g':                    hist.Hist(syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
+                'fakes':                     hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
+                'fakes_g':                   hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
+                #### hist for comparison of weights
+                'weights':                   hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
+                
+                #### Plots to be unfolded
+                'ptreco_mreco_u':        hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
+                'ptreco_mreco_g':        hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
+        
+                #### Plots for comparison
+                'ptgen_mgen_u':         hist.Hist(syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", label="Counts"),       
+                'ptgen_mgen_g':         hist.Hist(syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", label="Counts"),
+            
+                #### Plots for the analysis in the proper binning
+                'response_matrix_u':         hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, pt_gen_bin, mass_gen_bin, storage="weight",                                                         label="Counts"),
+                'response_matrix_g':         hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, pt_gen_bin, mass_gen_bin, storage="weight",                                                         label="Counts"),
+                     
+                #### misc.
+                'cutflow':            processor.defaultdict_accumulator(int),
+                'jkflow':            processor.defaultdict_accumulator(int),
+        }
+
+        if not self.jk:
+            self._histos.update({ 
         #### btag study histos
         'alljet_ptreco_mreco':        hist.Hist(jet_cat, parton_cat, mass_bin, pt_bin, storage="weight", name="Events"),
         'btag_eta':            hist.Hist(jet_cat, parton_cat, frac_axis, eta_bin, storage="weight", name="Events"),
             
         #### Plots of things during the selection process / for debugging
         'njet_gen':                  hist.Hist(syst_cat, n_axis, storage="weight", label="Events"),
-        'dphimin_gen':               hist.Hist(syst_cat, dphi_axis, storage="weight", label="Events"),
-        'asymm_gen':               hist.Hist(syst_cat, frac_axis, storage="weight", label="Events"),
         'njet_reco':                  hist.Hist(syst_cat, n_axis, storage="weight", label="Events"),
+        'dphimin_gen':               hist.Hist(syst_cat, dphi_axis, storage="weight", label="Events"),
         'dphimin_reco':               hist.Hist(syst_cat, dphi_axis, storage="weight", label="Events"),
         'asymm_reco':               hist.Hist(syst_cat, frac_axis, storage="weight", label="Events"),
+        'asymm_gen':               hist.Hist(syst_cat, frac_axis, storage="weight", label="Events"),
             
-        'jet_dr_reco_gen':           hist.Hist(syst_cat, dr_axis, storage="weight", label="Events"),
+        # 'jet_dr_reco_gen':           hist.Hist(syst_cat, dr_axis, storage="weight", label="Events"),
         # 'jet_eta_reco':              hist.Hist(syst_cat, eta_bin, storage="weight", name="Events"),
         'jet_rap_reco':              hist.Hist(syst_cat, y_bin, storage="weight", name="Events"),
         'jet_rap_gen':               hist.Hist(syst_cat, y_bin, storage="weight",name="Events"),
@@ -160,35 +189,13 @@ class makeTrijetHists(processor.ProcessorABC):
         
         'jet_dr_gen_subjet':         hist.Hist(syst_cat, dr_axis, storage="weight", label="Events"),
         'jet_dr_reco_to_gen_subjet': hist.Hist(syst_cat, dr_axis, storage="weight", label="Events"),
-        'misses_g':                  hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
-        'fakes_g':                   hist.Hist(syst_cat, pt_bin, mass_bin, storage="weight", name="Events"),
-        'misses':                    hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
-        'fakes':                     hist.Hist(syst_cat, pt_bin, mass_bin, storage="weight", name="Events"),
-        #### hist for comparison of weights
-        'weights':                   hist.Hist(syst_cat, weight_bin, storage="weight", name="Events"),
         #### for investigation of removing fakes
         'fakes_eta_phi':             hist.Hist(syst_cat, eta_bin, phi_axis, storage="weight", name="Events"),
         'fakes_asymm_dphi':             hist.Hist(syst_cat, frac_axis, dphi_axis, storage="weight", name="Events"),
-            
-        #### Plots to be unfolded
-        'ptreco_mreco_u':       hist.Hist(syst_cat, pt_bin, mass_bin, storage="weight", name="Events"),
-        'ptreco_mreco_g':        hist.Hist(syst_cat, pt_bin, mass_bin, storage="weight", name="Events"),
-
-        #### Plots for comparison
-        'ptgen_mgen_u':        hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, storage="weight", label="Events"),       
-        'ptgen_mgen_g':            hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, storage="weight", label="Events"),
         
         #### Plots to get JMR and JMS in MC
         # 'jet_m_pt_u_reco_over_gen': hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, frac_axis, storage="weight",                                                                        label="Events"),
         # 'jet_m_pt_g_reco_over_gen':  hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, frac_axis, storage="weight",                                                                        label="Events"),
-
-        #### Plots for the analysis in the proper binning
-        'response_matrix_u':    hist.Hist(syst_cat, pt_bin, mass_bin, pt_gen_bin, mass_gen_bin, storage="weight",                                                         label="Events"),
-        'response_matrix_g':     hist.Hist(syst_cat, pt_bin, mass_bin, pt_gen_bin, mass_gen_bin, storage="weight",                                                         label="Events"),
-        # accumulators
-        'cutflow': processor.defaultdict_accumulator(int),
-        'weights': processor.defaultdict_accumulator(float),
-        'systematics': processor.defaultdict_accumulator(float),
         }
     
     @property

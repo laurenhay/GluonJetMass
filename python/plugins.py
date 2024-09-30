@@ -87,7 +87,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         # redirector= 'root://xrootd-local.unl.edu:1094/'
         #### MIT redirector
         # redirecotr='root://xrootd.cmsaf.mit.edu:1094/'
-        #### DESY redirector
+        #### DESY T2 redirector
         # redirector = 'root://dcache-cms-webdav-wan.desy.de/'
         #### CERN T2 redirector
         # redirector = 'root://eoscms.cern.ch:443/'
