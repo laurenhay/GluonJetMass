@@ -139,8 +139,139 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os
         # leg_tot = ax_tot.legend(loc='best', labelspacing=0.25)
         # add some labels
         fig_tot.savefig(os_path+"UL{}{}_{}_{}_allSyst.png".format(IOV,channel, histname, axVar), bbox_inches='tight')   
+from hist.intervals import ratio_uncertainty
+def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, channel = "", norm = False, rax_lim=None, os_path=""):
+    stat_unc_up = result_mc[hist_mc][{'syst':'nominal'}].project(axVar).variances()**0.5
+    stat_unc_down = result_mc[hist_mc][{'syst':'nominal'}].project(axVar).variances()**0.5
+    syst_unc_up, syst_unc_down = getTotSyst(result_mc, hist_mc, axis=axVar)
+    print("Syst unc up vals: ", syst_unc_up)
+    print("Syst unc down vals: ", syst_unc_down)
+    #### following opts may be unnecessary
+    tot_error_opts = {
+            'label': 'Stat. + Syst. Unc.',
+            'facecolor': 'orange',
 
-def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, IOV="", channel = "", rax_lim = [0.,2.0], norm = False):
+            'linewidth': 0
+        }
+    stat_error_opts = {
+            'label': 'Stat. Unc.',
+                    'hatch': '///',
+                    'edgecolor': 'black',
+            'facecolor': 'none',
+            'linewidth': 0
+        }
+    data_err_opts = {
+            'linestyle': 'none',
+            'marker': '.',
+            'markersize': 10.,
+            'color': 'k',
+            'elinewidth': 1,
+        }
+    datahist = result_data[hist_data][{'syst':'nominal'}]
+    mchist = result_mc[hist_mc][{'syst':'nominal'}]
+    availAxes = [ax.name for ax in result_mc[hist_mc].axes]
+    edges = [bin[0] for bin in result_mc[hist_mc].project(axVar).axes[0]] + [result_mc[hist_mc].project(axVar).axes[0][-1][1]]
+    widths = result_mc[hist_mc].project(axVar).axes[0].widths
+    print("widths", widths)
+    xlim = edges[-1]
+    fig, (ax, rax) = plt.subplots(
+                nrows=2,
+                ncols=1,
+                figsize=(7,7),
+                gridspec_kw={"height_ratios": (3, 1)},
+                sharex=True)
+    ax.yaxis.get_minor_locator().set_params(numticks=999, subs=(.2, .4, .6, .8))
+    ax.set_ylabel(r'$\frac{Events}{Bin Size} (GeV^{-1})$', loc = 'top')
+    if "pt" in axVar or "m"==axVar[0]: 
+        ax.set_yscale('log')
+    if "_g" in hist_mc and "m"==axVar[0]:
+        ax.set_xlabel(r'$m_{SD, RECO} (GeV)$' )
+    else:
+        ax.set_xlabel(r'$m_{RECO} (GeV)$' )
+    ratio = np.ones_like(result_mc[hist_mc].project(axVar).values())
+    #### Fill ratio plot
+    rax.set_xlabel(None)
+    if norm:
+        mcvals = mchist.project(axVar)*datahist.project(axVar).integrate(axVar).value/mchist.project(axVar).integrate(axVar).value
+        datavals = datahist.project(axVar)
+        stat_unc_up = stat_unc_up*datahist.project(axVar).integrate(axVar).value/mchist.project(axVar).integrate(axVar).value
+        stat_unc_down = stat_unc_down*datahist.project(axVar).integrate(axVar).value/mchist.project(axVar).integrate(axVar).value
+        syst_unc_up = syst_unc_up*datahist.project(axVar).integrate(axVar).value/mchist.project(axVar).integrate(axVar).value
+        syst_unc_down = syst_unc_down*datahist.project(axVar).integrate(axVar).value/mchist.project(axVar).integrate(axVar).value
+    else:
+        mcvals = mchist.project(axVar)
+        datavals = datahist.project(axVar)
+    ratio = np.divide(mcvals.values(),datavals.values(),
+                      out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
+                      where=datavals.values()!= 0,)
+    #### Add MC error bars
+    print("Total unc up: ", mcvals.values()+stat_unc_up+syst_unc_up)
+
+    ax.stairs(values=(mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5)/widths, edges = edges, baseline= (mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5)/widths,
+                fill=True,
+                **tot_error_opts,
+            )
+    ax.stairs(values=(mcvals.values()+stat_unc_up)/widths, edges = edges, baseline= (mcvals.values()-stat_unc_down)/widths,
+                fill=True,
+                **stat_error_opts,
+            )
+    hep.histplot(datavals, stack=False, histtype='errorbar',
+                 ax=ax, marker =["."], color = 'Black', linewidth=1, binwnorm=True,
+                 label=channel + " Data")
+    hep.histplot(mcvals, stack=False, histtype='step',
+                 ax=ax, linestyle ='-', color = 'Black', linewidth=1, binwnorm=True,
+                 label=channel + " MC")
+    ax.autoscale(axis='x', tight=True)
+    #### Want to stack uncertainties
+        # print("Values in bins: ", mchist.project(axVar).values(), " errors of bins ", mchist.project(axVar).variances())
+    if rax_lim != None:
+        rax.set_ylim(rax_lim[0], rax_lim[1])
+    leg = ax.legend(loc='best', labelspacing=0.25)
+    leg.set_visible(True)
+    #### Get ratio err values and plot
+    ratio_totterr_up = np.divide((mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5),datavals.values(),
+                      out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
+                      where=datavals.values()!= 0,)
+    ratio_totterr_down = np.divide(mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5,datavals.values(),
+                      out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
+                      where=datavals.values()!= 0,)
+    ratio_statterr_up = np.divide(mcvals.values()+stat_unc_up,datavals.values(),
+                      out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
+                      where=datavals.values()!= 0,)
+    ratio_statterr_down = np.divide(mcvals.values()-stat_unc_up,datavals.values(),
+                      out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
+                      where=datavals.values()!= 0,)
+    rax.stairs(values=ratio_totterr_up, edges = edges, baseline= ratio_totterr_down,
+                fill=True,
+                **tot_error_opts,
+            )
+    rax.stairs(values=ratio_statterr_up, edges = edges, baseline= ratio_statterr_down,
+                fill=True,
+                **stat_error_opts,
+            )
+    hep.histplot(ratio, edges, histtype='step', ax=rax, linestyle ="-", color = 'black', linewidth=1)
+    hep.histplot(np.ones_like(ratio), edges, histtype='step',ax=rax,linestyle ="--", color = 'black', linewidth=1)
+    
+    rax.set_ylabel(r'$\frac{MC}{Data}$', loc = 'center')
+    if ("eta" in axVar) | ("phi" in axVar):
+        rax.set_xlim(-xlim, xlim)
+    elif "pt" in axVar:
+        rax.set_xlim(0, 2000)
+        # rax.set_ylim(0.0,1.0)
+    else:
+        rax.set_xlim(0, xlim)
+    hep.cms.label("Preliminary", data = True, loc=0, ax=ax, fontsize=18);
+    plt.show()
+    if norm:
+        fig.savefig(os_path+"ULwErrs{}{}_{}_{}_normed.png".format(IOV,channel, hist_mc, axVar), bbox_inches="tight") 
+    else:
+        fig.savefig(os_path+"ULwErrs{}{}_{}_{}.png".format(IOV,channel, hist_mc, axVar), bbox_inches="tight") 
+        
+def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig = None, IOV="", channel = "", rax_lim = [0.,2.0], norm = False):
+    if result_herwig!=None:
+        herwig=True
+    else:
+        herwig=False
     fill_opts = {
             'edgecolor': (0,0,0,0.3),
             'alpha': 0.8}
@@ -160,6 +291,8 @@ def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, IOV="", channe
         }
     datahist = result_data[hist_data][{'syst':'nominal'}]
     mchist = result_mc[hist_mc][{'syst':'nominal'}]
+    if result_herwig!=None:
+        herwighist = result_herwig[hist_mc][{'syst':'nominal'}]
     # if "m"==axVar[0]:
     #     datahist = result_data[hist_data].rebin(2)
     #     edges_data = [bin[0] for bin in result_data[hist_data].project(axVar).axes[0]] + [result_mc[hist_data].project(axVar).axes[0][-1][1]]
@@ -184,14 +317,27 @@ def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, IOV="", channe
     #### Fill ratio plot
     rax.set_xlabel(None)
     if norm:
-        mcvals = mchist.project(axVar)*1.0/mchist.project(axVar).integrate(axVar).value
-        datavals = datahist.project(axVar)*1.0/datahist.project(axVar).integrate(axVar).value
+        mcvals = mchist.project(axVar)*datahist.project(axVar).integrate(axVar).value/mchist.project(axVar).integrate(axVar).value
+        datavals = datahist.project(axVar)
+        # stat_unc_up = stat_unc_up*datahist.project(axVar).integrate(axVar).value/mchist.project(axVar).integrate(axVar).value
+        # stat_unc_down = stat_unc_down*datahist.project(axVar).integrate(axVar).value/mchist.project(axVar).integrate(axVar).value
+        # syst_unc_up = syst_unc_up*datahist.project(axVar).integrate(axVar).value/mchist.project(axVar).integrate(axVar).value
+        # syst_unc_down = syst_unc_down*datahist.project(axVar).integrate(axVar).value/mchist.project(axVar).integrate(axVar).value
+        if herwig:
+            herwigvals = herwighist.project(axVar)*datahist.project(axVar).integrate(axVar).value/herwighist.project(axVar).integrate(axVar).value
+            
     else:
         mcvals = mchist.project(axVar)
         datavals = datahist.project(axVar)
+        if herwig:
+            herwigvals = herwighist.project(axVar)
     ratio = np.divide(mcvals.values(),datavals.values(),
                       out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                       where=mcvals.values()!= 0,)
+    if herwig:
+        ratio_h = np.divide(herwigvals.values(),datavals.values(),
+                      out=np.empty(np.array(herwigvals.values()).shape).fill(np.nan),
+                      where=herwigvals.values()!= 0,)
     print("Integral of hist ", datahist.project(axVar).integrate(axVar).value)
     # normedHistVals = np.divide(datahist.project(axVar).values(),/datahist.project(axVar).integrate(axVar),
     #                   out=np.empty(np.array(mchist.project(axVar).values()).shape).fill(np.nan),
@@ -203,6 +349,10 @@ def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, IOV="", channe
     hep.histplot(mcvals, stack=False, histtype='step',
                  binwnorm=1, ax=ax, linestyle ='-', color = 'Blue', linewidth=1,
                  label=channel + " MC")
+    if herwig:
+        hep.histplot(herwigvals, stack=False, histtype='step',
+                 binwnorm=1, ax=ax, linestyle ='-', color = 'Red', linewidth=1,
+                 label=channel + " Herwig")
     # print("Values in bins: ", mchist.project(axVar).values(), " errors of bins ", mchist.project(axVar).variances())
     ax.autoscale(axis='x', tight=True)
     if rax_lim != None:
@@ -210,6 +360,8 @@ def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, IOV="", channe
     leg = ax.legend(loc='best', labelspacing=0.25)
     leg.set_visible(True)
     hep.histplot(ratio, edges, stack=False, histtype='step', ax=rax, density=False, linestyle ="-", color = 'blue', linewidth=1)
+    if herwig:
+        hep.histplot(ratio_h, edges, stack=False, histtype='step', ax=rax, density=False, linestyle ="-", color = 'red', linewidth=1)
     hep.histplot(np.ones_like(ratio), edges, stack=False, histtype='step',ax=rax, density=False, linestyle ="--", color = 'black', linewidth=1)
     rax.set_ylabel(r'$\frac{MC}{Data}$', loc = 'center')
     if ("eta" in axVar) | ("phi" in axVar):

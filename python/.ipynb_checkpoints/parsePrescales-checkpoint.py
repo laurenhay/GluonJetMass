@@ -7,19 +7,29 @@ import correctionlib.schemav2 as cs
 parser = argparse.ArgumentParser()
 parser.add_argument('-i', '--input') ##input JSON file                                                                          
 parser.add_argument('-t', '--hltpath') ##desired hlt path                                                                       
-
-makeJSON = False                                                                                                                                 
+                                                                                                                                 
 args = parser.parse_args()
 
-if "Collisions16" in args.input:
-    year = 2016
-    HLT_paths = ['AK8PFJet40', 'AK8PFJet60', 'AK8PFJet80', 'AK8PFJet140', 'AK8PFJet200', 'AK8PFJet260', 'AK8PFJet320', 'AK8PFJet400', 'AK8PFJet450', 'AK8PFJet500']
-elif "Collisions17" in args.input:
-    year = 2017
-    HLT_paths = ['AK8PFJet40', 'AK8PFJet60', 'AK8PFJet80', 'AK8PFJet140', 'AK8PFJet200', 'AK8PFJet260', 'AK8PFJet320', 'AK8PFJet400', 'AK8PFJet450', 'AK8PFJet500', 'AK8PFJet550']
+if args.hltpath != None:
+    HLT_paths = [args.hltpath+'40', args.hltpath+'60', args.hltpath+'80', args.hltpath+'140', args.hltpath+'200', args.hltpath+'260', args.hltpath+'320', args.hltpath+'400', args.hltpath+'450', args.hltpath+'500']
+    if "Collisions16" in args.input:
+        year = 2016
+    elif "Collisions17" in args.input:
+        year = 2017
+        HLT_paths = HLT_paths + [args.hltpath+'550']
+    else:
+        year = 2018
+        HLT_paths = [args.hltpath+'15', args.hltpath+'25'] + HLT_paths + [args.hltpath+'550']
 else:
-    year = 2018
-    HLT_paths = ['AK8PFJet15', 'AK8PFJet25', 'AK8PFJet40', 'AK8PFJet60', 'AK8PFJet80', 'AK8PFJet140', 'AK8PFJet200', 'AK8PFJet260', 'AK8PFJet320', 'AK8PFJet400', 'AK8PFJet450', 'AK8PFJet500', 'AK8PFJet550']
+    if "Collisions16" in args.input:
+        year = 2016
+        HLT_paths = ['AK8PFJet40', 'AK8PFJet60', 'AK8PFJet80', 'AK8PFJet140', 'AK8PFJet200', 'AK8PFJet260', 'AK8PFJet320', 'AK8PFJet400', 'AK8PFJet450', 'AK8PFJet500']
+    elif "Collisions17" in args.input:
+        year = 2017
+        HLT_paths = ['AK8PFJet40', 'AK8PFJet60', 'AK8PFJet80', 'AK8PFJet140', 'AK8PFJet200', 'AK8PFJet260', 'AK8PFJet320', 'AK8PFJet400', 'AK8PFJet450', 'AK8PFJet500', 'AK8PFJet550']
+    else:
+        year = 2018
+        HLT_paths = ['AK8PFJet15', 'AK8PFJet25', 'AK8PFJet40', 'AK8PFJet60', 'AK8PFJet80', 'AK8PFJet140', 'AK8PFJet200', 'AK8PFJet260', 'AK8PFJet320', 'AK8PFJet400', 'AK8PFJet450', 'AK8PFJet500', 'AK8PFJet550']
 
 #print(args.input)
 
@@ -30,8 +40,13 @@ cert_jsonData = pandas.read_json(info, orient = 'index')
 golden_runs = cert_jsonData.iloc[:,0].keys().to_list()
 
 #### allRuns_AK8HLT.csv is the result csv of running 'brilcalc trg --prescale --hltpath "HLT_AK8PFJet*" --output-style csv' 
-#### run,cmsls,prescidx,totprescval,hltpath/prescval,logic,l1bit/prescval                                                          
-ps_csvData = pandas.read_csv("allRunsAK8HLT_skimmed.csv")
+#### run,cmsls,prescidx,totprescval,hltpath/prescval,logic,l1bit/prescval  
+if args.hltpath == None or args.hltpath == "AK8PFJet":
+    ps_csvData = pandas.read_csv("allRunsAK8HLT_skimmed.csv")
+elif args.hltpath == "PFJet" and year == 2016:
+    ps_csvData = pandas.read_csv("allRunsAK4HLT2016_skim.csv")
+else:
+    print("invalid HLT inputs")
 #### Removing "None" values from ps data
 #print(ps_csvData[ps_csvData['# run'].isin(golden_runs)])
 ps_csvData = ps_csvData[ps_csvData['cmsls']!='None']
@@ -107,5 +122,5 @@ cset = cs.CorrectionSet(
     description = "Jet prescales for " + str(year)
     )
 
-with open("ps_weight_JSON_"+str(year)+".json", "w") as f:
+with open("ps_weight_JSON_"+args.hltpath+str(year)+".json", "w") as f:
     f.write(cset.json(exclude_unset=True))

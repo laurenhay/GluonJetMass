@@ -97,27 +97,21 @@ def GetL1PreFiringWeight(events):
     L1PrefiringWeights = [events.L1PreFiringWeight.Nom, events.L1PreFiringWeight.Up, events.L1PreFiringWeight.Dn]
     return L1PrefiringWeights
 
-def HEMCleaning(JetCollection):
-    # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/TTbarDileptonProcessor.py#L58
-    # necessary?
+def HEMCleaning(IOV, JetCollection):
     ## Reference: https://hypernews.cern.ch/HyperNews/CMS/get/JetMET/2000.html
-    
-
     isHEM = ak.ones_like(JetCollection.pt)
-    detector_region1 = ((JetCollection.phi < -0.87) & (JetCollection.phi > -1.57) &
-                       (JetCollection.eta < -1.3) & (JetCollection.eta > -2.5))
-    detector_region2 = ((JetCollection.phi < -0.87) & (JetCollection.phi > -1.57) &
-                       (JetCollection.eta < -2.5) & (JetCollection.eta > -3.0))
-    jet_selection    = ((JetCollection.jetId > 1) & (JetCollection.pt > 15))
+    if (IOV == "2018"):
+        detector_region1 = ((JetCollection.phi < -0.87) & (JetCollection.phi > -1.57) &
+                           (JetCollection.eta < -1.3) & (JetCollection.eta > -2.5))
+        detector_region2 = ((JetCollection.phi < -0.87) & (JetCollection.phi > -1.57) &
+                           (JetCollection.eta < -2.5) & (JetCollection.eta > -3.0))
+        jet_selection    = ((JetCollection.jetId > 1) & (JetCollection.pt > 15))
 
-    isHEM            = ak.where(detector_region1 & jet_selection, 0.80, isHEM)
-    isHEM            = ak.where(detector_region2 & jet_selection, 0.65, isHEM)
+        isHEM            = ak.where(detector_region1 & jet_selection, 0.80, isHEM)
+        isHEM            = ak.where(detector_region2 & jet_selection, 0.65, isHEM)
+    JetCollection = ak.with_field(JetCollection, JetCollection.pt*isHEM, "pt" )
+    return JetCollection
     
-    corrected_jets = copy.deepcopy(JetCollection)
-    corrected_jets["pt"]   = JetCollection.pt * isHEM
-    corrected_jets["mass"] = JetCollection.mass * isHEM
-
-    return corrected_jets
 def HEMVeto(FatJets, runs):
 
     ## Reference: https://hypernews.cern.ch/HyperNews/CMS/get/JetMET/2000.html
@@ -159,12 +153,39 @@ def GetPUSF(events, IOV):
     puNom = evaluator[hname[str(IOV)]].evaluate(np.array(events.Pileup.nTrueInt), "nominal")
 
     return puNom, puUp, puDown
-def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = None):
+
+def GetCorrectedSDMass(events, era, IOV, isData=False, uncertainties=None, useSubjets=True):
+    SubJets=events.SubJet
+    SubGenJetAK8 = events.SubGenJetAK8
+    SubGenJetAK8['p4']= ak.with_name(events.SubGenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+    SubJets["p4"] = ak.with_name(events.SubJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+    SubJets["pt_gen"] = ak.values_astype(ak.fill_none(SubJets.p4.nearest(SubGenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
+    FatJets=events.FatJet
+    FatJets["p4"] = ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+    if useSubjets:
+        corr_subjets = GetJetCorrections(FatJets, events, era, IOV, SubJets = SubJets, isData=isData, uncertainties = uncertainties )
+    else:
+        FatJets["mass"] = FatJets.msoftdrop
+        corr_subjets = GetJetCorrections(FatJets, events, era, IOV, isData=isData, uncertainties = uncertainties )
+    print("N sd index less than 0",  ak.sum(ak.any(events.FatJet.subJetIdx1 < 0, axis = -1) | ak.any(events.FatJet.subJetIdx2 <0, axis = -1)))
+    print("N events with no subjets",  ak.sum(ak.num(SubJets) < 1))
+    print("SD Mass of event with no subjets ", events.FatJet.msoftdrop[(ak.num(SubJets) < 1)] )
+    if useSubjets:
+        newAK8mass = (corr_subjets[events.FatJet.subJetIdx1]+corr_subjets[events.FatJet.subJetIdx2]).mass
+    else:
+        newAK8mass = corr_subjets.mass
+        
+    print("AK8 sdmass before corr ", events.FatJet.msoftdrop, " and after ", newAK8mass)
+    return newAK8mass
+def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = None, SubJets=[] ):
+    AK_str = 'AK8PFPuppi'
+    if len(SubJets)>0:
+        AK_str = 'AK4PFPuppi'
     if uncertainties == None:
         uncertainty_sources = ["AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF",
 "PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample", "RelativeStatEC","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
     else:
-        uncertainty_cources = uncertainties
+        uncertainty_sources = uncertainties
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/jmeCorrections.py
     jer_tag=None
     if (IOV=='2018'):
@@ -216,11 +237,11 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     if not isData:
     #For MC
         ext.add_weight_sets([
-            '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_AK8PFPuppi.jec.txt'.format(jec_tag),
-            '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_AK8PFPuppi.jec.txt'.format(jec_tag),
-            '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_AK8PFPuppi.jec.txt'.format(jec_tag),
-            '* * '+'correctionFiles/JEC/{0}/{0}_UncertaintySources_AK8PFPuppi.junc.txt'.format(jec_tag),
-            '* * '+'correctionFiles/JEC/{0}/{0}_Uncertainty_AK8PFPuppi.junc.txt'.format(jec_tag),
+            '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.jec.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_{1}.jec.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_{1}.jec.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_UncertaintySources_{1}.junc.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_Uncertainty_{1}.junc.txt'.format(jec_tag, AK_str),
         ])
         #### Do AK8PUPPI jer files exist??
         if jer_tag:
@@ -228,8 +249,8 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
             # print("File "+'correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag)+" exists: ", os.path.exists('correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag)))
             # print("File "+'correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)+" exists: ", os.path.exists('correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)))
             ext.add_weight_sets([
-            '* * '+'correctionFiles/JER/{0}/{0}_PtResolution_AK8PFPuppi.jr.txt'.format(jer_tag),
-            '* * '+'correctionFiles/JER/{0}/{0}_SF_AK8PFPuppi.jersf.txt'.format(jer_tag)])
+            '* * '+'correctionFiles/JER/{0}/{0}_PtResolution_{1}.jr.txt'.format(jer_tag, AK_str),
+            '* * '+'correctionFiles/JER/{0}/{0}_SF_{1}.jersf.txt'.format(jer_tag, AK_str)])
             # print("JER SF added")
     else:       
         #For data, make sure we don't duplicat
@@ -237,10 +258,10 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
         for run, tag in jec_tag_data.items():
             if not (tag in tags_done):
                 ext.add_weight_sets([
-                '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_AK8PFPuppi.jec.txt'.format(tag),
-                '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_AK8PFPuppi.jec.txt'.format(tag),
-                '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_AK8PFPuppi.jec.txt'.format(tag),
-                '* * '+'correctionFiles/JEC/{0}/{0}_L2L3Residual_AK8PFPuppi.jec.txt'.format(tag),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.jec.txt'.format(tag, AK_str),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_{1}.jec.txt'.format(tag, AK_str),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_{1}.jec.txt'.format(tag, AK_str),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L2L3Residual_{1}.jec.txt'.format(tag, AK_str),
                 ])
                 tags_done += [tag]
     ext.finalize()
@@ -249,27 +270,27 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
 
     if (not isData):
         jec_names = [
-            '{0}_L1FastJet_AK8PFPuppi'.format(jec_tag),
-            '{0}_L2Relative_AK8PFPuppi'.format(jec_tag),
-            '{0}_L3Absolute_AK8PFPuppi'.format(jec_tag)]
+            '{0}_L1FastJet_{1}'.format(jec_tag, AK_str),
+            '{0}_L2Relative_{1}'.format(jec_tag, AK_str),
+            '{0}_L3Absolute_{1}'.format(jec_tag, AK_str)]
         #### if jes in arguments add total uncertainty values for comparison and easy plotting
         if 'jes' in uncertainty_sources:
-            jec_names.extend(['{0}_Uncertainty_AK8PFPuppi'.format(jec_tag)])
+            jec_names.extend(['{0}_Uncertainty_{1}'.format(jec_tag, AK_str)])
             uncertainty_sources.remove('jes')
-        jec_names.extend(['{0}_UncertaintySources_AK8PFPuppi_{1}'.format(jec_tag, unc_src) for unc_src in uncertainty_sources])
+        jec_names.extend(['{0}_UncertaintySources_{1}_{2}'.format(jec_tag, AK_str, unc_src) for unc_src in uncertainty_sources])
 
         if jer_tag: 
-            jec_names.extend(['{0}_PtResolution_AK8PFPuppi'.format(jer_tag),
-                              '{0}_SF_AK8PFPuppi'.format(jer_tag)])
+            jec_names.extend(['{0}_PtResolution_{1}'.format(jer_tag, AK_str),
+                              '{0}_SF_{1}'.format(jer_tag, AK_str)])
 
     else:
         jec_names={}
         for run, tag in jec_tag_data.items():
             jec_names[run] = [
-                '{0}_L1FastJet_AK8PFPuppi'.format(tag),
-                '{0}_L3Absolute_AK8PFPuppi'.format(tag),
-                '{0}_L2Relative_AK8PFPuppi'.format(tag),
-                '{0}_L2L3Residual_AK8PFPuppi'.format(tag),]
+                '{0}_L1FastJet_{1}'.format(tag, AK_str),
+                '{0}_L3Absolute_{1}'.format(tag, AK_str),
+                '{0}_L2Relative_{1}'.format(tag, AK_str),
+                '{0}_L2L3Residual_{1}'.format(tag, AK_str),]
 
 
 
@@ -282,25 +303,34 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     # print("jec_input", jec_inputs)
     jec_stack = JECStack(jec_inputs)
 
-
+    
     FatJets['pt_raw'] = (1 - FatJets['rawFactor']) * FatJets['pt']
     FatJets['mass_raw'] = (1 - FatJets['rawFactor']) * FatJets['mass']
     FatJets['rho'] = ak.broadcast_arrays(events.fixedGridRhoFastjetAll, FatJets.pt)[0]
-
+    print("Rho value for jets ", events.fixedGridRhoFastjetAll)
+    if len(SubJets)>0:
+        SubJets['pt_raw'] = (1 - SubJets['rawFactor']) * SubJets['pt']
+        SubJets['mass_raw'] = (1 - SubJets['rawFactor']) * SubJets['mass']
+        SubJets['rho'] = ak.broadcast_arrays(events.fixedGridRhoFastjetAll, SubJets.pt)[0]
+        SubJets['area'] = ak.broadcast_arrays(0.503, SubJets.pt)[0]
     name_map = jec_stack.blank_name_map
+    print("N events missing pt entry ", ak.sum(ak.num(FatJets.pt)<1))
     name_map['JetPt'] = 'pt'
     name_map['JetMass'] = 'mass'
     name_map['JetEta'] = 'eta'
-    name_map['JetA'] = 'area'
-    name_map['ptGenJet'] = 'pt_gen'
     name_map['ptRaw'] = 'pt_raw'
     name_map['massRaw'] = 'mass_raw'
+    name_map['JetA'] = 'area'
+    name_map['ptGenJet'] = 'pt_gen'
     name_map['Rho'] = 'rho'
 
     events_cache = events.caches[0]
 
     jet_factory = CorrectedJetsFactory(name_map, jec_stack)
-    corrected_jets = jet_factory.build(FatJets, lazy_cache=events_cache)
+    if len(SubJets)>0:
+        corrected_jets = jet_factory.build(SubJets, lazy_cache=events_cache)
+    else:
+        corrected_jets = jet_factory.build(FatJets, lazy_cache=events_cache)
     # print("Available uncertainties: ", jet_factory.uncertainties())
     # print("Corrected jets object: ", corrected_jets.fields)
     print("pt and mass before correction ", FatJets['pt_raw'], ", ", FatJets['mass_raw'], " and after correction ", corrected_jets["pt"], ", ", corrected_jets["mass"])
