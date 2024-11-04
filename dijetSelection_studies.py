@@ -27,7 +27,7 @@ parser.add_argument('--dask', action='store_true', help='Run on dask')
 parser.add_argument('--testing', action='store_true', help='Testing; run on only a subset of data')
 parser.add_argument('--verbose', type=bool, help='Have processor output status; set false if making log files', default='True')
 parser.add_argument('--allUncertaintySources', action='store_true', help='Run processor for each unc. source separately')
-parser.add_argument('--jetSyst', default=['nominal'], nargs='+')
+parser.add_argument('--jetSyst', default=['nominal', 'HEM'], nargs='+')
 parser.add_argument('--syst', default=['PUSF', 'L1PreFiringWeight'], nargs='+')
 parser.add_argument('--datasetRange', default=None, help="Run on subset of available datasets", type=list_of_ints)
 parser.add_argument('--jk', action='store_true', help="Run jackknife processor")
@@ -72,13 +72,13 @@ def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=ar
         # filename = "datasets_UL_NANOAOD.json"
         filename = "fileset_JetHT_wRedirs.json"
     if arg.testing and not data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest_wXSscaling_{}_JMRJMS_rap{}_{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0],jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHistsTest_ak4corr_{}_rap{}_{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0],jkstring, year_str)
     elif arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest_{}_JMRJMS_rap{}_{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0],jkstring,year_str)
+        fname = 'coffeaOutput/dijet/dijetHistsTest_ak4corr_{}_rap{}_{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0],jkstring,year_str)
     elif not arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHists_{}_JMRJMS_rap{}_{}_{}_{}{}.pkl'.format(datastring, processor.ycut, jet_syst[0], mctype, jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHists_ak4corr_{}_rap{}_{}_{}_{}{}.pkl'.format(datastring, processor.ycut, jet_syst[0], mctype, jkstring, year_str)
     else:
-        fname = 'coffeaOutput/dijet/dijetHists_wXSscaling_{}_rap{}_JMRJMS_{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0], jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHists_ak4corr_{}_rap{}_{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0], jkstring, year_str)
     if range!=None:
         print("Range input: ", range)
         fname=fname[:-4]+"_"+str(range[0])+"_"+str(range[1])+".pkl"
@@ -91,10 +91,14 @@ def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=ar
 if arg.allUncertaintySources:
 #### 2018 pythia so far  #"nominal","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","JER","JMR","JMS","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","FlavorQCD","JER","JMR","JMS","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF""RelativePtBB",
 #### 2018 mg so far
-#"nominal","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","JER",
+#"nominal","HEM","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","JER","JMR", "JMS", "Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2"
 #### 2016 mg so far
-#"nominal","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD",
-    unc_srcs =["JER","JMR","JMS","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","FlavorQCD","JER","JMR","JMS","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF""RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample","RelativeStatEC","RelativeStatFSR","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
+#"nominal","HEM","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","JER","JMR","JMS","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF",
+#### 2017 mg so far
+#"nominal","HEM",
+#### 2016 mg APV so far
+    
+    unc_srcs =["nominal","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","JER","JMR","JMS","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","FlavorQCD","JER","JMR","JMS","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF""RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample","RelativeStatEC","RelativeStatFSR","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
     if arg.mctype!='pythia':
         unc_srcs.append(["Q2", "PDF"])
 else:

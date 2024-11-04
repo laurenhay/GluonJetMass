@@ -29,14 +29,13 @@ class makeDijetHists(processor.ProcessorABC):
     With "do_gen == True", will perform GEN selection and create response matrices. 
     Will always plot RECO level quantities. 
     '''
-    def __init__(self, ptcut = 200., ycut = 2.5, data = False, jet_systematics = ['nominal', 'jer', "RelativeJEREC1"], systematics = ['L1PreFiringWeight', 'PUSF'], hem=False, jk=False):
+    def __init__(self, ptcut = 200., ycut = 2.5, data = False, jet_systematics = ['nominal', 'HEM'], systematics = ['L1PreFiringWeight', 'PUSF'], jk=False):
         # should have separate **lower** ptcut for gen
         self.do_gen = not data
         self.ptcut = ptcut
         self.ycut = ycut #rapidity
         self.jet_systematics = jet_systematics
         self.systematics = systematics
-        self.hem = hem
         self.jk = jk
         print("Data: Gen: ", data, self.do_gen)
         jet_cat = hist.axis.StrCategory([], growth=True, name="jetNumb", label="Jet")
@@ -61,11 +60,14 @@ class makeDijetHists(processor.ProcessorABC):
         jk_axis = hist.axis.IntCategory([], growth = True, name = 'jk', label = "Jackknife section" )
 
         self._histos = {
+            
                 #### For jackknife only need resp. matrix hists
                 'misses':                    hist.Hist(syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
                 'misses_g':                    hist.Hist(syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
                 'fakes':                     hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
                 'fakes_g':                   hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
+                'underflow':                     hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
+                'underflow_g':                   hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
                 #### hist for comparison of weights
                 'weights':                   hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
                 
@@ -94,6 +96,8 @@ class makeDijetHists(processor.ProcessorABC):
             # 'jet_eta':            hist.Hist(jet_cat, parton_cat, eta_bin, storage="weight", name="Events"),
             
             #### Plots of things during the selection process / for debugging
+            'sdmass_orig':         hist.Hist(jk_axis, pt_bin, mass_bin, storage="weight", label="Events"),
+            'sdmass_ak8corr':         hist.Hist(jk_axis, pt_bin, mass_bin, storage="weight", label="Events"),
             'njet_reco':                 hist.Hist(syst_cat, n_axis, storage="weight", label="Counts"),
             'njet_gen':                  hist.Hist(syst_cat, n_axis, storage="weight", label="Counts"),
             #'jet_dr_reco_gen':           hist.Hist(dr_axis, storage="weight", label="Counts"),
@@ -162,17 +166,20 @@ class makeDijetHists(processor.ProcessorABC):
                 jk_index=-1
             jk_sel = ak.where(index_list%range_max == jk_index, False, True)
             print("# of selected ", ak.sum(jk_sel))
-            events_jk = events[jk_sel]
+            #### Choosing our jk fraction and protecting against negative softdrop
+            events_jk = events[jk_sel & ~(ak.any(events.FatJet.msoftdrop<0, axis=-1))]
             del jk_sel
             #####################################
             #### Apply HEM veto
             #### Add values needed for jet corrections
             #####################################
             print("Fat jets before jetid ", events_jk.FatJet.pt)
-            if IOV == '2018' and self.hem:
-                print("Doing hem")
-                events_jk = events_jk[HEMVeto(events_jk.FatJet, events.run)]
+            # if IOV == '2018' and self.hem:
+            #     print("Doing hem")
+            #     events_jk = events_jk[HEMVeto(events_jk.FatJet, events.run)]
+            #### require at least one fat jet and one subjet so corrections do not fail
             events_jk=events_jk[ak.any(events_jk.FatJet[:,:2].jetId > 1, axis=-1)]
+            events_jk = events_jk[(ak.num(events_jk.SubJet) > 0) & (ak.num(events_jk.FatJet) > 0)]
             # print("Fat jets after jetid ", events_jk.FatJet.pt)
             # print("Nearest muon to FatJet ", events.FatJet.delta_r(events.FatJet.nearest(events.Muon)))
             # events = ak.all(events.FatJet.delta_r(events.Muon.nearest(events.FatJet)) > 0.2, axis = -1)
@@ -194,15 +201,19 @@ class makeDijetHists(processor.ProcessorABC):
                 fname_toks = fname2.split("/")
                 era = fname_toks[ fname_toks.index("data") + 1]
                 print("IOV, era ", IOV, era)
-            # print("Fat jet pt raw needed for corr ", (1 - FatJet['rawFactor']) * FatJet['pt'])
-            # print("Fat jet mass raw needed for corr ", (1 - FatJet['rawFactor']) * FatJet['mass'])
+            print("Nevents after removing empty fatjets and subjets", len(events_jk))
+            out["sdmass_orig"].fill(jk=jk_index, ptreco=ak.flatten(events_jk[(ak.num(events_jk.FatJet) > 1)].FatJet[:,:2].pt, axis=1), mreco=ak.flatten(events_jk[(ak.num(events_jk.FatJet) > 1)].FatJet[:,:2].msoftdrop, axis=1))
             corrected_fatjets = GetJetCorrections(FatJet, events_jk, era, IOV, isData=not self.do_gen)
-            print("Got jet corrections: ", corrected_fatjets)
+            corrected_fatjets["msoftdrop"] = GetCorrectedSDMass(events_jk, era, IOV, isData=not self.do_gen)
+            FatJets_ak8 = FatJet
+            FatJets_ak8["mass"] = FatJet.msoftdrop
+            corrrected_fatjets_ak8 = GetJetCorrections(FatJets_ak8, events_jk, era, IOV, isData=not self.do_gen)
+            out["sdmass_ak8corr"].fill(jk=jk_index, ptreco=ak.flatten(corrrected_fatjets_ak8[(ak.num(corrrected_fatjets_ak8) > 1)][:,:2].pt, axis=1), mreco=ak.flatten(corrrected_fatjets_ak8[(ak.num(corrrected_fatjets_ak8) > 1)][:,:2].mass, axis=1))
             jet_corrs = {}
             self.weights = {}
-            if 'hem' in self.jet_systematics and self.do_gen:
+            if 'HEM' in self.jet_systematics and self.do_gen:
                 jet_corrs.update({
-                           "hem": HEMCleaning(FatJet)
+                           "HEM": HEMCleaning(IOV,applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets)))
                           })
             if 'JER' in self.jet_systematics and self.do_gen and "JER" in corrected_fatjets.fields:
                 corrected_fatjets.JER.up = applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets.JER.up))
@@ -263,8 +274,6 @@ class makeDijetHists(processor.ProcessorABC):
                     events_corr = events_corr[trigsel]
                     weights = weights[trigsel]
                     out['cutflow']['nEvents after trigger sel '+jetsyst] += (len(events.FatJet))
-                
-                
                     
                 #### NPV selection
                 # print("Npvs ", events_corr.PV.fields)
@@ -280,7 +289,7 @@ class makeDijetHists(processor.ProcessorABC):
                     if not self.jk:
                         out["njet_gen"].fill(syst = jetsyst, n=ak.num(events_corr.GenJetAK8), 
                                          weight = weights )
-                    pt_cut_gen = ak.all(events_corr.GenJetAK8.pt > 170., axis = -1) ### 70% of reco pt cut
+                    pt_cut_gen = ak.all(events_corr.GenJetAK8.pt > 160., axis = -1) ### 80% of reco pt cut
                     weights = weights[(ak.num(events_corr.GenJetAK8) > 1) & pt_cut_gen]
                     events_corr = events_corr[(ak.num(events_corr.GenJetAK8) > 1) & pt_cut_gen]
                     GenJetAK8 = events_corr.GenJetAK8
@@ -374,7 +383,6 @@ class makeDijetHists(processor.ProcessorABC):
                 FatJet = events_corr.FatJet
                 FatJet["p4"] = ak.with_name(events_corr.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
                 dijet = ak.flatten(FatJet[:,:2], axis=1)
-                
                 #### match jets, get syst weights, and fill final plots
                 if self.do_gen:
                     #### check for empty softdropmass values
@@ -414,13 +422,18 @@ class makeDijetHists(processor.ProcessorABC):
                     out['cutflow']['fakes '+jetsyst] += (len(events_corr[fakes].FatJet))
                     matched_reco = ~fakes
                     events_corr = events_corr[matched_reco]
-                    print("N events before removing fakes ", len(fakes))
-                    print("N Events after removing fakes ", len(events_corr))
-                    print("N misses in this file", len(misses))
-                    if len(events_corr)<1:
-                        print("No events after fake removal")
-                        return out
+                    if len(events_corr)<1: return out
                     weights = weights[matched_reco]
+                    out['cutflow']['nEvents after gen matching (remove fakes) '+jetsyst] += (len(events_corr.FatJet))
+                    uf = (ak.any(200. > events_corr.GenJetAK8.pt, axis = -1))
+                    uf_dijets = ak.flatten(events_corr[uf].FatJet[:,:2], axis=1)
+                    uf_weights = np.repeat(weights[uf], 2)
+                    events_corr = events_corr[~uf]
+                    weights = weights[~uf]
+                    print("Lengths of underflow dijets ", len(uf_dijets), " length of underflow weights ", len(uf_weights))
+                    out["underflow"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_dijets.pt, mreco = uf_dijets.mass, weight = uf_weights)
+                    out["underflow_g"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_dijets.pt, mreco = uf_dijets.msoftdrop, weight = uf_weights)
+                    print("Number of underflow gen ", len(uf))
                     out['cutflow']['nEvents after gen matching (remove fakes) '+jetsyst] += (len(events_corr.FatJet))
                     #### Get gen subjets and sd gen jets
                     print("Subjets ", events_corr.SubGenJetAK8)
@@ -429,9 +442,6 @@ class makeDijetHists(processor.ProcessorABC):
                     print("Groomed jet 0 ", groomed_genjet0.pt, " type ", groomed_genjet0.type)
                     print("Groomed jet 1 ", groomed_genjet1.pt)
                     groomed_gen_dijet = ak.concatenate([ak.unflatten(groomed_genjet0, 1),  ak.unflatten(groomed_genjet1, 1)], axis=1)
-                    print("Groomed gen dijet after stacking ", groomed_gen_dijet[:20])
-                    print("Fat jet before flattening: " , events_corr.FatJet.pt[:2,:2])
-                    print("Fat jet after flattening direct " , ak.flatten(events_corr.FatJet.pt[:2,:2], axis =1))
                     groomed_gen_dijet = ak.flatten(groomed_gen_dijet, axis=1)
                     dijet = ak.flatten(events_corr.FatJet[:,:2], axis =1)
                     print("Fat jet after flattening whole " , dijet.pt[:4])

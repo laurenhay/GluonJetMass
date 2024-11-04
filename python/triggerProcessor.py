@@ -124,16 +124,22 @@ class applyPrescales(processor.ProcessorABC):
             datastring = "QCDsim"
         if self.year == '2016' or self.year == '2016APV':
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500]
-            pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_2016.json")
             if trigger == "PFJet":
-                pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weightAK4_JSON_2016.json")
-                print("Deriving ps's for 2016 APV v2")
+                pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_PFJet2016.json")
+            else:
+                pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_2016.json")
         elif self.year == '2017':
             trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]  
-            pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_"+self.year+".json")
+            if trigger == "PFJet":
+                pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_PFJet"+self.year+".json")
+            else:
+                pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_"+self.year+".json")
         elif self.year == '2018':
             trigThresh = [15, 25, 40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
-            pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_"+self.year+".json")
+            if trigger == "PFJet":
+                pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_PFJet"+self.year+".json")
+            else:
+                pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_"+self.year+".json")
         #### require at least one jet in each event
         HLT_paths = [trigger + str(i) for i in trigThresh]
         events = events[ak.num(events.FatJet) >= 1]                                           
@@ -148,6 +154,7 @@ class applyPrescales(processor.ProcessorABC):
             if path in events.HLT.fields:
                 pt0 = events.FatJet[:,0].pt
                 print(len(pt0), "leading pts: ", pt0, "for events", len(events))
+                print("Events in path ", path, " ", len(events.HLT[path]))
                 #### here we will use correctionlib to assign weights
                 out['hist_pt'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path]])
                 out['hist_pt_wPS'].fill(dataset = datastring, HLT_cat = path, pt = pt0[events.HLT[path]], weight =                                                                      pseval['prescaleWeight'].evaluate(ak.to_numpy(events[events.HLT[path]].run), path, ak.to_numpy(ak.values_astype(events[events.HLT[path]].luminosityBlock, np.float32))))

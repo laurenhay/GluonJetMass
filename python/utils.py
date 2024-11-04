@@ -269,13 +269,22 @@ def applyPrescales(events, year, trigger = "AK8PFJet", turnOnPts = turnOnPts_Jet
     print("Trigger year ", year)
     if year == '2016' or year == '2016APV':
         trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500]
-        pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_2016.json")
+        if trigger == "PFJet":
+            pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_PFJet2016.json")
+        else:
+            pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_2016.json")
     elif year == '2017':
         trigThresh = [40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]  
-        pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_"+year+".json")
+        if trigger == "PFJet":
+            pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_PFJet"+year+".json")
+        else:
+            pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_"+year+".json")
     elif year == '2018':
         trigThresh = [15, 25, 40, 60, 80, 140, 200, 260, 320, 400, 450, 500, 550]
-        pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_"+year+".json")
+        if trigger == "PFJet":
+            pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_PFJet"+year+".json")
+        else:
+            pseval = correctionlib.CorrectionSet.from_file("correctionFiles/ps_weight_JSON_"+year+".json")
     turnOnPts = np.array(list(turnOnPts[year].values()))
     HLT_paths = [trigger + str(i) for i in trigThresh]
     events_mask = np.full(len(events), False)

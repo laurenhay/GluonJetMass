@@ -19,7 +19,7 @@ if args.hltpath != None:
         HLT_paths = HLT_paths + [args.hltpath+'550']
     else:
         year = 2018
-        HLT_paths = ['AK8PFJet15', 'AK8PFJet25'] + HLT_paths + [args.hltpath+'550']
+        HLT_paths = [args.hltpath+'15', args.hltpath+'25'] + HLT_paths + [args.hltpath+'550']
 else:
     if "Collisions16" in args.input:
         year = 2016
@@ -43,8 +43,8 @@ golden_runs = cert_jsonData.iloc[:,0].keys().to_list()
 #### run,cmsls,prescidx,totprescval,hltpath/prescval,logic,l1bit/prescval  
 if args.hltpath == None or args.hltpath == "AK8PFJet":
     ps_csvData = pandas.read_csv("allRunsAK8HLT_skimmed.csv")
-elif args.hltpath == "PFJet" and year == 2016:
-    ps_csvData = pandas.read_csv("allRunsAK4HLT2016_skim.csv")
+elif args.hltpath == "PFJet":
+    ps_csvData = pandas.read_csv("allRunsAK4HLT.csv")
 else:
     print("invalid HLT inputs")
 #### Removing "None" values from ps data
