@@ -24,7 +24,7 @@ environmentGroup.add_argument('--winterfell', action='store_true', help='Get ava
 
 parser.add_argument('--btag', choices=['bbloose', 'bloose', 'bbmed', 'bmed', None], default="None") 
 parser.add_argument('--year', choices=['2016', '2017', '2018', '2016APV', None], default="None", help="Year to run on")
-parser.add_argument('--mctype', choices=['herwig', 'pythia', 'MG'], default="", help="MC generator running on")
+parser.add_argument('--mctype', choices=['herwig', 'pythia', 'MG'], default="MG", help="MC generator running on")
 parser.add_argument('--data', action='store_true') 
 parser.add_argument('--dask', action='store_true', help='Run on dask')
 parser.add_argument('--testing', action='store_true', help='Testing; run on only a subset of data')
@@ -62,20 +62,20 @@ def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=a
             filename = "fileset_MG_pythia8_wRedirs.json"
         elif mctype == "herwig":
             filename = "fileset_HERWIG_wRedirs.json"
-        else:
+        elif mctype == "pythia":
             filename = "fileset_QCD_wRedirs.json"
     else:
         # filename = "datasets_UL_NANOAOD.json"
         filename = "fileset_JetHT_wRedirs.json"
 
     if arg.testing and not arg.data:
-        fname = 'coffeaOutput/trijet/trijetHistsTest_wXSscaling_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut, jet_syst[0],mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest_ak4corr_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut, jet_syst[0],mctype, jkstring, year_str)
     elif arg.testing and arg.data:
         fname = 'coffeaOutput/trijet/trijetHistsTest{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0],mctype, jkstring, year_str)
     elif not arg.testing and arg.data:
         fname = 'coffeaOutput/trijet/trijetHists_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0], mctype, jkstring, year_str)
     else:
-        fname = 'coffeaOutput/trijet/trijetHists_wXSscaling_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0],mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_ak4corr_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0],mctype, jkstring, year_str)
     if range!=None:
         print("Range input: ", range)
         fname=fname[:-4]+"_"+range[0]+"_"+range[1]+".pkl"

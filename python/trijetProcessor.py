@@ -502,9 +502,12 @@ class makeTrijetHists(processor.ProcessorABC):
                     uf_weights = weights[uf]
                     events_corr = events_corr[~uf]
                     weights = weights[~uf]
-                    print("Lengths of underflow dijets ", len(uf_dijets), " length of underflow weights ", len(uf_weights))
+                    print("Lengths of underflow jets ", len(uf_jets), " length of underflow weights ", len(uf_weights))
                     out["underflow"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_jets.pt, mreco = uf_jets.mass, weight = uf_weights)
                     out["underflow_g"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_jets.pt, mreco = uf_jets.msoftdrop, weight = uf_weights)
+                    if len(events_corr)<1:
+                        print("no more events after separating underflow")
+                        return out
                     #### Get gen soft drop mass
                     gensubjets = events_corr.SubGenJetAK8
                     groomed_genjet = get_gen_sd_mass_jet(events_corr.GenJetAK8[:,2], gensubjets)

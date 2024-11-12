@@ -21,7 +21,7 @@ def list_of_ints(arg):
     return list(map(int, arg.split(',')))
 
 parser.add_argument('--year', choices=['2016', '2017', '2018', '2016APV', None], default="None", help="Year to run on")
-parser.add_argument('--mctype', choices=['herwig', 'pythia', 'MG'], default="", help="MC generator running on")
+parser.add_argument('--mctype', choices=['herwig', 'pythia', 'MG'], default="MG", help="MC generator running on")
 parser.add_argument('--data', action='store_true', help="Run on data") 
 parser.add_argument('--dask', action='store_true', help='Run on dask')
 parser.add_argument('--testing', action='store_true', help='Testing; run on only a subset of data')
@@ -66,7 +66,7 @@ def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=ar
             filename = "fileset_MG_pythia8_wRedirs.json"
         elif mctype == "herwig":
             filename = "fileset_HERWIG_wRedirs.json"
-        else:
+        elif mctype == "pythia":
             filename = "fileset_QCD_wRedirs.json"
     else:
         # filename = "datasets_UL_NANOAOD.json"
