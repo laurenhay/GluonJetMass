@@ -235,10 +235,10 @@ class makeDijetHists(processor.ProcessorABC):
                 corrected_fatjets = applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets))
                 jet_corrs.update({"nominal": corrected_fatjets})
             elif self.do_gen:
-                print("Getting sources: ", [unc_src for unc_src in self.jet_systematics if ("JES_"+unc_src in corrected_fatjets.fields)])
-                print("Out of avail corrections: ", corrected_fatjets.fields)
+                # print("Getting sources: ", [unc_src for unc_src in self.jet_systematics if ("JES_"+unc_src in corrected_fatjets.fields)])
+                # print("Out of avail corrections: ", corrected_fatjets.fields)
                 avail_srcs = [unc_src for unc_src in self.jet_systematics if ("JES_"+unc_src in corrected_fatjets.fields)]
-                print("Input jet syst", self.jet_systematics)
+                # print("Input jet syst", self.jet_systematics)
                 for unc_src in avail_srcs:
                     print(corrected_fatjets["JES_"+unc_src])
                     corrected_fatjets["JES_"+unc_src].up = applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets["JES_"+unc_src].up))
@@ -246,9 +246,9 @@ class makeDijetHists(processor.ProcessorABC):
                     jet_corrs.update({
                         unc_src+"Up":corrected_fatjets["JES_"+unc_src].up,
                         unc_src+"Down":corrected_fatjets["JES_"+unc_src].down, })
-            print("Final jet corrs to run over: ", jet_corrs)
+            # print("Final jet corrs to run over: ", jet_corrs)
             for jetsyst in jet_corrs.keys():
-                print("Adding ", jetsyst, " values ", jet_corrs[jetsyst], " to output")
+                # print("Adding ", jetsyst, " values ", jet_corrs[jetsyst], " to output")
                 events_corr = ak.with_field(events_jk, jet_corrs[jetsyst], "FatJet")
                 weights = np.ones(len(events_corr))
                 print("mctype ", mctype, " gen? ", self.do_gen)
@@ -343,13 +343,12 @@ class makeDijetHists(processor.ProcessorABC):
                 if not self.jk:
                     out["njet_reco"].fill(syst = jetsyst, n=ak.num(events_corr.FatJet), 
                                          weight = weights)
-                print("PT vals ", events_corr.FatJet.pt)
                 pt_cut_reco = (ak.all(events_corr.FatJet.pt > self.ptcut, axis = -1))
                 weights = weights[(ak.num(events_corr.FatJet) > 1) & pt_cut_reco]
                 events_corr = events_corr[(ak.num(events_corr.FatJet) > 1) & pt_cut_reco]
                 weights = weights[ApplyVetoMap(IOV, events_corr.FatJet[:,0], mapname='jetvetomap') & ApplyVetoMap(IOV, events_corr.FatJet[:,1], mapname='jetvetomap')]
                 events_corr = events_corr[ApplyVetoMap(IOV, events_corr.FatJet[:,0], mapname='jetvetomap') & ApplyVetoMap(IOV, events_corr.FatJet[:,1], mapname='jetvetomap')]
-                print("nevents after jet veto map ", len(events_corr.FatJet))
+                # print("nevents after jet veto map ", len(events_corr.FatJet))
                 out['cutflow']['nEvents afterjet veto map '] += (len(events_corr.FatJet))
                 FatJet = events_corr.FatJet
                 FatJet["p4"] = ak.with_name(events_corr.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
@@ -386,7 +385,7 @@ class makeDijetHists(processor.ProcessorABC):
                 #### match jets, get syst weights, and fill final plots
                 if self.do_gen:
                     #### check for empty softdropmass values
-                    print("Structure of matched gen ", events_corr.FatJet.matched_gen)
+                    # print("Structure of matched gen ", events_corr.FatJet.matched_gen)
                     fakes = ak.any(ak.is_none(events_corr.FatJet.matched_gen, axis = -1), axis = -1)
                     if len(weights[fakes])>0:
                         fake_dijets = ak.flatten(events_corr[fakes].FatJet[:,:2], axis=1)
@@ -406,11 +405,11 @@ class makeDijetHists(processor.ProcessorABC):
                                                weightDown=np.repeat(puDown, 2),) 
                         if 'herwig' in dataset or 'madgraph' in dataset:
                             pdfNom, pdfUp, pdfDown = GetPDFWeights(events_corr[fakes])
-                            print("Fakes pdf weights ", pdfNom, " shape ", len(pdfNom))
+                            # print("Fakes pdf weights ", pdfNom, " shape ", len(pdfNom))
                             fake_weights.add("PDF", weight=np.repeat(pdfNom, 2), weightUp=np.repeat(pdfUp, 2),
                                                weightDown=np.repeat(pdfDown, 2),) 
                             q2Nom, q2Up, q2Down = GetQ2Weights(events_corr[fakes])
-                            print("Fakes q2 weights ", pdfNom, " shape ", len(pdfNom))
+                            # print("Fakes q2 weights ", pdfNom, " shape ", len(pdfNom))
                             fake_weights.add("Q2", weight=np.repeat(q2Nom, 2), weightUp=np.repeat(q2Up, 2),
                                                weightDown=np.repeat(q2Down, 2),) 
                         print("Fake pt ", fake_dijets.pt, " fake mass ", fake_dijets.mass, " fake weights ", fake_weights.weight(), 'and fake sd mass ', fake_dijets.msoftdrop)
@@ -434,6 +433,9 @@ class makeDijetHists(processor.ProcessorABC):
                     out["underflow"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_dijets.pt, mreco = uf_dijets.mass, weight = uf_weights)
                     out["underflow_g"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_dijets.pt, mreco = uf_dijets.msoftdrop, weight = uf_weights)
                     print("Number of underflow gen ", len(uf))
+                    if len(events_corr)<1:
+                        print("no more events after separating underflow")
+                        return out
                     out['cutflow']['nEvents after gen matching (remove fakes) '+jetsyst] += (len(events_corr.FatJet))
                     #### Get gen subjets and sd gen jets
                     print("Subjets ", events_corr.SubGenJetAK8)
@@ -441,6 +443,7 @@ class makeDijetHists(processor.ProcessorABC):
                     groomed_genjet1 = get_gen_sd_mass_jet(events_corr.GenJetAK8[:,1], events_corr.SubGenJetAK8)
                     print("Groomed jet 0 ", groomed_genjet0.pt, " type ", groomed_genjet0.type)
                     print("Groomed jet 1 ", groomed_genjet1.pt)
+                    print("Unflattened groomed gen jet ", ak.unflatten(groomed_genjet0, 1), " and its length ", len(ak.unflatten(groomed_genjet0, 1)))
                     groomed_gen_dijet = ak.concatenate([ak.unflatten(groomed_genjet0, 1),  ak.unflatten(groomed_genjet1, 1)], axis=1)
                     groomed_gen_dijet = ak.flatten(groomed_gen_dijet, axis=1)
                     dijet = ak.flatten(events_corr.FatJet[:,:2], axis =1)
