@@ -161,15 +161,18 @@ def GetCorrectedSDMass(events, era, IOV, isData=False, uncertainties=None, useSu
     SubJets["p4"] = ak.with_name(events.SubJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
     SubJets["pt_gen"] = ak.values_astype(ak.fill_none(SubJets.p4.nearest(SubGenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
     FatJets=events.FatJet
+    GenJetAK8 = events.GenJetAK8
+    GenJetAK8['p4']= ak.with_name(events.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
     FatJets["p4"] = ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+    FatJets["pt_gen"] = ak.values_astype(ak.fill_none(FatJets.p4.nearest(GenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
     if useSubjets:
-        corr_subjets = GetJetCorrections(FatJets, events, era, IOV, SubJets = SubJets, isData=isData, uncertainties = uncertainties )
+        corr_subjets = GetJetCorrections(FatJets, events, era, IOV, SubJets = SubJets, isData=isData, uncertainties = uncertainties)
     else:
         FatJets["mass"] = FatJets.msoftdrop
         corr_subjets = GetJetCorrections(FatJets, events, era, IOV, isData=isData, uncertainties = uncertainties )
-    print("N sd index less than 0",  ak.sum(ak.any(events.FatJet.subJetIdx1 < 0, axis = -1) | ak.any(events.FatJet.subJetIdx2 <0, axis = -1)))
-    print("N events with no subjets",  ak.sum(ak.num(SubJets) < 1))
-    print("SD Mass of event with no subjets ", events.FatJet.msoftdrop[(ak.num(SubJets) < 1)] )
+    print("N sd index less than 0",  ak.sum(ak.where(ak.any(events.FatJet.subJetIdx1 < 0, axis = -1) | ak.any(events.FatJet.subJetIdx2 <0, axis = -1), True, False)))
+    print("Correct subjets",  corr_subjets)
+    print("Subjet id1 ", events.FatJet.subJetIdx1)
     if useSubjets:
         newAK8mass = (corr_subjets[events.FatJet.subJetIdx1]+corr_subjets[events.FatJet.subJetIdx2]).mass
     else:
