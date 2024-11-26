@@ -71,9 +71,9 @@ def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=a
     if arg.testing and not arg.data:
         fname = 'coffeaOutput/trijet/trijetHistsTest_ak4corr_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut, jet_syst[0],mctype, jkstring, year_str)
     elif arg.testing and arg.data:
-        fname = 'coffeaOutput/trijet/trijetHistsTest{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0],mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest_ak4corr_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0],mctype, jkstring, year_str)
     elif not arg.testing and arg.data:
-        fname = 'coffeaOutput/trijet/trijetHists_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0], mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_ak4corr_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0], mctype, jkstring, year_str)
     else:
         fname = 'coffeaOutput/trijet/trijetHists_ak4corr_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0],mctype, jkstring, year_str)
     if range!=None:

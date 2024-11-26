@@ -139,8 +139,8 @@ class makeTrijetHists(processor.ProcessorABC):
                 'misses_g':                    hist.Hist(syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
                 'fakes':                     hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
                 'fakes_g':                   hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
-                'underflow':                     hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
-                'underflow_g':                   hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
+                # 'underflow':                     hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
+                # 'underflow_g':                   hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
                 #### hist for comparison of weights
                 'weights':                   hist.Hist(syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
                 
@@ -392,7 +392,7 @@ class makeTrijetHists(processor.ProcessorABC):
                     out['cutflow']['nEvents after gen dphi selection '+jetsyst] += (len(events_corr.FatJet))
                     gensubjets = events_corr.SubGenJetAK8
                     groomed_genjet = get_gen_sd_mass_jet(events_corr.GenJetAK8[:,2], gensubjets)
-                    matches = ak.all(events_corr.GenJetAK8.delta_r(events_corr.GenJetAK8.nearest(events_corr.FatJet)) < 0.2, axis = -1)
+                    matches = ak.all(events_corr.GenJetAK8[:,2].delta_r(events_corr.GenJetAK8[:,2].nearest(events_corr.FatJet[:,2])) < 0.2, axis = -1)
                     #### have found some events that are missing reco msoftdrop --- add to misses
                     #print("Nevents missing masses ", ak.sum(ak.any(ak.is_none(events_corr.FatJet.msoftdrop, axis=-1), axis=-1) | ak.any(ak.is_none(events_corr.FatJet.mass, axis=-1), axis=-1)))
                     misses = ~matches | ak.any(ak.is_none(events_corr.FatJet.msoftdrop, axis=-1), axis=-1) | ak.any(ak.is_none(events_corr.FatJet.mass, axis=-1), axis=-1)
@@ -497,17 +497,17 @@ class makeTrijetHists(processor.ProcessorABC):
                     out['cutflow']['nEvents after gen matching (remove fakes) '+jetsyst] += (len(events_corr.FatJet))
                     ##### if gen matching results in too few events
                     if (len(events_corr) < 1): return out
-                    uf = (ak.any(200. > events_corr.GenJetAK8.pt, axis = -1))
-                    uf_jets = events_corr[uf].FatJet[:,2]
-                    uf_weights = weights[uf]
-                    events_corr = events_corr[~uf]
-                    weights = weights[~uf]
-                    print("Lengths of underflow jets ", len(uf_jets), " length of underflow weights ", len(uf_weights))
-                    out["underflow"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_jets.pt, mreco = uf_jets.mass, weight = uf_weights)
-                    out["underflow_g"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_jets.pt, mreco = uf_jets.msoftdrop, weight = uf_weights)
-                    if len(events_corr)<1:
-                        print("no more events after separating underflow")
-                        return out
+                    # uf = (ak.any(200. > events_corr.GenJetAK8.pt, axis = -1))
+                    # uf_jets = events_corr[uf].FatJet[:,2]
+                    # uf_weights = weights[uf]
+                    # events_corr = events_corr[~uf]
+                    # weights = weights[~uf]
+                    # print("Lengths of underflow jets ", len(uf_jets), " length of underflow weights ", len(uf_weights))
+                    # out["underflow"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_jets.pt, mreco = uf_jets.mass, weight = uf_weights)
+                    # out["underflow_g"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_jets.pt, mreco = uf_jets.msoftdrop, weight = uf_weights)
+                    # if len(events_corr)<1:
+                    #     print("no more events after separating underflow")
+                    #     return out
                     #### Get gen soft drop mass
                     gensubjets = events_corr.SubGenJetAK8
                     groomed_genjet = get_gen_sd_mass_jet(events_corr.GenJetAK8[:,2], gensubjets)
