@@ -154,35 +154,50 @@ def GetPUSF(events, IOV):
 
     return puNom, puUp, puDown
 
-def GetCorrectedSDMass(events, era, IOV, isData=False, uncertainties=None, useSubjets=True):
+def GetCorrectedSDMass(corr_jets, events, era, IOV, isData=False, uncertainties=None, useSubjets=True):
     SubJets=events.SubJet
     SubGenJetAK8 = events.SubGenJetAK8
     SubGenJetAK8['p4']= ak.with_name(events.SubGenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
     SubJets["p4"] = ak.with_name(events.SubJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
     SubJets["pt_gen"] = ak.values_astype(ak.fill_none(SubJets.p4.nearest(SubGenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
-    FatJets=events.FatJet
+    FatJets =events.FatJet[events.FatJet.subJetIdx1 > -1 ]
     GenJetAK8 = events.GenJetAK8
     GenJetAK8['p4']= ak.with_name(events.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-    FatJets["p4"] = ak.with_name(events.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+    FatJets["p4"] = ak.with_name(FatJets[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
     FatJets["pt_gen"] = ak.values_astype(ak.fill_none(FatJets.p4.nearest(GenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
     if useSubjets:
-        corr_subjets = GetJetCorrections(FatJets, events, era, IOV, SubJets = SubJets, isData=isData, uncertainties = uncertainties)
+        corr_subjets = GetJetCorrections(SubJets, events, era, IOV, isData=isData, uncertainties = uncertainties, mode='AK4')
     else:
         FatJets["mass"] = FatJets.msoftdrop
-        corr_subjets = GetJetCorrections(FatJets, events, era, IOV, isData=isData, uncertainties = uncertainties )
-    print("N sd index less than 0",  ak.sum(ak.where(ak.any(events.FatJet.subJetIdx1 < 0, axis = -1) | ak.any(events.FatJet.subJetIdx2 <0, axis = -1), True, False)))
-    print("Correct subjets",  corr_subjets)
-    print("Subjet id1 ", events.FatJet.subJetIdx1)
+        corr_subjets = GetJetCorrections(FatJets, events[events.FatJet.subJetIdx1 >-1], era, IOV, isData=isData, uncertainties = uncertainties )
+    print("Corrected subjets",  corr_subjets.fields)
     if useSubjets:
         newAK8mass = (corr_subjets[events.FatJet.subJetIdx1]+corr_subjets[events.FatJet.subJetIdx2]).mass
     else:
         newAK8mass = corr_subjets.mass
-        
+    fields = []
+    fields.extend(field for field in corr_jets.fields if ("JES_" in field))
+    fields.append("JER")
+    print("Fields ", fields)
+    if useSubjets:
+        corr_jets["msoftdrop"] = (corr_subjets[events.FatJet.subJetIdx1]+corr_subjets[events.FatJet.subJetIdx2]).mass
+    else:
+        corr_jets["msoftdrop"] = corr_subjets.mass
+    for field in fields:
+        print("field ", field)
+        if useSubjets:
+            corr_jets[field]["up"]["msoftdrop"] = (corr_subjets[field]["up"][events.FatJet.subJetIdx1]+corr_subjets[field]["up"][events.FatJet.subJetIdx2]).mass
+            corr_jets[field]["down"]["msoftdrop"] = (corr_subjets[field]["down"][events.FatJet.subJetIdx1]+corr_subjets[field]["down"][events.FatJet.subJetIdx2]).mass
+        else:
+            corr_jets["msoftdrop"] = corr_subjets.mass
+            corr_jets[field]["up"]["msoftdrop"] = (corr_subjets[field]["up"][events.FatJet.subJetIdx1]+corr_subjets[field]["up"][events.FatJet.subJetIdx2]).mass
+            corr_jets[field]["down"]["msoftdrop"] = (corr_subjets[field]["down"][events.FatJet.subJetIdx1]+corr_subjets[field]["down"][events.FatJet.subJetIdx2]).mass
+    del SubJets, FatJets, GenJetAK8, SubGenJetAK8, corr_subjets
     print("AK8 sdmass before corr ", events.FatJet.msoftdrop, " and after ", newAK8mass)
-    return newAK8mass
-def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = None, SubJets=[] ):
+    return corr_jets
+def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = None, mode="AK8" ):
     AK_str = 'AK8PFPuppi'
-    if len(SubJets)>0:
+    if mode=="AK4":
         AK_str = 'AK4PFPuppi'
     if uncertainties == None:
         uncertainty_sources = ["AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF",
@@ -311,11 +326,12 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     FatJets['mass_raw'] = (1 - FatJets['rawFactor']) * FatJets['mass']
     FatJets['rho'] = ak.broadcast_arrays(events.fixedGridRhoFastjetAll, FatJets.pt)[0]
     print("Rho value for jets ", events.fixedGridRhoFastjetAll)
-    if len(SubJets)>0:
-        SubJets['pt_raw'] = (1 - SubJets['rawFactor']) * SubJets['pt']
-        SubJets['mass_raw'] = (1 - SubJets['rawFactor']) * SubJets['mass']
-        SubJets['rho'] = ak.broadcast_arrays(events.fixedGridRhoFastjetAll, SubJets.pt)[0]
-        SubJets['area'] = ak.broadcast_arrays(0.503, SubJets.pt)[0]
+    if mode=="AK4":
+        SubJets=events.SubJet
+        SubGenJetAK8 = events.SubGenJetAK8
+        SubGenJetAK8['p4']= ak.with_name(events.SubGenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+        FatJets["pt_gen"] = ak.values_astype(ak.fill_none(FatJets.p4.nearest(SubGenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
+        FatJets['area'] = ak.broadcast_arrays(0.503, SubJets.pt)[0]
     name_map = jec_stack.blank_name_map
     print("N events missing pt entry ", ak.sum(ak.num(FatJets.pt)<1))
     name_map['JetPt'] = 'pt'
@@ -330,10 +346,7 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     events_cache = events.caches[0]
 
     jet_factory = CorrectedJetsFactory(name_map, jec_stack)
-    if len(SubJets)>0:
-        corrected_jets = jet_factory.build(SubJets, lazy_cache=events_cache)
-    else:
-        corrected_jets = jet_factory.build(FatJets, lazy_cache=events_cache)
+    corrected_jets = jet_factory.build(FatJets, lazy_cache=events_cache)
     # print("Available uncertainties: ", jet_factory.uncertainties())
     # print("Corrected jets object: ", corrected_jets.fields)
     print("pt and mass before correction ", FatJets['pt_raw'], ", ", FatJets['mass_raw'], " and after correction ", corrected_jets["pt"], ", ", corrected_jets["mass"])
