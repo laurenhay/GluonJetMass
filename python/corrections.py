@@ -155,45 +155,45 @@ def GetPUSF(events, IOV):
     return puNom, puUp, puDown
 
 def GetCorrectedSDMass(corr_jets, events, era, IOV, isData=False, uncertainties=None, useSubjets=True):
-    SubJets=events.SubJet
-    SubGenJetAK8 = events.SubGenJetAK8
-    SubGenJetAK8['p4']= ak.with_name(events.SubGenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-    SubJets["p4"] = ak.with_name(events.SubJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-    SubJets["pt_gen"] = ak.values_astype(ak.fill_none(SubJets.p4.nearest(SubGenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
-    FatJets =events.FatJet[events.FatJet.subJetIdx1 > -1 ]
-    GenJetAK8 = events.GenJetAK8
-    GenJetAK8['p4']= ak.with_name(events.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-    FatJets["p4"] = ak.with_name(FatJets[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-    FatJets["pt_gen"] = ak.values_astype(ak.fill_none(FatJets.p4.nearest(GenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
+    print("Nevents with negative subjet id ", ak.sum(events.FatJet.subJetIdx1 < 0), " out of ", len(events))
     if useSubjets:
+        print("Jets ", corr_jets.pt)
+        print("SUbjet ids ", (corr_jets.subJetIdx1))
+        print("SUbjets ", (events.SubJet.pt))
+        print("SUbjet fields ", (events.SubJet.fields))
+        SubJets=events.SubJet
+        SubGenJetAK8 = events.SubGenJetAK8
+        SubGenJetAK8['p4']= ak.with_name(events.SubGenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+        SubJets["p4"] = ak.with_name(events.SubJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
         corr_subjets = GetJetCorrections(SubJets, events, era, IOV, isData=isData, uncertainties = uncertainties, mode='AK4')
+        del SubJets, SubGenJetAK8
     else:
+        FatJets = events.FatJet
+        GenJetAK8 = events.GenJetAK8
+        GenJetAK8['p4']= ak.with_name(events.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+        FatJets["p4"] = ak.with_name(FatJets[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+        FatJets["pt_gen"] = ak.values_astype(ak.fill_none(FatJets.p4.nearest(GenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
         FatJets["mass"] = FatJets.msoftdrop
-        corr_subjets = GetJetCorrections(FatJets, events[events.FatJet.subJetIdx1 >-1], era, IOV, isData=isData, uncertainties = uncertainties )
-    print("Corrected subjets",  corr_subjets.fields)
-    if useSubjets:
-        newAK8mass = (corr_subjets[events.FatJet.subJetIdx1]+corr_subjets[events.FatJet.subJetIdx2]).mass
-    else:
-        newAK8mass = corr_subjets.mass
+        corr_subjets = GetJetCorrections(FatJets, events, era, IOV, isData=isData, uncertainties = uncertainties )
+        corr_subjets =corr_subjets[corr_jets.subJetIdx1 > -1 ] 
+        del FatJets, GenJetAK8
+    corr_jets =corr_jets[(corr_jets.subJetIdx1 > -1)]
     fields = []
     fields.extend(field for field in corr_jets.fields if ("JES_" in field))
     fields.append("JER")
-    print("Fields ", fields)
     if useSubjets:
-        corr_jets["msoftdrop"] = (corr_subjets[events.FatJet.subJetIdx1]+corr_subjets[events.FatJet.subJetIdx2]).mass
+        corr_jets["msoftdrop"] = (corr_subjets[corr_jets.subJetIdx1]+corr_subjets[corr_jets.subJetIdx2]).mass
     else:
         corr_jets["msoftdrop"] = corr_subjets.mass
     for field in fields:
-        print("field ", field)
         if useSubjets:
-            corr_jets[field]["up"]["msoftdrop"] = (corr_subjets[field]["up"][events.FatJet.subJetIdx1]+corr_subjets[field]["up"][events.FatJet.subJetIdx2]).mass
-            corr_jets[field]["down"]["msoftdrop"] = (corr_subjets[field]["down"][events.FatJet.subJetIdx1]+corr_subjets[field]["down"][events.FatJet.subJetIdx2]).mass
+            corr_jets[field]["up"]["msoftdrop"] = (corr_subjets[field]["up"][corr_jets.subJetIdx1]+corr_subjets[field]["up"][corr_jets.subJetIdx2]).mass
+            corr_jets[field]["down"]["msoftdrop"] = (corr_subjets[field]["down"][corr_jets.subJetIdx1]+corr_subjets[field]["down"][corr_jets.subJetIdx2]).mass
         else:
-            corr_jets["msoftdrop"] = corr_subjets.mass
-            corr_jets[field]["up"]["msoftdrop"] = (corr_subjets[field]["up"][events.FatJet.subJetIdx1]+corr_subjets[field]["up"][events.FatJet.subJetIdx2]).mass
-            corr_jets[field]["down"]["msoftdrop"] = (corr_subjets[field]["down"][events.FatJet.subJetIdx1]+corr_subjets[field]["down"][events.FatJet.subJetIdx2]).mass
-    del SubJets, FatJets, GenJetAK8, SubGenJetAK8, corr_subjets
-    print("AK8 sdmass before corr ", events.FatJet.msoftdrop, " and after ", newAK8mass)
+            corr_jets[field]["up"]["msoftdrop"] = corr_subjets[field]["up"].mass
+            corr_jets[field]["down"]["msoftdrop"] = corr_subjets[field]["down"].mass
+    del corr_subjets
+    print("AK8 sdmass before corr ", events.FatJet.msoftdrop, " and after ", corr_jets.msoftdrop)
     return corr_jets
 def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = None, mode="AK8" ):
     AK_str = 'AK8PFPuppi'
@@ -326,14 +326,17 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     FatJets['mass_raw'] = (1 - FatJets['rawFactor']) * FatJets['mass']
     FatJets['rho'] = ak.broadcast_arrays(events.fixedGridRhoFastjetAll, FatJets.pt)[0]
     print("Rho value for jets ", events.fixedGridRhoFastjetAll)
+    FatJets["pt"]= ak.values_astype(ak.fill_none(FatJets.pt, 0), np.float32)
     if mode=="AK4":
-        SubJets=events.SubJet
         SubGenJetAK8 = events.SubGenJetAK8
         SubGenJetAK8['p4']= ak.with_name(events.SubGenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
         FatJets["pt_gen"] = ak.values_astype(ak.fill_none(FatJets.p4.nearest(SubGenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
-        FatJets['area'] = ak.broadcast_arrays(0.503, SubJets.pt)[0]
+        FatJets["pt"]= ak.values_astype(ak.fill_none(FatJets.pt, 0), np.float32)
+        FatJets['area'] = ak.broadcast_arrays(0.503, FatJets.pt)[0]
     name_map = jec_stack.blank_name_map
     print("N events missing pt entry ", ak.sum(ak.num(FatJets.pt)<1))
+    print("N events w/ pt entry ", ak.sum(ak.num(FatJets.pt)>0))
+    print("Fatjet pt ", FatJets.pt)
     name_map['JetPt'] = 'pt'
     name_map['JetMass'] = 'mass'
     name_map['JetEta'] = 'eta'
