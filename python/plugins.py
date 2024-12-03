@@ -102,8 +102,8 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     #single files for testing
     # samples = {'/JetHT/Run2016E-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD': [redirector+'/store/data/Run2016E/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/40000/0402FC45-D69F-BE47-A2BF-10394485E06E.root']}
     # samples = {'/QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/280000/2CD900FB-1F6B-664F-8A26-C125B36C2B58.root']}
-    # samples = {"/QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7/RunIISummer20UL16NanoAODAPVv9-106X_mcRun2_asymptotic_preVFP_v11-v1/NANOAODSIM":["root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL16NanoAODAPVv9/QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7/NANOAODSIM/106X_mcRun2_asymptotic_preVFP_v11-v1/60000/143F431C-1923-5A44-9210-F4294A4A3B4A.root"]}
-    # samples = {'/QCD_HT100to200_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM':['root://cmseos.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_HT100to200_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/60000/01CD88A2-878C-6446-9D9C-70BFF7D9E19C.root']}
+    #samples = {'/QCD_HT700to1000_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmseos.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_HT700to1000_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/2820000/150F2AD2-0267-AE4F-90F9-D8191F29DC95.root']}
+    #samples = {'/QCD_HT100to200_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM':['root://cmseos.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_HT100to200_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/70000/0036E3EB-99CD-574A-9CE7-984CFDEBBD18.root']}
     print("Running over datasets ", samples.keys())
     client = None
     cluster = None
@@ -152,25 +152,25 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         from lpcjobqueue import LPCCondorCluster
         #### make list of files and directories to upload to dask
         upload_to_dask = ['correctionFiles', 'python']
-        cluster = LPCCondorCluster(memory='5 GiB', transfer_input_files=upload_to_dask, scheduler_options={"dashboard_address": year[:4]})#, ship_env=False)
+        cluster = LPCCondorCluster(memory='9 GiB', transfer_input_files=upload_to_dask, scheduler_options={"dashboard_address": year[:4]})#, ship_env=False)
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
-        cluster.adapt(minimum=1, maximum=100)
+        cluster.adapt(minimum=1, maximum=500)
         with Client(cluster) as client:
             if verbose:
                 run_instance = processor.Runner(
-                                executor=processor.DaskExecutor(client=client, retries=5),#, status=False),
+                                executor=processor.DaskExecutor(client=client, retries=5, treereduction=40,),#, status=False),
                                 schema=NanoAODSchema,
                                 savemetrics=True,
                                 skipbadfiles=False,
-                                chunksize=20000,
+                                chunksize=200000,
                             )
             else:
                 run_instance = processor.Runner(
-                                executor=processor.DaskExecutor(client=client, retries=5, status=False),
+                                executor=processor.DaskExecutor(client=client, retries=5, status=False, treereduction=40,),
                                 schema=NanoAODSchema,
                                 savemetrics=True,
                                 skipbadfiles=False,
-                                chunksize=20000,
+                                chunksize=200000,
                             )
             # result, metrics = run_instance(samples,
             #                                "Events",
@@ -185,12 +185,18 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
 #         print("Waiting for at least one worker...")
     else:
         print("Running locally")
-        result = processor.run_uproot_job(samples,
-                                          "Events",
-                                          processor_instance = processor_inst,
-                                          executor = executor,
-                                          executor_args = exe_args,
-                                     )
+        run_instance = processor.Runner(
+            executor = processor.FuturesExecutor(compression=None, workers=1),
+            schema=NanoAODSchema,
+            chunksize=10000,
+            maxchunks=None,
+            skipbadfiles=True
+        )
+        with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    result = run_instance(samples, 
+                                                   "Events",
+                                                   processor_instance=processor_inst,)
     elapsed = time.time() - tstart
     print(result)
     print("Time taken to run over samples ", elapsed)

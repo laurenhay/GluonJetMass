@@ -14,7 +14,7 @@ print(hist.__version__)
 print(coffea.__version__)
 from coffea import util, processor
 from coffea.nanoevents import NanoEventsFactory, NanoAODSchema
-from coffea.analysis_tools import Weights
+from coffea.analysis_tools import Weights, PackedSelection
 from collections import defaultdict
 #### import our python packages
 from python.corrections import *
@@ -107,7 +107,7 @@ class makeTrijetHists(processor.ProcessorABC):
         parton_cat = hist.axis.StrCategory([],growth=True,name="partonFlav", label="Parton Flavour")
         syst_cat = hist.axis.StrCategory([], growth=True, name='syst', label="Systematic")
         #### if using specific bin edges use hist.axis.Variable() instead
-        mgen_bin_edges = np.array([0,10,20,40,60,80,100,150,200,300,1300])
+        mgen_bin_edges = np.array([0,10,20,40,60,80,100,120,140,160,300,13000])
         mreco_bin_edges = np.sort(np.append(mgen_bin_edges,[(mgen_bin_edges[i]+mgen_bin_edges[i+1])/2 for i in range(len(mgen_bin_edges)-1)]))
         print("mreco bins: ", mreco_bin_edges)
         mass_gen_bin =  hist.axis.Variable(mgen_bin_edges, name="mgen", label=r"m_{GEN} (GeV)")                         
@@ -262,12 +262,12 @@ class makeTrijetHists(processor.ProcessorABC):
             # out['cutflow'][dataset]['nEvents w/ pos mass and at least one subjet & fatjet'] += (len(events_jk.FatJet))
             out["sdmass_orig"].fill(jk=jk_index, ptreco=events_jk[(ak.num(events_jk.FatJet) > 2)].FatJet[:,2].pt, mreco=events_jk[(ak.num(events_jk.FatJet) > 2)].FatJet[:,2].msoftdrop)
             corrected_fatjets = GetJetCorrections(FatJet, events_jk, era, IOV, isData=not self.do_gen)
-            corrected_fatjets["msoftdrop"] = GetCorrectedSDMass(events_jk, era, IOV, isData=not self.do_gen)
-            # FatJets_ak8 = FatJet
-            # FatJets_ak8["mass"] = FatJet.msoftdrop
-            # corrrected_fatjets_ak8 = GetJetCorrections(FatJets_ak8, events_jk, era, IOV, isData=not self.do_gen)
-            # out["sdmass_ak8corr"].fill(jk=jk_index, ptreco=corrrected_fatjets_ak8[(ak.num(corrrected_fatjets_ak8) > 2)][:,2].pt, mreco=corrrected_fatjets_ak8[(ak.num(corrrected_fatjets_ak8) > 2)][:,2].mass)
-            # out["sdmass_ak4corr"].fill(jk=jk_index, ptreco=corrected_fatjets[(ak.num(corrected_fatjets) > 2)][:,2].pt, mreco=corrected_fatjets[(ak.num(corrected_fatjets) > 2)][:,2].msoftdrop)
+            #### Subjet corrections breaks without requiring at least one subjet --> ak.where doesn't work either
+            corrected_fatjets = GetCorrectedSDMass(corrected_fatjets, events_jk, era, IOV, isData=not self.do_gen)
+            out["sdmass_ak4corr"].fill(jk=jk_index, ptreco=ak.flatten(corrected_fatjets[(ak.num(corrected_fatjets) > 1)][:,:2].pt, axis=1), mreco=ak.flatten(corrected_fatjets[(ak.num(corrected_fatjets) > 1)][:,:2].msoftdrop, axis=1))
+            # corrected_fatjets_ak8 = corrected_fatjets
+            # corrected_fatjets_ak8 = GetCorrectedSDMass(corrected_fatjets, events_jk, era, IOV, isData=not self.do_gen, useSubjets = False)
+            # out["sdmass_ak8corr"].fill(jk=jk_index, ptreco=ak.flatten(corrected_fatjets_ak8[(ak.num(corrected_fatjets_ak8) > 1)][:,:2].pt, axis=1), mreco=ak.flatten(corrected_fatjets_ak8[(ak.num(corrected_fatjets_ak8) > 1)][:,:2].mass, axis=1))
             jet_corrs = {}
             self.weights = {}
             if 'HEM' in self.jet_systematics and self.do_gen:
@@ -347,20 +347,17 @@ class makeTrijetHists(processor.ProcessorABC):
                     pt_cut_gen = ak.all(events_corr.GenJetAK8.pt > 160., axis = -1)
                     gen_sel = pt_cut_gen & (ak.num(events_corr.GenJetAK8) > 2)
                     sel.add("triGenJet", gen_sel)
-                    sel.add("triGenJet_seq", sel.all('npv', 'threeGenJet') )
-                    out['cutflow'][dataset]['nEvents w/ at least 3 genjets &  pt > 160'+jetsyst] += (len(events_corr[sel.all("twoGenJet_seq")].FatJet))
+                    sel.add("triGenJet_seq", sel.all('npv', 'triGenJet') )
+                    out['cutflow'][dataset]['nEvents w/ at least 3 genjets &  pt > 160'+jetsyst] += (len(events_corr[sel.all("triGenJet_seq")].FatJet))
                     GenJetAK8 = events_corr.GenJetAK8
                     GenJetAK8['p4']= ak.with_name(events_corr.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-                    rap_cut_gen = ak.where(sel.all("triGenJet_seq"), ak.all(np.abs(getRapidity(GenJetAK8[:,2].p4)) < self.ycut, axis = -1), False)
+                    genjet = ak.firsts(GenJetAK8[:,2:])
+                    rap_cut_gen = ak.where(sel.all("triGenJet_seq"), np.abs(getRapidity(genjet.p4)) < self.ycut, False)
                     sel.add("rapGen", rap_cut_gen)
-                    GenJetAK8 = events_corr.GenJetAK8
-                    GenJetAK8['p4']= ak.with_name(GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
                     if not self.jk:
                         out["jet_rap_gen"].fill(syst = jetsyst, rapidity=getRapidity(GenJetAK8[sel.all("triGenJet_seq")][:,2].p4), weight=weights[sel.all("triGenJet_seq")])
                         out["jet_phi_gen"].fill(syst=jetsyst, phi=GenJetAK8[sel.all("triGenJet_seq")][:,2].phi, weight=weights[sel.all("triGenJet_seq")])  
-                    #### get dphi and pt asymm selections 
-                    gen_dijet = ak.pad_none(events_corr.GenJetAK8, 3, axis=0)[:,:3]
-                    print(gen_dijet)
+                    #### get dphi and pt asymm selections                     
                     genjet1 = ak.firsts(events_corr.GenJetAK8[:,0:])
                     genjet2 = ak.firsts(events_corr.GenJetAK8[:,1:])
                     genjet3 = ak.firsts(events_corr.GenJetAK8[:,2:])
@@ -368,133 +365,138 @@ class makeTrijetHists(processor.ProcessorABC):
                     dphi12_gen = np.abs(genjet1.delta_phi(genjet2))
                     dphi13_gen = np.abs(genjet1.delta_phi(genjet3))
                     dphi23_gen = np.abs(genjet2.delta_phi(genjet3))
-                    dphimin_gen = np.amin([dphi12_gen, dphi13_gen, dphi23_gen], axis = 0)
-                    dphimin_gen_sel = ak.where(sel.all("triGenJet_seq"), dphimin_gen > 0.8, False)
+                    dphimin_gen = ak.min([dphi12_gen, dphi13_gen, dphi23_gen], axis = 0)
+                    dphimin_gen_sel = ak.where(sel.all("triGenJet_seq"), dphimin_gen > 1.0, False)
                     asymm_gen  = np.abs(genjet1.pt - genjet2.pt)/(genjet1.pt + genjet2.pt)
                     sel.add("dphiGen", dphimin_gen_sel)
                     # genjet2["pt"] = ak.fill_none(genjet2.pt, 0.0001)
                     if not self.jk:
                         out["asymm_gen"].fill(syst=jetsyst, frac = asymm_gen[sel.all("triGenJet_seq")], weight=weights[sel.all("triGenJet_seq")])
                         out["dphimin_gen"].fill(syst=jetsyst, dphi = dphimin_gen[sel.all("triGenJet_seq")], weight = weights[sel.all("triGenJet_seq")])
-                    out['cutflow']['nEvents after gen dphi selection '+jetsyst] += (len(events_corr[sell.all("triGenJet_seq", "dphiGen")].FatJet))
                     gensubjets = events_corr.SubGenJetAK8
-                    groomed_genjet = get_gen_sd_mass_jet(events_corr.GenJetAK8[:,2], gensubjets)
+                    groomed_genjet = get_gen_sd_mass_jet(ak.firsts(GenJetAK8[:,2:]), gensubjets)
                     ##### move misses to after gen and reco sel
-                    sel.add("kineGen_seq", sel.all("triGenJet", "dphiGen", "rapGen"))
-                    if (len(events_corr[sel.all("kineGen_seq")]) < 1): 
+                    sel.add("genTot_seq", sel.all("triGenJet", "dphiGen", "rapGen"))
+                    if (len(events_corr[sel.all("genTot_seq")]) < 1): 
+                        print("No gen jets selected")
                         return out        
         
                 #####################################
                 #### Reco Jet Selection
                 ####################################
             
-                #         sel.add("threeRecoJets", ak.num(events.FatJet) >= 3)
                 if not self.jk:
                     out["njet_reco"].fill(syst = jetsyst, n=ak.num(events_corr.FatJet), 
                                          weight = weights )
-                sel.add("recoPt200", (ak.all(events_corr.FatJet.pt > self.ptcut, axis = -1)))
+                sel.add("recoPt200", (ak.all(events_corr.FatJet[:,:3].pt > self.ptcut, axis = -1)))
                 sel.add("triRecoJet",  (ak.num(events_corr.FatJet) > 2) & sel.all("recoPt200"))
+                print("nevents after 3 jet sel ", ak.sum(sel.all("triRecoJet")))
                 sel.add("triRecoJet_seq",  sel.all("npv", "triRecoJet"))
                 FatJet = events_corr.FatJet
                 FatJet["p4"] = ak.with_name(events_corr.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-                rap_cut = ak.all(np.abs(getRapidity(FatJet.p4)) < self.ycut, axis = -1)
-                sdm_cut = (ak.all(events_corr.FatJet.msoftdrop > 10., axis = -1))
+                jet = ak.firsts(FatJet[:,2:])
+                rap_cut = np.abs(getRapidity(jet.p4)) < self.ycut
+                # sdm_cut = (ak.all(events_corr.FatJet.msoftdrop > 10., axis = -1))
+                rap_sel = ak.where(sel.all("triRecoJet_seq"), rap_cut, False)
+                sel.add("recoRap2p5", rap_sel)
+                sel.add("recoRap_seq", sel.all("triRecoJet_seq", "recoRap2p5")) 
+                print("nevents after rap cut ", ak.sum(sel.all("recoRap_seq")))
                 if not self.jk:
-                    out["jet_rap_reco"].fill(syst=jetsyst, rapidity=ak.to_numpy(getRapidity(FatJet[:,2].p4), allow_missing=True), weight = weights)
-                    out["jet_phi_reco"].fill(syst=jetsyst, phi=FatJet[:,2].phi, weight=weights)  
-                weights = weights[rap_cut & sdm_cut]
+                    out["jet_rap_reco"].fill(syst = jetsyst, rapidity=ak.to_numpy(getRapidity(FatJet[sel.all("triRecoJet_seq")][:,2].p4), allow_missing=True), weight=weights[sel.all("triRecoJet_seq")])
+                    out["jet_phi_reco"].fill(syst=jetsyst, phi=FatJet[sel.all("triRecoJet_seq")][:,2].phi, weight=weights[sel.all("triRecoJet_seq")]) 
                 #### Add cut on softdrop mass as done in previous two papers --> need to very with JMS/JMR studies
-                events_corr = events_corr[rap_cut & sdm_cut]
-                # out["jet_eta_reco"].fill(syst=jetsyst, eta = events_corr.FatJet[:,2].eta, weight=weights)
-                out['cutflow']['nEvents after reco kine selection +sd mass cut '+jetsyst] += (len(events_corr.FatJet))
-                jet1 = events_corr.FatJet[:, 0]
-                jet2 = events_corr.FatJet[:, 1]
-                jet3 = events_corr.FatJet[:, 2]
+                jet1 = ak.firsts(events_corr.FatJet[:,0:])
+                jet2 = ak.firsts(events_corr.FatJet[:,1:])
+                jet3 = ak.firsts(events_corr.FatJet[:,2:])
                 dphi12 = np.abs(jet1.delta_phi(jet2))
                 dphi13 = np.abs(jet1.delta_phi(jet3))
                 dphi23 = np.abs(jet2.delta_phi(jet3))
-                dphimin = np.amin([dphi12, dphi13, dphi23], axis = 0)
+                dphimin = ak.min([dphi12, dphi13, dphi23], axis = 0)
+                dphi_sel = ak.where(sel.all("triRecoJet_seq"), (dphimin > 1.0), False)
+                sel.add("recodphimin", dphi_sel)
+                sel.add("recodphi_seq", sel.all("recodphimin", "recoRap_seq"))
+                print("nevents after dphi cut ", ak.sum(sel.all("recodphi_seq")))
                 asymm = np.abs(jet1.pt - jet2.pt)/(jet1.pt + jet2.pt)
                 if not self.jk:
-                    out["dphimin_reco"].fill(syst=jetsyst, dphi = dphimin, weight = weights)
-                    out["asymm_reco"].fill(syst=jetsyst, frac = asymm, weight=weights)
-                events_corr = events_corr[(dphimin > 1.0)]
-                weights = weights[(dphimin > 1.0)]
-                out['cutflow']['nEvents after reco topo selection '+jetsyst] += (len(events_corr.FatJet))
-                ##############
-                #### FINAL RECO SELECTION after applying btag 
-                ###############
-                events_corr, btagSel = applyBTag(events_corr, self.btag)
-                weights = weights[btagSel]
-                out['cutflow']['nEvents after reco btag '+jetsyst] += (len(events_corr.FatJet))
-                ######################
-                #### Match jets using gen id, get syst weights, and fill final plots
-                #####################
+                    out["dphimin_reco"].fill(syst=jetsyst, dphi = dphimin[sel.all("triRecoJet_seq")], weight=weights[sel.all("triRecoJet_seq")])
+                    out["asymm_reco"].fill(syst=jetsyst, frac = asymm[sel.all("triRecoJet_seq")], weight=weights[sel.all("triRecoJet_seq")])
+                jetid_sel = ak.where(sel.all("triRecoJet_seq"), (jet3.jetId > 1), False)
+                sel.add("jetId", jetid_sel)
+                sel.add("recoTot_seq", sel.all("recodphi_seq", "jetId") & ~ak.is_none(jet3.mass) & ~ak.is_none(jet3.msoftdrop))
+                ####  Apply Final RECO selection
+                jet = events_corr[sel.all("recoTot_seq")].FatJet[:,2]
+                jet_weights = weights[sel.all("recoTot_seq")]
+                if (len(events_corr[sel.all("recoTot_seq")]) < 1): 
+                    print("no events passing reco sel")
+                    return out
                 if self.do_gen:
-                    matches = ak.all(events_corr.GenJetAK8[:,2].delta_r(events_corr.GenJetAK8[:,2].nearest(events_corr.FatJet[:,2])) < 0.2, axis = -1)
+                    print("Genjets before padding ", events_corr.GenJetAK8.pt)
+                    # jet = ak.pad_none(events_corr.FatJet, 3, axis=1)[:,2]
+                    # genjet = ak.pad_none(events_corr.GenJetAK8, 3, axis =1)[:,2]
+                    print("reco jet after padding ", jet.pt)
+                    FatJet = events_corr.FatJet
+                    FatJet["p4"] = ak.with_name(events_corr.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+                    jet = ak.firsts(FatJet[:,2:])
+                    # matches = events.GenJetAK8[:,:3].delta_r(events.GenJetAK8[:,:3].nearest(events.FatJet[:,:3])) < 0.4
+                    matches = genjet.delta_r(jet) < 0.4
+                    print("Matches ", matches)
                     #### have found some events that are missing reco msoftdrop --- add to misses
                     #print("Nevents missing masses ", ak.sum(ak.any(ak.is_none(events_corr.FatJet.msoftdrop, axis=-1), axis=-1) | ak.any(ak.is_none(events_corr.FatJet.mass, axis=-1), axis=-1)))
-                    misses = ~matches | ak.any(ak.is_none(events_corr.FatJet.msoftdrop, axis=-1), axis=-1) | ak.any(ak.is_none(events_corr.FatJet.mass, axis=-1), axis=-1)
-                    # gen but no reco
-                    out['cutflow']['misses'] += (len(events_corr[misses].FatJet))
-                    out["misses"].fill(syst=jetsyst, jk=jk_index, ptgen = events_corr[misses].GenJetAK8[:,2].pt, 
-                                            mgen = events_corr[misses].GenJetAK8[:,2].mass)
-                    print("Misses gen jet mass ", groomed_genjet[misses].mass)
-                    out["misses_g"].fill(syst=jetsyst, jk=jk_index, ptgen = events_corr[misses].GenJetAK8[:,2].pt, 
-                                       mgen = groomed_genjet[misses].mass)
-                    # out["misses_g"].fill(ptgen = ak.flatten(groomed_genjet[misses_g][:,2].pt), 
-                    #                         mgen = ak.flatten(groomed_genjet[misses_g][:,2].mass))
-                    events_corr = events_corr[matches]
-                    weights = weights[matches]
-                    print("Gen jet fields: ", events_corr.GenJetAK8.fields)
-                    out['cutflow']['nEvents after deltaR matching (remove misses) '+jetsyst] += (len(events_corr.FatJet))
-                    #### fakes = reco but no gen
-                    fakes = ak.any(ak.is_none(events_corr.FatJet.matched_gen, axis = -1), axis = -1)
-                    if ak.sum(fakes)>0:
-                        fake_events = events_corr[fakes]
-                        fake_weights = Weights(len(weights[fakes]))
-                        self.weights[jetsyst] = Weights(len(weights))
-                        fake_weights.add('fakeWeight', weights[fakes])
-                        if "L1PreFiringWeight" in events.fields and "L1PreFiringWeight" in self.systematics:                
-                            prefiringNom, prefiringUp, prefiringDown = GetL1PreFiringWeight(events_corr[fakes])
-                            fake_weights.add("L1prefiring", weight=prefiringNom, 
-                                                   weightUp=prefiringUp, 
-                                                   weightDown=prefiringDown,
-                                       )
-                        if "PUSF" in self.systematics:
-                            puUp, puDown, puNom = GetPUSF(events_corr[fakes], IOV)
-                            fake_weights.add("PUSF", weight=puNom, weightUp=puUp,
-                                               weightDown=puDown,) 
-                        if 'herwig' in dataset or 'madgraph' in dataset:
-                            pdfNom, pdfUp, pdfDown = GetPDFWeights(events_corr[fakes])
-                            print("Fakes pdf weights ", pdfNom, " shape ", len(pdfNom))
-                            fake_weights.add("PDF", weight=pdfNom, weightUp=pdfUp, weightDown=pdfDown,) 
-                            q2Nom, q2Up, q2Down = GetQ2Weights(events_corr[fakes])
-                            print("Fakes q2 weights ", pdfNom, " shape ", len(pdfNom))
-                            fake_weights.add("Q2", weight=q2Nom, weightUp=q2Up, weightDown=q2Down) 
-                        out["fakes"].fill(syst=jetsyst, jk=jk_index, ptreco = events_corr[fakes].FatJet[:,2].pt, mreco = events_corr[fakes].FatJet[:,2].mass, weight=fake_weights.weight())
-                        out["fakes_g"].fill(syst=jetsyst, jk=jk_index, ptreco = events_corr[fakes].FatJet[:,2].pt, mreco = events_corr[fakes].FatJet[:,2].msoftdrop, weight=fake_weights.weight())
-                        if not self.jk:                        
-                            out['fakes_eta_phi'].fill(syst=jetsyst, phi = events_corr[fakes].FatJet[:,2].phi, eta = events_corr[fakes].FatJet[:,2].eta, weight=fake_weights.weight())
-                    out['cutflow']['fakes '+jetsyst] += len(events_corr[fakes].FatJet)
-                    matched_reco = ~fakes
-                    events_corr = events_corr[matched_reco]
-                    weights = weights[matched_reco]
-                    out['cutflow']['nEvents after gen matching (remove fakes) '+jetsyst] += (len(events_corr.FatJet))
+                    misses = ~matches | sel.require(genTot_seq=True, recoTot_seq=False)
+                    sel.add("removeMisses", ~misses )
+                    miss_jets = events_corr[misses & (ak.num(events_corr.GenJetAK8) > 2)].GenJetAK8[:,2]
+                    genjet = ak.firsts(events_corr[misses & (ak.num(events_corr.GenJetAK8) > 2)].GenJetAK8[:,2:])
+                    groomed_genjet = get_gen_sd_mass_jet(genjet, events_corr[misses & (ak.num(events_corr.GenJetAK8) > 2)].SubGenJetAK8)
+                    miss_weights = weights[misses & (ak.num(events_corr.GenJetAK8) > 2)]
+                    out["misses"].fill(syst=jetsyst, jk=jk_index, ptgen = miss_jets[~ak.is_none(miss_jets.mass)].pt, mgen = miss_jets[~ak.is_none(miss_jets.mass)].mass, weight = miss_weights[~ak.is_none(miss_jets)])
+                    out["misses_g"].fill(syst=jetsyst, jk=jk_index, ptgen = miss_jets[~ak.is_none(miss_jets.mass)].pt, mgen = groomed_genjet[~ak.is_none(miss_jets.mass)].mass, weight = miss_weights[~ak.is_none(miss_jets)])
+                    out['cutflow'][dataset]['misses '+jetsyst] += (len(events_corr[misses].FatJet))
+                    #### Fakes include events missing a reco mass or sdmass value, events failing index dr matching, and events passing reco cut but failing the gen cut
+                    fakes = ak.any(ak.is_none(dijet.matched_gen, axis = -1), axis = -1) | sel.require(genTot_seq=False, recoTot_seq=True)
+                    sel.add("removeFakes", ~fakes)
+                    if len(weights[fakes])>0:
+                        print("len of no nones ",ak.sum(ak.is_none(events_corr.FatJet[:,:2])))
+                        fake_jets = events_corr[fakes & (ak.num(events_corr.FatJet) > 1)].FatJet[:,2]
+                        fake_weights = Weights(len(weights[fakes & (ak.num(events_corr.FatJet) > 1)]))
+                        fake_weights.add('fakeWeight', weights[fakes & (ak.num(events_corr.FatJet) > 1)])
+                        print("Len of flattened diejts ", len(fake_jets), " and weights ", len(fake_weights.weight()))
+                        # if "L1PreFiringWeight" in events_corr.fields and "L1PreFiringWeight" in self.systematics:                
+                        #     prefiringNom, prefiringUp, prefiringDown = GetL1PreFiringWeight(events_corr[fakes])
+                        #     fake_weights.add("L1prefiring", weight=prefiringNom, weightUp=prefiringUp, weightDown=prefiringDown )
+                        # if "PUSF" in self.systematics:
+                        #     puUp, puDown, puNom = GetPUSF(events_corr[fakes], IOV)
+                        #     fake_weights.add("PUSF", weight=puNom, weightUp=puUp,
+                        #                        weightDown=puDown) 
+                        # if 'herwig' in dataset or 'madgraph' in dataset:
+                        #     pdfNom, pdfUp, pdfDown = GetPDFWeights(events_corr[fakes])
+                        #     # print("Fakes pdf weights ", pdfNom, " shape ", len(pdfNom))
+                        #     fake_weights.add("PDF", weight=pdfNom, weightUp=pdfUp,
+                        #                        weightDown=pdfDown) 
+                        #     q2Nom, q2Up, q2Down = GetQ2Weights(events_corr[fakes])
+                        #     # print("Fakes q2 weights ", pdfNom, " shape ", len(pdfNom))
+                        #     fake_weights.add("Q2", weight=q2Nom, weightUp=q2Up,
+                        #                        weightDown=q2Down) 
+                        print("Flattened fake pts", fake_jets.pt, " masses ", fake_jets.mass ," and weights ", fake_weights.weight())
+                        out["fakes"].fill(syst=jetsyst, jk = jk_index, ptreco = fake_jets[~ak.is_none(fake_jets.mass)].pt, mreco = fake_jets[~ak.is_none(fake_jets.mass)].mass, weight = fake_weights.weight()[~ak.is_none(fake_jets.mass)])
+                        out["fakes_g"].fill(syst=jetsyst, jk = jk_index, ptreco = fake_jets[~ak.is_none(fake_jets.msoftdrop)].pt, mreco = fake_dijets[~ak.is_none(fake_jets.msoftdrop)].msoftdrop, weight = fake_weights.weight()[~ak.is_none(fake_jets.msoftdrop)])
+                        if not self.jk:
+                            out['fakes_eta_phi'].fill(syst=jetsyst, phi = fake_jets.phi[~ak.is_none(fake_jets.msoftdrop)], eta = fake_jets.eta[~ak.is_none(fake_jets.msoftdrop)], weight=fake_weights.weight()[~ak.is_none(fake_jets.msoftdrop)])
+                    out['cutflow'][dataset]['fakes '+jetsyst] += (len(events_corr[fakes].FatJet))
+                    if len(events_corr[sel.all("genTot_seq", "recoTot_seq", "removeMisses", "removeFakes")])<1: 
+                        print("No events after all selections and removing fakes & misses")
+                        return out
+                    uf = ak.where(sel.require(recoTot_seq=True), ak.any(gen_dijet.pt < 200., axis = -1), False)
+                    sel.add("rem_uf_fakes", ~uf)
+                    uf_jets = events_corr[uf].FatJet[:,2]
+                    uf_weights = weights[uf]
+                    print("Lengths of underflow dijets ", len(uf_dijets), " length of underflow weights ", len(uf_weights))
+                    out["underflow"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_jets[~ak.is_none(uf_jets.mass)].pt, mreco = uf_jets[~ak.is_none(uf_jets.mass)].mass, weight = uf_weights[~ak.is_none(uf_jets.mass)])
+                    out["underflow_g"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_dijets[~ak.is_none(uf_dijets.mass)].pt, mreco = uf_dijets[~ak.is_none(uf_dijets.mass)].msoftdrop, weight = uf_weights[~ak.is_none(uf_dijets.mass)])
+                    if len(events_corr[sel.all("genTot_seq", "recoTot_seq", "removeMisses", "removeFakes","rem_uf_fakes")])<1:
+                        print("no more events after separating underflow")
+                        return out
                     ##### if gen matching results in too few events
                     if (len(events_corr) < 1): return out
-                    # uf = (ak.any(200. > events_corr.GenJetAK8.pt, axis = -1))
-                    # uf_jets = events_corr[uf].FatJet[:,2]
-                    # uf_weights = weights[uf]
-                    # events_corr = events_corr[~uf]
-                    # weights = weights[~uf]
-                    # print("Lengths of underflow jets ", len(uf_jets), " length of underflow weights ", len(uf_weights))
-                    # out["underflow"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_jets.pt, mreco = uf_jets.mass, weight = uf_weights)
-                    # out["underflow_g"].fill(syst=jetsyst, jk = jk_index, ptreco = uf_jets.pt, mreco = uf_jets.msoftdrop, weight = uf_weights)
-                    # if len(events_corr)<1:
-                    #     print("no more events after separating underflow")
-                    #     return out
-                    #### Get gen soft drop mass
                     gensubjets = events_corr.SubGenJetAK8
                     groomed_genjet = get_gen_sd_mass_jet(events_corr.GenJetAK8[:,2], gensubjets)
                     #### Create coffea analysis weights object

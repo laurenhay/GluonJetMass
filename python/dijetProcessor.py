@@ -178,12 +178,13 @@ class makeDijetHists(processor.ProcessorABC):
             #     print("Doing hem")
             #     events_jk = events_jk[HEMVeto(events_jk.FatJet, events.run)]
             #### require at least one fat jet and one subjet so corrections do not fail
-            events_jk = events_jk[ (ak.num(events_jk.SubJet) > 0) & (ak.num(events_jk.FatJet) > 0) & ~(ak.any(events_jk.FatJet.msoftdrop<0, axis=-1)) & ~(ak.any(events_jk.FatJet.mass<0, axis=-1))]
+            # events_jk = events_jk[(ak.num(events_jk.SubJet) > 0)]
             out['cutflow'][dataset]['nEvents w/ pos mass and at least one subjet & fatjet'] += (len(events_jk.FatJet))
             FatJet=events_jk.FatJet
             FatJet["p4"] = ak.with_name(events_jk.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-            # print("Fat jets before correcting ", FatJet)
-            if len(FatJet) < 1:
+            #if len(FatJet.pt) < 1:
+            if ak.sum(ak.num(FatJet.pt)>0)<1:
+                print("No fat jet pts at all")
                 return out
             if self.do_gen:
                 era = None
@@ -198,14 +199,13 @@ class makeDijetHists(processor.ProcessorABC):
                 era = fname_toks[ fname_toks.index("data") + 1]
                 print("IOV, era ", IOV, era)
             out["sdmass_orig"].fill(jk=jk_index, ptreco=ak.flatten(events_jk[(ak.num(events_jk.FatJet) > 1)].FatJet[:,:2].pt, axis=1), mreco=ak.flatten(events_jk[(ak.num(events_jk.FatJet) > 1)].FatJet[:,:2].msoftdrop, axis=1))
-            FatJet = FatJet[FatJet.subJetIdx1 > -1 ]
             corrected_fatjets = GetJetCorrections(FatJet, events_jk, era, IOV, isData=not self.do_gen)
             #### Subjet corrections breaks without requiring at least one subjet --> ak.where doesn't work either
             corrected_fatjets = GetCorrectedSDMass(corrected_fatjets, events_jk, era, IOV, isData=not self.do_gen)
-            # out["sdmass_ak4corr"].fill(jk=jk_index, ptreco=ak.flatten(corrected_fatjets[(ak.num(corrected_fatjets) > 1)][:,:2].pt, axis=1), mreco=ak.flatten(corrected_fatjets[(ak.num(corrected_fatjets) > 1)][:,:2].msoftdrop, axis=1))
-            # corrected_fatjets_ak8 = corrected_fatjets
-            # corrected_fatjets_ak8['msoftdrop'] = GetCorrectedSDMass(events_jk, era, IOV, isData=not self.do_gen, useSubjets = False)
-            # out["sdmass_ak8corr"].fill(jk=jk_index, ptreco=ak.flatten(corrected_fatjets_ak8[(ak.num(corrected_fatjets_ak8) > 1)][:,:2].pt, axis=1), mreco=ak.flatten(corrected_fatjets_ak8[(ak.num(corrected_fatjets_ak8) > 1)][:,:2].mass, axis=1))
+            out["sdmass_ak4corr"].fill(jk=jk_index, ptreco=ak.flatten(corrected_fatjets[(ak.num(corrected_fatjets) > 1)][:,:2].pt, axis=1), mreco=ak.flatten(corrected_fatjets[(ak.num(corrected_fatjets) > 1)][:,:2].msoftdrop, axis=1))
+            corrected_fatjets_ak8 = corrected_fatjets
+            corrected_fatjets_ak8 = GetCorrectedSDMass(corrected_fatjets, events_jk, era, IOV, isData=not self.do_gen, useSubjets = False)
+            out["sdmass_ak8corr"].fill(jk=jk_index, ptreco=ak.flatten(corrected_fatjets_ak8[(ak.num(corrected_fatjets_ak8) > 1)][:,:2].pt, axis=1), mreco=ak.flatten(corrected_fatjets_ak8[(ak.num(corrected_fatjets_ak8) > 1)][:,:2].mass, axis=1))
             jet_corrs = {}
             self.weights = {}
             if 'HEM' in self.jet_systematics and self.do_gen:
@@ -334,15 +334,17 @@ class makeDijetHists(processor.ProcessorABC):
                 if not self.jk:
                     out["njet_reco"].fill(syst = jetsyst, n=ak.num(events_corr.FatJet), 
                                          weight = weights)
-                sel.add("recoPt200", (ak.all(events_corr.FatJet.pt > self.ptcut, axis = -1)))
+                sel.add("recoPt200", (ak.all(events_corr.FatJet[:,:2].pt > self.ptcut, axis = -1)))
                 sel.add("twoRecoJet",  (ak.num(events_corr.FatJet) > 1) & sel.all("recoPt200"))
                 sel.add("twoRecoJet_seq",  sel.all("npv", "twoRecoJet"))
+                print("Nevents after 2 jets ", len(events_corr[sel.all("twoRecoJet_seq")]))
                 FatJet = events_corr.FatJet
                 FatJet["p4"] = ak.with_name(FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-                rap_cut_reco = ak.all(np.abs(getRapidity(FatJet.p4)) < self.ycut, axis = -1)
+                rap_cut_reco = ak.all(np.abs(getRapidity(FatJet[:,:2].p4)) < self.ycut, axis = -1)
                 rap_sel = ak.where(sel.all("twoRecoJet_seq"), rap_cut_reco, False)
                 sel.add("recoRap2p5", rap_sel)
                 sel.add("recoRap_seq", sel.all("twoRecoJet_seq", "recoRap2p5")) 
+                print("Nevents after rap ", len(events_corr[sel.all("recoRap_seq")]))
                 if not self.jk:
                     out["jet_rap_reco"].fill(syst = jetsyst, rapidity=ak.to_numpy(ak.flatten(getRapidity(FatJet[sel.all("twoRecoJet_seq")][:,:2].p4)), allow_missing=True),
                                              weight=np.repeat(weights[sel.all("twoRecoJet_seq")], 2))
@@ -356,6 +358,7 @@ class makeDijetHists(processor.ProcessorABC):
                 dphi12_sel = ak.where(sel.all("twoRecoJet_seq"), dphi12, False)
                 sel.add("recodphi2", dphi12_sel)
                 sel.add("recodphi_seq", sel.all("recodphi2", "recoRap_seq"))
+                print("Nevents after dphi ", len(events_corr[sel.all("recodphi_seq")]))
                 asymm = np.abs(jet1.pt - jet2.pt)/(jet1.pt + jet2.pt)
                 if not self.jk:
                     out["dphi_reco"].fill(syst=jetsyst, dphi = dphi12[sel.all("twoRecoJet_seq")], weight=weights[sel.all("twoRecoJet_seq")])
@@ -363,6 +366,7 @@ class makeDijetHists(processor.ProcessorABC):
                 asymm_reco_sel = ak.where(sel.all("twoRecoJet_seq"), asymm < 0.3, False)
                 sel.add("recoAsym0p3", asymm_reco_sel)
                 sel.add("recoAsym_seq", sel.all("recoAsym0p3", "recodphi_seq"))
+                print("Nevents after asym ", len(events_corr[sel.all("recoAsym_seq")]))
                 # jet1 = ak.to_numpy(ak.firsts(events_corr.FatJet[:,0:]), allow_missing=True)
                 # jet2 = ak.to_numpy(ak.firsts(events_corr.FatJet[:,1:]), allow_missing=True)
                 # veto = ApplyVetoMap(IOV, jet1, mapname='jetvetomap') & ApplyVetoMap(IOV, jet2, mapname='jetvetomap')
@@ -385,7 +389,7 @@ class makeDijetHists(processor.ProcessorABC):
                     # print("Genjets after padding ", gen_dijet.pt)
                     #### check for empty softdropmass values
                     # print("Structure of matched gen ", events_corr.FatJet.matched_gen)
-                    matches = ak.all(events_corr.GenJetAK8[:,:2].delta_r(events_corr.GenJetAK8[:,:2].nearest(events_corr.FatJet[:,:2])) < 0.2, axis = -1)
+                    matches = ak.all(events_corr.GenJetAK8[:,:2].delta_r(events_corr.GenJetAK8[:,:2].nearest(events_corr.FatJet[:,:2])) < 0.4, axis = -1)
                     #### have found some events that are missing reco msoftdrop --- add to misses
                     print("Nevents missing masses ", ak.sum(ak.any(ak.is_none(events_corr[sel.all("recoTot_seq", "genTot_seq")].FatJet.msoftdrop, axis=-1), axis=-1) | ak.any(ak.is_none(events_corr[sel.all("recoTot_seq", "genTot_seq")].FatJet.mass, axis=-1), axis=-1)))
                     #### Misses include events missing a gen mass, events failing DR matching, and events passing gen cut but failing the reco cut
