@@ -16,7 +16,17 @@ from distributed.diagnostics.plugin import UploadDirectory
 def checkdir(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
-
+        
+def get_all_warnings( client ):
+    logs = client.get_worker_logs()
+    workers = list(logs.keys())
+    for worker in workers:
+        for log in logs[worker]:
+            print("Log ", log)
+            # if log[0] == 'WARNING' or log[0] == 'ERROR':
+            #     print ()
+            #     print (" ### Found warning for worker:", worker)
+            #     print (log[1])
 
 #reads in files and adds redirector, can specify year, default is all years
 def handleData(jsonFile, redirector, year = '', testing = True, data = False, chunks = None):
@@ -102,8 +112,8 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     #single files for testing
     # samples = {'/JetHT/Run2016E-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD': [redirector+'/store/data/Run2016E/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/40000/0402FC45-D69F-BE47-A2BF-10394485E06E.root']}
     # samples = {'/QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/280000/2CD900FB-1F6B-664F-8A26-C125B36C2B58.root']}
-    #samples = {'/QCD_HT700to1000_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmseos.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_HT700to1000_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/2820000/150F2AD2-0267-AE4F-90F9-D8191F29DC95.root']}
-    #samples = {'/QCD_HT100to200_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM':['root://cmseos.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_HT100to200_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/70000/0036E3EB-99CD-574A-9CE7-984CFDEBBD18.root']}
+    # samples = {'/JetHT/Run2016F-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD':['root://cmseos.fnal.gov//store/data/Run2016F/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/50000/E27262E3-F8DE-E74A-B82F-E6CF78BD8AE3.root']}
+    #samples = {'/QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM':['root://cmseos.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/60000/9B8E3A78-296B-E141-9D5B-F52020A3C5B2.root']}
     print("Running over datasets ", samples.keys())
     client = None
     cluster = None
@@ -132,7 +142,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         # cluster = CoffeaCasaCluster(cores=11, memory="20 GiB", death_timeout = 60)
         # cluster.adapt(minimum=2, maximum=14)
         # client = Client(cluster)
-        print(client)
+        print("Client ", client)
         exe_args = {
             "client": client,
             "status":False,
@@ -152,17 +162,20 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         from lpcjobqueue import LPCCondorCluster
         #### make list of files and directories to upload to dask
         upload_to_dask = ['correctionFiles', 'python']
-        cluster = LPCCondorCluster(memory='9 GiB', transfer_input_files=upload_to_dask, scheduler_options={"dashboard_address": year[:4]})#, ship_env=False)
+        cluster = LPCCondorCluster(memory='12 GiB', transfer_input_files=upload_to_dask, scheduler_options={"dashboard_address": year[:4]})#, ship_env=False)
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
         cluster.adapt(minimum=1, maximum=500)
+        print(cluster)
         with Client(cluster) as client:
+            print(client)
+            print(client.get_worker_logs())
             if verbose:
                 run_instance = processor.Runner(
                                 executor=processor.DaskExecutor(client=client, retries=5, treereduction=40,),#, status=False),
                                 schema=NanoAODSchema,
                                 savemetrics=True,
                                 skipbadfiles=False,
-                                chunksize=200000,
+                                chunksize=100000,
                             )
             else:
                 run_instance = processor.Runner(
@@ -170,7 +183,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
                                 schema=NanoAODSchema,
                                 savemetrics=True,
                                 skipbadfiles=False,
-                                chunksize=200000,
+                                chunksize=100000,
                             )
             # result, metrics = run_instance(samples,
             #                                "Events",
@@ -180,6 +193,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
                     result, metrics = run_instance(samples, 
                                                    "Events",
                                                    processor_instance=processor_inst,)
+                    
                     del metrics
 
 #         print("Waiting for at least one worker...")
@@ -188,8 +202,8 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         run_instance = processor.Runner(
             executor = processor.FuturesExecutor(compression=None, workers=1),
             schema=NanoAODSchema,
-            chunksize=10000,
-            maxchunks=None,
+            # chunksize=None,
+            # maxchunks=None,
             skipbadfiles=True
         )
         with warnings.catch_warnings():
@@ -210,11 +224,25 @@ def addFiles(files, RespOnly=False):
         with open(fname, "rb") as f:
             result = pickle.load( f )
             for hist in [res for res in result if res in results]:
-                if RespOnly and hist in respHists:
-                    print("Hist ", hist, " with syst cats ",[bin for bin in result['response_matrix_u'].project("syst").axes])
+                print("Hist ", hist, " of type ", type(results[hist]))
+                if hist == "cutflow":
+                    print("total hist keys ", results[hist].keys())
+                    for key in [key for key in result[hist] if key in results[hist].keys()]:
+                        print("total hist keys ", results[hist][key].keys())
+                        for k in [k for k in result[hist][key] if k in results[hist][key].keys()]:
+                            # print("Key ", k)
+                            # print(result[hist][key][k])
+                            results[hist][key][k] += result[hist][key][k]
+                        # else:
+                        #     print(key)
+                        #     print(result[hist][key])
+                        #     results[hist][key] += result[hist][key]
+                elif RespOnly and hist in respHists:
+                    # print("Hist ", hist, " with syst cats ",[bin for bin in result['response_matrix_u'].project("syst").axes])
+                    # print("type of hist ", type(results[hist]))
                     results[hist] += result[hist]
                 else:
-                    print("Hist ", hist, " with syst cats ",[bin for bin in result['response_matrix_u'].project("syst").axes])
+                    # print("Hist ", hist, " with syst cats ",[bin for bin in result['response_matrix_u'].project("syst").axes])
                     results[hist] += result[hist]
                 print("Successfully added")
     print("Done")
