@@ -113,7 +113,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     # samples = {'/JetHT/Run2016E-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD': [redirector+'/store/data/Run2016E/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/40000/0402FC45-D69F-BE47-A2BF-10394485E06E.root']}
     # samples = {'/QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/280000/2CD900FB-1F6B-664F-8A26-C125B36C2B58.root']}
     # samples = {'/JetHT/Run2016F-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD':['root://cmseos.fnal.gov//store/data/Run2016F/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/50000/E27262E3-F8DE-E74A-B82F-E6CF78BD8AE3.root']}
-    #samples = {'/QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM':['root://cmseos.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/60000/9B8E3A78-296B-E141-9D5B-F52020A3C5B2.root']}
+    # samples = {'/JetHT/Run2016B-ver2_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD':['root://cmseos.fnal.gov//store/data/Run2016B/JetHT/NANOAOD/ver2_HIPM_UL2016_MiniAODv2_NanoAODv9-v2/50000/F693313F-F9FE-9642-90D9-B84D84CC461A.root']}
     print("Running over datasets ", samples.keys())
     client = None
     cluster = None
@@ -220,31 +220,17 @@ def addFiles(files, RespOnly=False):
     results = pickle.load( open(files[0], "rb") )
     respHists = ['response_matrix_u', 'response_matrix_g', 'ptreco_mreco_u', 'ptreco_mreco_g', 'ptgen_mgen_u', 'ptgen_mgen_g','fakes', 'misses']
     for fname in files[1:]:
-        print(fname)
         with open(fname, "rb") as f:
             result = pickle.load( f )
             for hist in [res for res in result if res in results]:
-                print("Hist ", hist, " of type ", type(results[hist]))
                 if hist == "cutflow":
-                    print("total hist keys ", results[hist].keys())
                     for key in [key for key in result[hist] if key in results[hist].keys()]:
-                        print("total hist keys ", results[hist][key].keys())
                         for k in [k for k in result[hist][key] if k in results[hist][key].keys()]:
-                            # print("Key ", k)
-                            # print(result[hist][key][k])
                             results[hist][key][k] += result[hist][key][k]
-                        # else:
-                        #     print(key)
-                        #     print(result[hist][key])
-                        #     results[hist][key] += result[hist][key]
                 elif RespOnly and hist in respHists:
-                    # print("Hist ", hist, " with syst cats ",[bin for bin in result['response_matrix_u'].project("syst").axes])
-                    # print("type of hist ", type(results[hist]))
                     results[hist] += result[hist]
                 else:
-                    # print("Hist ", hist, " with syst cats ",[bin for bin in result['response_matrix_u'].project("syst").axes])
                     results[hist] += result[hist]
-                print("Successfully added")
     print("Done")
     return(results)
     

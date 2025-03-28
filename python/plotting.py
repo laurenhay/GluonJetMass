@@ -403,7 +403,7 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os
         # add some labels
         fig_tot.savefig(os_path+"UL{}{}_{}_{}_allSyst.png".format(IOV,channel, histname, axVar), bbox_inches='tight')   
 from hist.intervals import ratio_uncertainty
-def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, channel = "", norm = False, rax_lim=None, os_path="", ylim = None, xlim = None, trim=None):
+def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, channel = "", norm = False, rax_lim=None, os_path="plots/", ylim = None, xlim = None, trim=None):
     stat_unc_up = result_mc[hist_mc][{'syst':'nominal'}].project(axVar).variances()**0.5
     stat_unc_down = result_mc[hist_mc][{'syst':'nominal'}].project(axVar).variances()**0.5
     syst_unc_up, syst_unc_down = getTotSyst(result_mc, hist_mc, axis=axVar)
@@ -549,7 +549,12 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
         print("new ticks ", newticks)
         rax.set_xticks(rax.get_xticks().tolist(),
                labels=newticks)
-    hep.cms.label("Preliminary", com = 13, lumi = 136, data = True, loc=0, ax=ax);
+    if IOV == "2018": lumi = 59.83
+    elif IOV == "2017": lumi = 41.48
+    elif IOV == "2016": lumi = 16.8
+    elif IOV == "2016APV": lumi = 19.5
+    else: lumi = 138
+    hep.cms.label("Preliminary "+IOV, com = 13, lumi = lumi, data = True, loc=0, ax=ax);
     ax.set_xlabel(None) 
     plt.show()
     if norm:

@@ -14,7 +14,8 @@ from python.plugins import *
 from python.trijetProcessor import makeTrijetHists
 import pickle
 import argparse
-
+def list_of_ints(arg):
+    return list(map(int, arg.split(',')))
 parser = argparse.ArgumentParser()
 unc_srcs = ["nominal","HEM", "JER", "JMR", "JMS", "AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1",
 "PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1",
@@ -39,7 +40,7 @@ parser.add_argument('--jetSyst', default=unc_srcs, nargs='+')
 parser.add_argument('--syst', default=['PUSF', 'L1PreFiringWeight'], nargs='+')
 parser.add_argument('--datasetRange', default=None, help="Run on subset of available datasets")
 parser.add_argument('--jk', action='store_true', help="Run jackknife processor")
-parser.add_argument('--jkRange', default=None, help="Run on subset of jk indices")
+parser.add_argument('--jkRange', default=None, help="Run on subset of jk indices", type=list_of_ints)
 
 arg = parser.parse_args()
 
@@ -56,7 +57,7 @@ def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=a
     processor = makeTrijetHists(data = arg.data, btag = arg.btag, jet_systematics = jet_syst, systematics = syst, jk=jk, jk_range = jk_range)
     if jk:
         if jk_range != None:
-            jkstring = "JK" + jk_range[0] + "_" + jk_range[1]
+            jkstring = "JK" + str(jk_range[0]) + "_" + str(jk_range[1])
         else:
             jkstring = "JK" 
     else: jkstring = ""
@@ -82,13 +83,13 @@ def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=a
         filename = "fileset_JetHT_wRedirs.json"
 
     if arg.testing and not arg.data:
-        fname = 'coffeaOutput/trijet/trijetHistsTest_rebinpt_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut, jet_syst[0],mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest_newUL18JECaddRho_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut, jet_syst[0],mctype, jkstring, year_str)
     elif arg.testing and arg.data:
-        fname = 'coffeaOutput/trijet/trijetHistsTest_rebinpt_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0],mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest_newUL18JECaddRho_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0],mctype, jkstring, year_str)
     elif not arg.testing and arg.data:
-        fname = 'coffeaOutput/trijet/trijetHists_rebinpt_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0], mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_newUL18JECaddRho_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0], mctype, jkstring, year_str)
     else:
-        fname = 'coffeaOutput/trijet/trijetHists_rebinpt_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0],mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_newUL18JECaddRho_{}_rap{}_{}{}_{}{}.pkl'.format(datastring, processor.ycut,jet_syst[0],mctype, jkstring, year_str)
     if range!=None:
         print("Range input: ", range)
         fname=fname[:-4]+"_"+range[0]+"_"+range[1]+".pkl"

@@ -56,6 +56,27 @@ def applyjmsSF(IOV, FatJet,  var = ''):
     FatJet = ak.with_field(FatJet, FatJet.msoftdrop * out, 'msoftdrop')
     return FatJet
 
+def applyJMSbypt(IOV, FatJet, var = ''):
+    fname = "correctionFiles/SFs/ParticleNet_jmssf.json"
+    iovKey = {
+        "2016": "16preVFP",
+        "2016APV": "16postVFP",
+        "2017" : "17",
+        "2018" : "18"
+    }
+    key = "jmssf_UL"+iovKey[IOV]
+    evaluator = correctionlib.CorrectionSet.from_file(fname)
+    if var == "Up":
+        jms = evaluator[key].evaluate(np.array(FatJet.pt), "up")
+    elif var == "Down":
+        jms = evaluator[key].evaluate(np.array(FatJet.pt), "down")
+    else:
+        jms = evaluator[key].evaluate(np.array(FatJet.pt))
+    print("PT is ", FatJet.pt, " and nom value is ", jmsNom)
+    FatJet = ak.with_field(FatJet, FatJet.mass * jms, 'mass')
+    FatJet = ak.with_field(FatJet, FatJet.msoftdrop * jms, 'msoftdrop')
+    return FatJet
+
 def applyjmrSF(IOV, FatJet, var = ''):
     jmrSF = {
 
@@ -133,6 +154,18 @@ def HEMVeto(FatJets, runs):
     
     return vetoHEM
 
+def GetLumiUnc(events, IOV):
+    lumi_unc = {"2016": 0.012,
+                "2016APV": 0.012,
+                "2017": 0.023,
+                "2018":0.025}
+    lumi_nom = ak.ones_like(events.L1PreFiringWeight.Nom)
+    print("AK ones like event ", lumi_nom)
+    print("Lumi unc val", lumi_unc[IOV] )
+    lumi_up = (1.0+lumi_unc[IOV])*lumi_nom
+    lumi_dn = (1.0-lumi_unc[IOV])*lumi_nom
+    return lumi_nom, lumi_up, lumi_dn
+
 def GetPUSF(events, IOV):
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/TTbarDileptonProcessor.py#L38
     ## json files from: https://gitlab.cern.ch/cms-nanoAOD/jsonpog-integration/-/tree/master/POG/LUM
@@ -199,10 +232,10 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     if (IOV=='2018'):
         jec_tag="Summer19UL18_V5_MC"
         jec_tag_data={
-            "Run2018A": "Summer19UL18_RunA_V5_DATA",
-            "Run2018B": "Summer19UL18_RunB_V5_DATA",
-            "Run2018C": "Summer19UL18_RunC_V5_DATA",
-            "Run2018D": "Summer19UL18_RunD_V5_DATA",
+            "Run2018A": "Summer19UL18_RunA_V6_DATA",
+            "Run2018B": "Summer19UL18_RunB_V6_DATA",
+            "Run2018C": "Summer19UL18_RunC_V6_DATA",
+            "Run2018D": "Summer19UL18_RunD_V6_DATA",
         }
         jer_tag = "Summer19UL18_JRV2_MC"
     elif (IOV=='2017'):
@@ -240,16 +273,16 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
         print(f"Error: Unknown year \"{IOV}\".")
 
 
-    #print("extracting corrections from files for " + jec_tag)
+    print("extracting corrections from files for " + jec_tag)
     ext = extractor()
     if not isData:
     #For MC
         ext.add_weight_sets([
-            '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.jec.txt'.format(jec_tag, AK_str),
-            '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_{1}.jec.txt'.format(jec_tag, AK_str),
-            '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_{1}.jec.txt'.format(jec_tag, AK_str),
-            '* * '+'correctionFiles/JEC/{0}/{0}_UncertaintySources_{1}.junc.txt'.format(jec_tag, AK_str),
-            '* * '+'correctionFiles/JEC/{0}/{0}_Uncertainty_{1}.junc.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_{1}.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_{1}.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_UncertaintySources_{1}.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_Uncertainty_{1}.txt'.format(jec_tag, AK_str),
         ])
         #### Do AK8PUPPI jer files exist??
         if jer_tag:
@@ -266,10 +299,10 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
         for run, tag in jec_tag_data.items():
             if not (tag in tags_done):
                 ext.add_weight_sets([
-                '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.jec.txt'.format(tag, AK_str),
-                '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_{1}.jec.txt'.format(tag, AK_str),
-                '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_{1}.jec.txt'.format(tag, AK_str),
-                '* * '+'correctionFiles/JEC/{0}/{0}_L2L3Residual_{1}.jec.txt'.format(tag, AK_str),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.txt'.format(tag, AK_str),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_{1}.txt'.format(tag, AK_str),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_{1}.txt'.format(tag, AK_str),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L2L3Residual_{1}.txt'.format(tag, AK_str),
                 ])
                 tags_done += [tag]
     ext.finalize()
@@ -328,6 +361,7 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     name_map = jec_stack.blank_name_map
     print("N events missing pt entry ", ak.sum(ak.num(FatJets.pt)<1))
     print("N events w/ pt entry ", ak.sum(ak.num(FatJets.pt)>0))
+    print("Fatjet pt ", FatJets.pt)
     name_map['JetPt'] = 'pt'
     name_map['JetMass'] = 'mass'
     name_map['JetEta'] = 'eta'
@@ -380,6 +414,27 @@ def GetLHEWeight(events):
 
 def GetQ2Weights(events):
 # https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/corrections.py
+    ## determines the envelope of the muR/muF up and down variations
+    ## Case 1:
+    ## LHEScaleWeight[0] -> (0.5, 0.5) # (muR, muF)
+    ##               [1] -> (0.5, 1)
+    ##               [2] -> (0.5, 2)
+    ##               [3] -> (1, 0.5)
+    ##               [4] -> (1, 1)
+    ##               [5] -> (1, 2)
+    ##               [6] -> (2, 0.5)
+    ##               [7] -> (2, 1)
+    ##               [8] -> (2, 2)
+                  
+    ## Case 2:
+    ## LHEScaleWeight[0] -> (0.5, 0.5) # (muR, muF)
+    ##               [1] -> (0.5, 1)
+    ##               [2] -> (0.5, 2)
+    ##               [3] -> (1, 0.5)
+    ##               [4] -> (1, 2)
+    ##               [5] -> (2, 0.5)
+    ##               [6] -> (2, 1)
+    ##               [7] -> (2, 2)
 
     q2Nom = np.ones(len(events))
     q2Up = np.ones(len(events))
