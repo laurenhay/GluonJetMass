@@ -222,8 +222,6 @@ class makeDijetHists(processor.ProcessorABC):
                 era = None
                 GenJetAK8 = events_jk.GenJetAK8
                 GenJetAK8['p4']= ak.with_name(events_jk.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-                # print("Number of gen jets matched to fat jets: ", len(ak.values_astype(ak.fill_none(FatJet.p4.nearest(GenJetAK8.p4, threshold=0.4).pt, 0), np.float32)), " values ", ak.values_astype(ak.fill_none(FatJet.p4.nearest(GenJetAK8.p4, threshold=0.4).pt, 0), np.float32))
-                FatJet["pt_gen"] = ak.values_astype(ak.fill_none(FatJet.p4.nearest(GenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
             else:
                 firstidx = filename.find("store/data/")
                 fname2 = filename[firstidx:]
@@ -440,7 +438,7 @@ class makeDijetHists(processor.ProcessorABC):
                 ###############
                 
                 if self.do_gen:
-                    matches = ak.all(events_corr.GenJetAK8[:,:2].delta_r(events_corr.GenJetAK8[:,:2].nearest(events_corr.FatJet)) < 0.1, axis = -1)
+                    matches = ak.all(events_corr.GenJetAK8[:,:2].delta_r(events_corr.GenJetAK8[:,:2].nearest(events_corr.FatJet)) < 0.4, axis = -1)
                     print("Number of matches ", ak.sum(matches))
                     ################
                     #### Misses include events missing a gen mass, events failing DR matching, and events passing gen cut but failing the reco cut
