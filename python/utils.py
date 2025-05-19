@@ -297,7 +297,7 @@ def applyPrescales(events, year, trigger = "AK8PFJet", turnOnPts = turnOnPts_Jet
         path = HLT_paths[i]
 #             print("Index i: ", i, " for path: ", path)
         if path in events.HLT.fields:
-            pt0 = events.FatJet[:,0].pt
+            pt0 = ak.firsts(events.FatJet[:,0:].pt)
             psweights = pseval['prescaleWeight'].evaluate(ak.to_numpy(events.run), path,
                                                           ak.to_numpy(ak.values_astype(events.luminosityBlock, np.float32)))
             #### here we will use correctionlib to assign weights

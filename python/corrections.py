@@ -34,7 +34,6 @@ def ApplyVetoMap(IOV, jets, mapname='jetvetomap'):
     jetphi = np.where(jets.phi<3.141592, jets.phi, 3.141592)
     jetphi = np.where(jetphi>-3.141592, jetphi, -3.141592)
     vetoedjets = np.array(evaluator[hname[IOV]].evaluate(mapname, np.array(jets.eta), jetphi), dtype=bool)
-    print("vetoed jets", vetoedjets)
     print("Sum of vetoed jets ", ak.sum(vetoedjets), " len of veto jets ", len(vetoedjets))
     print("Len of jets AFTER veto", len(jets[~vetoedjets]))
     return ~vetoedjets
@@ -157,30 +156,21 @@ def GetPUSF(events, IOV):
 def GetCorrectedSDMass(corr_jets, events, era, IOV, isData=False, uncertainties=None, useSubjets=True):
     print("Nevents with negative subjet id ", ak.sum(events.FatJet.subJetIdx1 < 0), " out of ", len(events))
     if useSubjets:
-        print("Jets ", corr_jets.pt)
-        print("SUbjet ids ", (corr_jets.subJetIdx1))
-        print("SUbjets ", (events.SubJet.pt))
-        print("SUbjet fields ", (events.SubJet.fields))
         SubJets=events.SubJet
-        SubGenJetAK8 = events.SubGenJetAK8
-        SubGenJetAK8['p4']= ak.with_name(events.SubGenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
         SubJets["p4"] = ak.with_name(events.SubJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
         corr_subjets = GetJetCorrections(SubJets, events, era, IOV, isData=isData, uncertainties = uncertainties, mode='AK4')
-        del SubJets, SubGenJetAK8
+        del SubJets
     else:
         FatJets = events.FatJet
-        GenJetAK8 = events.GenJetAK8
-        GenJetAK8['p4']= ak.with_name(events.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
         FatJets["p4"] = ak.with_name(FatJets[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-        FatJets["pt_gen"] = ak.values_astype(ak.fill_none(FatJets.p4.nearest(GenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
         FatJets["mass"] = FatJets.msoftdrop
         corr_subjets = GetJetCorrections(FatJets, events, era, IOV, isData=isData, uncertainties = uncertainties )
         corr_subjets =corr_subjets[corr_jets.subJetIdx1 > -1 ] 
-        del FatJets, GenJetAK8
+        del FatJets
     corr_jets =corr_jets[(corr_jets.subJetIdx1 > -1)]
     fields = []
     fields.extend(field for field in corr_jets.fields if ("JES_" in field))
-    fields.append("JER")
+    if ("JES_" in corr_jets.fields): fields.append("JER")
     if useSubjets:
         corr_jets["msoftdrop"] = (corr_subjets[corr_jets.subJetIdx1]+corr_subjets[corr_jets.subJetIdx2]).mass
     else:
@@ -320,23 +310,24 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
 
     # print("jec_input", jec_inputs)
     jec_stack = JECStack(jec_inputs)
-
-    
+    if not isData:
+        GenJetAK8 = events.GenJetAK8
+        GenJetAK8['p4']= ak.with_name(events.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+        FatJets["pt_gen"] = ak.values_astype(ak.fill_none(FatJets.p4.nearest(GenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
     FatJets['pt_raw'] = (1 - FatJets['rawFactor']) * FatJets['pt']
     FatJets['mass_raw'] = (1 - FatJets['rawFactor']) * FatJets['mass']
     FatJets['rho'] = ak.broadcast_arrays(events.fixedGridRhoFastjetAll, FatJets.pt)[0]
-    print("Rho value for jets ", events.fixedGridRhoFastjetAll)
     FatJets["pt"]= ak.values_astype(ak.fill_none(FatJets.pt, 0), np.float32)
     if mode=="AK4":
-        SubGenJetAK8 = events.SubGenJetAK8
-        SubGenJetAK8['p4']= ak.with_name(events.SubGenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-        FatJets["pt_gen"] = ak.values_astype(ak.fill_none(FatJets.p4.nearest(SubGenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
         FatJets["pt"]= ak.values_astype(ak.fill_none(FatJets.pt, 0), np.float32)
         FatJets['area'] = ak.broadcast_arrays(0.503, FatJets.pt)[0]
+        if not isData:
+            SubGenJetAK8 = events.SubGenJetAK8
+            SubGenJetAK8['p4']= ak.with_name(events.SubGenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+            FatJets["pt_gen"] = ak.values_astype(ak.fill_none(FatJets.p4.nearest(SubGenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
     name_map = jec_stack.blank_name_map
     print("N events missing pt entry ", ak.sum(ak.num(FatJets.pt)<1))
     print("N events w/ pt entry ", ak.sum(ak.num(FatJets.pt)>0))
-    print("Fatjet pt ", FatJets.pt)
     name_map['JetPt'] = 'pt'
     name_map['JetMass'] = 'mass'
     name_map['JetEta'] = 'eta'
@@ -352,7 +343,6 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     corrected_jets = jet_factory.build(FatJets, lazy_cache=events_cache)
     # print("Available uncertainties: ", jet_factory.uncertainties())
     # print("Corrected jets object: ", corrected_jets.fields)
-    print("pt and mass before correction ", FatJets['pt_raw'], ", ", FatJets['mass_raw'], " and after correction ", corrected_jets["pt"], ", ", corrected_jets["mass"])
     return corrected_jets
 def GetLHEWeight(events):
     from parton import mkPDF

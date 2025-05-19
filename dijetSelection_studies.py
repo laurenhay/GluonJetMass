@@ -19,6 +19,12 @@ environmentGroup.add_argument('--winterfell', action='store_true', help='Get ava
 
 def list_of_ints(arg):
     return list(map(int, arg.split(',')))
+unc_srcs = ["nominal","HEM", "JER", "JMR", "JMS", "AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1",
+"PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1",
+            "RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1",
+            "RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample",
+            "RelativeStatEC","RelativeStatFSR","RelativeStatHF","SinglePionECAL",
+            "SinglePionHCAL","TimePtEta"]
 
 parser.add_argument('--year', choices=['2016', '2017', '2018', '2016APV', None], default="None", help="Year to run on")
 parser.add_argument('--mctype', choices=['herwig', 'pythia', 'MG'], default="MG", help="MC generator running on")
@@ -27,10 +33,11 @@ parser.add_argument('--dask', action='store_true', help='Run on dask')
 parser.add_argument('--testing', action='store_true', help='Testing; run on only a subset of data')
 parser.add_argument('--verbose', type=bool, help='Have processor output status; set false if making log files', default='True')
 parser.add_argument('--allUncertaintySources', action='store_true', help='Run processor for each unc. source separately')
-parser.add_argument('--jetSyst', default=['nominal', 'HEM'], nargs='+')
+parser.add_argument('--jetSyst', default=unc_srcs, nargs='+')
 parser.add_argument('--syst', default=['PUSF', 'L1PreFiringWeight'], nargs='+')
 parser.add_argument('--datasetRange', default=None, help="Run on subset of available datasets", type=list_of_ints)
 parser.add_argument('--jk', action='store_true', help="Run jackknife processor")
+parser.add_argument('--jkRange', default=None, help="Run on subset of jk indices", type=list_of_ints)
 
 arg = parser.parse_args()
 
@@ -47,10 +54,17 @@ import pickle
 
 #### WE'RE MISSING 2016B ver2 -- AK8 PF HLT is missing need to use AK4 trigger isntead
 ### Run coffea processor and make plots
+if arg.mctype!='pythia':
+    arg.jetSyst.extend(["Q2", "PDF"])
         
-def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, syst=arg.syst, range=arg.datasetRange, mctype = arg.mctype, jk=arg.jk):
-    processor = makeDijetHists(data = data, jet_systematics = jet_syst, systematics = syst, jk = jk)
-    jkstring = "JK_" if jk else ""
+def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, syst=arg.syst, range=arg.datasetRange, mctype = arg.mctype, jk=arg.jk, jk_range = arg.jkRange):
+    processor = makeDijetHists(data = data, jet_systematics = jet_syst, systematics = syst, jk = jk, jk_range = jk_range)
+    if jk:
+        if jk_range != None:
+            jkstring = "JK" + str(jk_range[0]) + "_" + str(jk_range[1])
+        else:
+            jkstring = "JK" 
+    else: jkstring = ""
     datastring = "JetHT" if processor.do_gen == False else "QCDsim"
     if year == 2016 or year == 2017 or year == 2018:
         year_str = str(year)
@@ -72,13 +86,13 @@ def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=ar
         # filename = "datasets_UL_NANOAOD.json"
         filename = "fileset_JetHT_wRedirs.json"
     if arg.testing and not data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest_ak4corr_{}_rap{}_{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0],jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHistsTest_rebinpt_{}_rap{}_{}_{}_{}_{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0],jkstring, year_str)
     elif arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest_ak4corr_{}_rap{}_{}_{}.pkl'.format(datastring, processor.ycut, jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHistsTest_rebinpt_{}_rap{}_{}_{}.pkl'.format(datastring, processor.ycut, jkstring, year_str)
     elif not arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHists_ak4corr_{}_rap{}_{}{}.pkl'.format(datastring, processor.ycut, jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHists_rebinpt_{}_rap{}_{}{}.pkl'.format(datastring, processor.ycut, jkstring, year_str)
     else:
-        fname = 'coffeaOutput/dijet/dijetHists_ak4ak8corr_{}_rap{}_{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0], jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHists_rebinpt_{}_rap{}_{}_{}_{}_{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0], jkstring, year_str)
     if range!=None:
         print("Range input: ", range)
         fname=fname[:-4]+"_"+str(range[0])+"_"+str(range[1])+".pkl"
@@ -97,16 +111,14 @@ if arg.allUncertaintySources:
 #### 2017 mg so far
 #"nominal","HEM",
 #### 2016 mg APV so far
-    
-    unc_srcs =["nominal","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","JER","JMR","JMS","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","FlavorQCD","JER","JMR","JMS","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF""RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample","RelativeStatEC","RelativeStatFSR","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
+    unc_srcs =["nominal","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","JER","JMR","JMS","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF""RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample","RelativeStatEC","RelativeStatFSR","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
     if arg.mctype!='pythia':
         unc_srcs.append(["Q2", "PDF"])
+    for src in unc_srcs:
+        print("Running processor for ", src)
+        runDijetAnalysis(data=arg.data, jet_syst=[src])
 else:
-    unc_srcs = arg.jetSyst
-for src in unc_srcs:
-    print("Running processor for ", src)
-    runDijetAnalysis(data=arg.data, jet_syst=[src])
-
+    runDijetAnalysis()
 #Make plots
 import matplotlib.pyplot as plt
 os_path = 'plots/selectionStudies/dijet/'
