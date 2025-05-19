@@ -5,7 +5,6 @@ import numpy as np
 import pickle
 import hist
 import coffea
-from python.plugins import *
 
 # from hist import intervals
 import matplotlib.pyplot as plt
@@ -159,11 +158,9 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
         if logy:
             ax.set_yscale('log')
         if "_g" in hist_mc and "m"==axVar[0]:
-            rax.set_xlabel(r'$m_{SD, RECO} (GeV)$' )
-        elif "_u" in hist_mc and "m"==axVar[0]:
-            rax.set_xlabel(r'$m_{RECO} (GeV)$' )
+            rax.set_xlabel(r'$m_{Jet, SD} (GeV)$' )
         else:
-            rax.set_xlabel(axVar )
+            rax.set_xlabel(r'$m_{Jet, SD} (GeV)$' )
         ratio = np.ones_like(result_mc[hist_mc].project(axVar).values())
         #### Fill ratio plot
         ax.set_xlabel("")
@@ -262,10 +259,7 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
         hep.cms.label("Preliminary", com = 13, lumi = lumi, data = True, loc=0, ax=ax);
         ax.set_xlabel(None) 
         plt.show()
-        # if norm:
-        #     fig.savefig(os_path+"ULwErrs{}{}_{}_{}_pt{}_{}normed.png".format(IOV,channel, hist_mc, axVar, pt_edges[i], pt_edges[i+1]), bbox_inches="tight") 
-        # else:
-        #     fig.savefig(os_path+"ULwErrs{}{}_{}_{}_pt{}_{}.png".format(IOV,channel, hist_mc, axVar, pt_edges[i], pt_edges[i+1]), bbox_inches="tight") 
+
 def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os_path=""):
     from cycler import cycler
     colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c', '#9F79EE']
@@ -310,7 +304,6 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os
     for i, syst in enumerate(systematics):
         lines = ["-", "-", "-"]
         cols = ['green', 'red', 'black']
-        ax.set_xlabel("")
         #### Set up ratio plot
         if (syst in availSysts) and ("nominal" in availSysts) and (syst[-2:]=="Up"):
             fig, (ax, rax) = plt.subplots(
@@ -319,6 +312,7 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os
                 figsize=(8,7),
                 gridspec_kw={"height_ratios": (3, 1)},
                 sharex=True)
+            ax.set_xlabel("")
             ax.yaxis.get_minor_locator().set_params(numticks=999, subs=(.2, .4, .6, .8))
             ax.set_ylabel(r'Events', loc = 'top')
             if logy: 
@@ -357,8 +351,10 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os
             hep.histplot(result[histname][{'syst':"nominal"}].project(axVar), stack=False, histtype='step', binwnorm=True, ax=ax_tot, density=False, linestyle ='-', color = 'black', linewidth=1,label="nominal")
             rax.set_ylabel(r'$\frac{Up/Down}{Nominal}$', loc = 'center')
             rax.set_ylim(0.9,1.1)
+            if 'Q2' in syst:
+                rax.set_ylim(0.5,1.5)
             rax_tot.set_ylabel(r'$\frac{Up/Down}{Nominal}$', loc = 'center')
-            # rax_tot.set_ylim(0.9,1.1)
+            rax_tot.set_ylim(0.5,1.5)
             if ("rapidity" in axVar) | ("phi" in axVar):
                 rax.set_xlim(-xlim, xlim)
             elif "pt" in axVar:
@@ -379,21 +375,17 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os
                         verticalalignment='bottom',
                         transform=ax.transAxes
                        )
-            fig.savefig(os_path+"/UL{}{}_{}_{}_{}.png".format(IOV,channel, histname, axVar, syst), bbox_inches='tight') 
         elif syst in availSysts and "nominal" not in availSysts:
             fig, ax, = plt.subplots(nrows=1,ncols=1,figsize=(8,7))
             mc = [result[histname][{'syst':syst}].project(axVar),  result[histname][{'syst':syst}].project(axVar)]
             hep.histplot(mc, stack=False, histtype='step', binwnorm=True, ax=ax, density=False, linestyle =lines, color = cols, linewidth=1,label=syst)
-            fig.savefig(os_path+"{}/UL{}_{}_{}_{}.png".format(IOV,IOV,channel, histname, axVar, syst), bbox_inches='tight')
-        elif (syst in availSysts) and ("nominal" in availSysts) and (syst[-4:]=="Down"):
-            print("Down -- plot both variations for up")
+        # elif (syst in availSysts) and ("nominal" in availSysts) and (syst[-4:]=="Down"):
+            # print("Down -- plot both variations for up")
         else:
             print("Systematic not in desired hist")
         ax_tot.set_ylabel(r'Events', loc = 'top')
-        ax.set_xlabel(None) 
         # leg_tot = ax_tot.legend(loc='best', labelspacing=0.25)
-        # add some labels
-        fig_tot.savefig(os_path+"UL{}{}_{}_{}_allSyst.png".format(IOV,channel, histname, axVar), bbox_inches='tight')   
+        # add some labels   
 from hist.intervals import ratio_uncertainty
 def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, channel = "", norm = False, rax_lim=None, os_path="plots/", ylim = None, xlim = None, trim=None):
     stat_unc_up = result_mc[hist_mc][{'syst':'nominal'}].project(axVar).variances()**0.5
@@ -418,8 +410,10 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
         }
     stat_error_opts = {
             'label': 'Stat. Unc.',
+                    # 'hatch': '///',
+                    # 'edgecolor': 'grey',
             'facecolor': 'grey',
-        'edgecolor':'grey',
+            'linewidth': 0
         }
     data_err_opts = {
             'linestyle': 'none',
@@ -453,11 +447,11 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     if ylim != None:
         ax.set_ylim(ylim[0], ylim[1]) 
     if "pt" in axVar or "m"==axVar[0]: 
-        rax.set_xlabel(r'$p_{T, RECO} \, [GeV]$' )
+        rax.set_xlabel(r'$p_{T, Jet} \, [GeV]$' )
     if "_g" in hist_mc and "m"==axVar[0]:
-        rax.set_xlabel(r'$m_{SD, RECO} \, [GeV]$' )
+        rax.set_xlabel(r'$m_{Jet, SD} \, [GeV]$' )
     elif "mreco"==axVar:
-        rax.set_xlabel(r'$m_{RECO} \, [GeV]$' )
+        rax.set_xlabel(r'$m_{Jet} \, [GeV]$' )
     ratio = np.ones_like(result_mc[hist_mc].project(axVar).values())
     #### Fill ratio plot
     if norm:
@@ -478,7 +472,7 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
                       where=mcvals.values()!= 0,)
     #### Add MC error bars
     hep.histplot(mcvals.values(), edges,yerr = datavals.variances()**0.5, stack=False, histtype='fill',
-                 ax=ax, linestyle ='-', color = 'Orange', linewidth=1, binwnorm=True,
+                 ax=ax, linestyle ='-', color = 'orange', linewidth=1, binwnorm=True,
                  label="MG+Pythia8")
     ax.stairs(values=(mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5)/widths, edges = edges, baseline= (mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5)/widths,
                 fill=True,
@@ -539,9 +533,9 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
         ax.set_xlim(-xlim, xlim)
         rax.set_xlim(-xlim, xlim)
         rax.set_xlabel(r"$\phi$")
-    # elif "pt" in axVar:
-    #     rax.set_xlim(200, 810)
-    #     ax.set_xlim(200, 810)
+    elif "pt" in axVar:
+        rax.set_xlim(200, xlim)
+        ax.set_xlim(200, xlim)
     else:
         ax.set_xlim(0, xlim)
         rax.set_xlim(0, xlim)
@@ -551,18 +545,10 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
         print("new ticks ", newticks)
         rax.set_xticks(rax.get_xticks().tolist(),
                labels=newticks)
-    if IOV == "2018": lumi = 59.83
-    elif IOV == "2017": lumi = 41.48
-    elif IOV == "2016": lumi = 16.8
-    elif IOV == "2016APV": lumi = 19.5
-    else: lumi = 138
-    hep.cms.label("Preliminary", com = 13, lumi = lumi, data = True, loc=0, ax=ax);
+    hep.cms.label("Preliminary", com = 13, lumi = 138, data = True, loc=0, ax=ax);
     ax.set_xlabel(None) 
     plt.show()
-    # if norm:
-    #     fig.savefig(os_path+"ULwErrs{}{}_{}_{}_normed.png".format(IOV,channel, hist_mc, axVar), bbox_inches="tight") 
-    # else:
-    #     fig.savefig(os_path+"ULwErrs{}{}_{}_{}.png".format(IOV,channel, hist_mc, axVar), bbox_inches="tight") 
+
         
 def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig = None, IOV="", channel = "", rax_lim = [0.,2.0], norm = False, x_lim = None):
     if result_herwig!=None:
@@ -611,7 +597,7 @@ def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig 
     ax.set_ylabel(r'Events/GeV', loc = 'top')
     ax.set_yscale('log')
     if "_g" in hist_mc and "m"==axVar[0]:
-        rax.set_xlabel(r'$m_{SD, RECO} \, [GeV]$' )
+        rax.set_xlabel(r'$m_{Jet, SD} \, [GeV]$' )
     ratio = np.ones_like(result_mc[hist_mc].project(axVar).values())
     #### Fill ratio plot
     if norm:
@@ -636,7 +622,6 @@ def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig 
         ratio_h = np.divide(herwigvals.values(),datavals.values(),
                       out=np.empty(np.array(herwigvals.values()).shape).fill(np.nan),
                       where=herwigvals.values()!= 0,)
-    print("Integral of hist ", datahist.project(axVar).integrate(axVar).value)
     # normedHistVals = np.divide(datahist.project(axVar).values(),/datahist.project(axVar).integrate(axVar),
     #                   out=np.empty(np.array(mchist.project(axVar).values()).shape).fill(np.nan),
     #                   where=mchist.project(axVar).values()!= 0,)
@@ -686,8 +671,5 @@ def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig 
                 verticalalignment='bottom',
                 transform=ax.transAxes
                )
-    if norm:
-        fig.savefig("plots/comparison/{}/UL{}{}_{}_{}_normed.png".format(channel,IOV,channel, hist_mc, axVar)) 
-    else:
-        fig.savefig("plots/comparison/{}/UL{}{}_{}_{}.png".format(channel,IOV,channel, hist_mc, axVar)) 
+
     
