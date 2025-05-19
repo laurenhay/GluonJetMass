@@ -113,7 +113,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     # samples = {'/JetHT/Run2016E-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD': [redirector+'/store/data/Run2016E/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/40000/0402FC45-D69F-BE47-A2BF-10394485E06E.root']}
     # samples = {'/QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/280000/2CD900FB-1F6B-664F-8A26-C125B36C2B58.root']}
     # samples = {'/JetHT/Run2016F-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD':['root://cmseos.fnal.gov//store/data/Run2016F/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/50000/E27262E3-F8DE-E74A-B82F-E6CF78BD8AE3.root']}
-    #samples = {'/QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM':['root://cmseos.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/60000/9B8E3A78-296B-E141-9D5B-F52020A3C5B2.root']}
+    # samples = {'/QCD_HT700to1000_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM':['root://cmseos.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_HT700to1000_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/2820000/150F2AD2-0267-AE4F-90F9-D8191F29DC95.root']}
     print("Running over datasets ", samples.keys())
     client = None
     cluster = None
@@ -165,7 +165,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         cluster = LPCCondorCluster(memory='12 GiB', transfer_input_files=upload_to_dask, scheduler_options={"dashboard_address": year[:4]})#, ship_env=False)
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
         cluster.adapt(minimum=1, maximum=500)
-        print(cluster)
+        print(cluster.dashboard_link)
         with Client(cluster) as client:
             print(client)
             print(client.get_worker_logs())
@@ -217,34 +217,26 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     del cluster
     return result
 def addFiles(files, RespOnly=False):
+    print(files)
     results = pickle.load( open(files[0], "rb") )
+    print("starting file ", files[0])
     respHists = ['response_matrix_u', 'response_matrix_g', 'ptreco_mreco_u', 'ptreco_mreco_g', 'ptgen_mgen_u', 'ptgen_mgen_g','fakes', 'misses']
     for fname in files[1:]:
-        print(fname)
         with open(fname, "rb") as f:
             result = pickle.load( f )
+            print(f)
             for hist in [res for res in result if res in results]:
-                print("Hist ", hist, " of type ", type(results[hist]))
+                print("Starting ", hist)
                 if hist == "cutflow":
-                    print("total hist keys ", results[hist].keys())
                     for key in [key for key in result[hist] if key in results[hist].keys()]:
-                        print("total hist keys ", results[hist][key].keys())
                         for k in [k for k in result[hist][key] if k in results[hist][key].keys()]:
-                            # print("Key ", k)
-                            # print(result[hist][key][k])
                             results[hist][key][k] += result[hist][key][k]
-                        # else:
-                        #     print(key)
-                        #     print(result[hist][key])
-                        #     results[hist][key] += result[hist][key]
+                            print("success for ", key)
                 elif RespOnly and hist in respHists:
-                    # print("Hist ", hist, " with syst cats ",[bin for bin in result['response_matrix_u'].project("syst").axes])
-                    # print("type of hist ", type(results[hist]))
                     results[hist] += result[hist]
                 else:
-                    # print("Hist ", hist, " with syst cats ",[bin for bin in result['response_matrix_u'].project("syst").axes])
                     results[hist] += result[hist]
-                print("Successfully added")
+                print("Success for ", hist)
     print("Done")
     return(results)
     

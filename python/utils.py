@@ -4,6 +4,52 @@ import awkward as ak
 import numpy as np
 
 turnOnPts_JetHT = {'2016': {'AK8PFJet40':0.,
+                 'AK8PFJet60': 140., 
+                 'AK8PFJet80': 210.,
+                 'AK8PFJet140': 290., 
+                 'AK8PFJet200': 380., 
+                 'AK8PFJet260': 450., 
+                 'AK8PFJet320': 550., 
+                 'AK8PFJet400': 640., 
+                 'AK8PFJet450': 690., 
+                 'AK8PFJet500': 820.},
+                '2016APV': {'AK8PFJet40':0., 
+                     'AK8PFJet60': 140, 
+                     'AK8PFJet80': 210., 
+                     'AK8PFJet140': 290., 
+                     'AK8PFJet200': 380., 
+                     'AK8PFJet260': 450., 
+                     'AK8PFJet320': 550., 
+                     'AK8PFJet400': 640., 
+                     'AK8PFJet450': 730., 
+                     'AK8PFJet500': 820.},
+                '2017': {'AK8PFJet40':0.,
+                 'AK8PFJet60': 0., 
+                 'AK8PFJet80': 160., 
+                 'AK8PFJet140': 270., 
+                 'AK8PFJet200': 310., 
+                 'AK8PFJet260': 450., 
+                 'AK8PFJet320': 560., 
+                 'AK8PFJet400': 640., 
+                 'AK8PFJet450': 700., 
+                 'AK8PFJet500': 760., 
+                 'AK8PFJet550': 810.},
+                '2018': {'AK8PFJet15': 0.,
+                 'AK8PFJet25': 0.,
+                 'AK8PFJet40': 0.,
+                 'AK8PFJet60': 0.,
+                 'AK8PFJet80': 160., 
+                 'AK8PFJet140': 270., 
+                 'AK8PFJet200': 390., 
+                 'AK8PFJet260': 470., 
+                 'AK8PFJet320': 570., 
+                 'AK8PFJet400': 650., 
+                 'AK8PFJet450': 710., 
+                 'AK8PFJet500': 760., 
+                 'AK8PFJet550': 820.}
+               }
+
+turnOnPts_JetHT_old = {'2016': {'AK8PFJet40':0.,
                             'AK8PFJet60': 100., 
                             'AK8PFJet80': 200., 
                             'AK8PFJet140': 260., 
@@ -49,51 +95,6 @@ turnOnPts_JetHT = {'2016': {'AK8PFJet40':0.,
                              'AK8PFJet550': 810.}
             }
 
-#### LATEST VALUES TO SWITCH TO
-# JetHT2016_L1 = {'AK8PFJet40':0.,
-#                  'AK8PFJet60': 140., 
-#                  'AK8PFJet80': 210., 
-#                  'AK8PFJet140': 290., 
-#                  'AK8PFJet200': 380., 
-#                  'AK8PFJet260': 450., 
-#                  'AK8PFJet320': 550., 
-#                  'AK8PFJet400': 640., 
-#                  'AK8PFJet450': 690., 
-#                  'AK8PFJet500': 820.}
-# JetHT2016APV_L1 = {'AK8PFJet40':0., 
-#                      'AK8PFJet60': 140, 
-#                      'AK8PFJet80': 210., 
-#                      'AK8PFJet140': 290., 
-#                      'AK8PFJet200': 380., 
-#                      'AK8PFJet260': 450., 
-#                      'AK8PFJet320': 550., 
-#                      'AK8PFJet400': 640., 
-#                      'AK8PFJet450': 730., 
-#                      'AK8PFJet500': 820.}
-# JetHT2017_L1 = {'AK8PFJet40':0.,
-#                  'AK8PFJet60': 0., 
-#                  'AK8PFJet80': 160., 
-#                  'AK8PFJet140': 270., 
-#                  'AK8PFJet200': 310., 
-#                  'AK8PFJet260': 450., 
-#                  'AK8PFJet320': 560., 
-#                  'AK8PFJet400': 640., 
-#                  'AK8PFJet450': 700., 
-#                  'AK8PFJet500': 760., 
-#                  'AK8PFJet550': 810.}
-# JetHT2018_L1 = {'AK8PFJet15': 0.,
-#                  'AK8PFJet25': 0.,
-#                  'AK8PFJet40': 0.,
-#                  'AK8PFJet60': 0.,
-#                  'AK8PFJet80': 160., 
-#                  'AK8PFJet140': 270., 
-#                  'AK8PFJet200': 390., 
-#                  'AK8PFJet260': 470., 
-#                  'AK8PFJet320': 570., 
-#                  'AK8PFJet400': 650., 
-#                  'AK8PFJet450': 710., 
-#                  'AK8PFJet500': 760., 
-#                  'AK8PFJet550': 820.}
 # in 
 xsdb= { 'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 104000.0,
 'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 6806.0,
@@ -113,6 +114,13 @@ xsdb= { 'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 104000.0,
 'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7': 0.8013,
 'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7': 0.06815,
 'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7': 0.01245,
+'QCD_HT200to300_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 1554000.0,
+'QCD_HT300to500_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 323800.0,
+'QCD_HT500to700_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 30280.0,
+'QCD_HT700to1000_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8':6392.0,
+'QCD_HT1000to1500_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 1118.0,
+'QCD_HT1500to2000_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8':108.9,
+'QCD_HT2000toInf_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 21.93,
  }
 
 # in fb^-1 taken from https://twiki.cern.ch/twiki/bin/viewauth/CMS/PdmVAnalysisSummaryTable
@@ -125,6 +133,47 @@ lumi = {'2018' : 59.74,
 
 
 #### Missing 2016APV XS's
+num_gen_mg = { '2016APV': {'QCD_HT200to300_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8' : 0,
+'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_800to1000_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' : 0},
+    '2016': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_800to1000_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' : 0},
+           '2017': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_800to1000_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' : 0},
+           '2018': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_800to1000_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8' : 0,
+'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' : 0}
+}
 num_gen_herwig = { "2016APV": {'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7': 3005498,
                                'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7': 1967563,
                                'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7': 1000485,
@@ -289,26 +338,31 @@ def applyPrescales(events, year, trigger = "AK8PFJet", turnOnPts = turnOnPts_Jet
     HLT_paths = [trigger + str(i) for i in trigThresh]
     events_mask = np.full(len(events), False)
     weights = np.ones(len(events))
-
+    HLT_cutflow_initial = {}
+    HLT_cutflow_final = {}
+            
     #### allRuns_AK8HLT.csv is the result csv of running 'brilcalc trg --prescale --hltpath "HLT_AK8PFJet*" --output-style                 csv' and is used to create the ps_weight_JSON files
     #### lumimask and requirement of one jet is already applied in jet processor
 
     for i in np.arange(len(HLT_paths))[::-1]:
         path = HLT_paths[i]
-#             print("Index i: ", i, " for path: ", path)
         if path in events.HLT.fields:
+            print("events with HLT path ", HLT_paths[0], " ", events.HLT[path], " with sum ", ak.sum(events.HLT[path]))                  #### booking iniital HLT values
+            HLT_cutflow_initial[path] = ak.sum(events.HLT[path])
             pt0 = ak.firsts(events.FatJet[:,0:].pt)
-            psweights = pseval['prescaleWeight'].evaluate(ak.to_numpy(events.run), path,
-                                                          ak.to_numpy(ak.values_astype(events.luminosityBlock, np.float32)))
+            psweights = pseval['prescaleWeight'].evaluate(ak.to_numpy(events.run), path, ak.to_numpy(ak.values_astype(events.luminosityBlock, np.float32)))
             #### here we will use correctionlib to assign weights
             if (i == (len(HLT_paths) - 1)):
-                events_cut = events[((pt0 > turnOnPts[i]) & events.HLT[path])]
+                # events_cut = events[((pt0 > turnOnPts[i]) & events.HLT[path])]
                 events_mask = np.where(((pt0 > turnOnPts[i]) & events.HLT[path]), True, events_mask)
 #                 print("Number of ", path, "'s trues: ", sum(((pt0 > turnOnPts[i]) & events.HLT[path])), " number of total trues ", sum(events_mask))
                 weights = np.where(((pt0 > turnOnPts[i]) & events.HLT[path]), psweights, weights)
+                n_pass = ak.sum((pt0 > turnOnPts[i]) & events.HLT[path])
             else:
-                events_cut = events[((pt0 > turnOnPts[i]) & (pt0 <= turnOnPts[i+1]) & events.HLT[path])]
+                # events_cut = events[((pt0 > turnOnPts[i]) & (pt0 <= turnOnPts[i+1]) & events.HLT[path])]
                 events_mask = np.where(((pt0 > turnOnPts[i]) & (pt0 <= turnOnPts[i+1]) & events.HLT[path]), True, events_mask)
 #                 print("Number of ", path, "'s path's trues: ", sum(((pt0 > turnOnPts[i]) & (pt0 <= turnOnPts[i+1]) & events.HLT[path])), " number of total trues ", sum(events_mask))
                 weights = np.where(((pt0 > turnOnPts[i]) & (pt0 <= turnOnPts[i+1])), psweights, weights)
-    return events_mask, weights
+                n_pass = ak.sum((pt0 > turnOnPts[i]) & (pt0 <= turnOnPts[i+1]))
+            HLT_cutflow_final[path] = n_pass
+    return events_mask, weights, HLT_cutflow_initial, HLT_cutflow_final
