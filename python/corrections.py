@@ -41,9 +41,9 @@ def ApplyVetoMap(IOV, jets, mapname='jetvetomap'):
 def applyjmsSF(IOV, FatJet,  var = ''):
     jmsSF = {
 
-        "2016APV":{"sf": 1.00, "sfup": 1.0794, "sfdown": 0.9906}, 
+        "2016APV":{"sf": 1.00, "sfup": 1.0094, "sfdown": 0.9906}, 
 
-        "2016"   :{"sf": 1.00, "sfup": 1.0794, "sfdown": 0.9906}, 
+        "2016"   :{"sf": 1.00, "sfup": 1.0094, "sfdown": 0.9906}, 
 
         "2017"   :{"sf": 0.982, "sfup": 0.986, "sfdown": 0.978},
 
@@ -57,6 +57,8 @@ def applyjmsSF(IOV, FatJet,  var = ''):
     return FatJet
 
 def applyJMSbypt(IOV, FatJet, var = ''):
+
+    ###### NEED JET FACTORY
     fname = "correctionFiles/SFs/ParticleNet_jmssf.json"
     iovKey = {
         "2016": "16preVFP",
@@ -202,8 +204,9 @@ def GetCorrectedSDMass(corr_jets, events, era, IOV, isData=False, uncertainties=
         del FatJets
     corr_jets =corr_jets[(corr_jets.subJetIdx1 > -1)]
     fields = []
+    print("Avail corrected jet objs ", corr_jets.fields)
     fields.extend(field for field in corr_jets.fields if ("JES_" in field))
-    if ("JES_" in corr_jets.fields): fields.append("JER")
+    if ("JER" in corr_jets.fields): fields.append("JER")
     if useSubjets:
         corr_jets["msoftdrop"] = (corr_subjets[corr_jets.subJetIdx1]+corr_subjets[corr_jets.subJetIdx2]).mass
     else:
@@ -278,11 +281,11 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     if not isData:
     #For MC
         ext.add_weight_sets([
-            '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.txt'.format(jec_tag, AK_str),
-            '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_{1}.txt'.format(jec_tag, AK_str),
-            '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_{1}.txt'.format(jec_tag, AK_str),
-            '* * '+'correctionFiles/JEC/{0}/{0}_UncertaintySources_{1}.txt'.format(jec_tag, AK_str),
-            '* * '+'correctionFiles/JEC/{0}/{0}_Uncertainty_{1}.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.jec.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_{1}.jec.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_{1}.jec.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_UncertaintySources_{1}.junc.txt'.format(jec_tag, AK_str),
+            '* * '+'correctionFiles/JEC/{0}/{0}_Uncertainty_{1}.junc.txt'.format(jec_tag, AK_str),
         ])
         #### Do AK8PUPPI jer files exist??
         if jer_tag:
@@ -299,10 +302,10 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
         for run, tag in jec_tag_data.items():
             if not (tag in tags_done):
                 ext.add_weight_sets([
-                '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.txt'.format(tag, AK_str),
-                '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_{1}.txt'.format(tag, AK_str),
-                '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_{1}.txt'.format(tag, AK_str),
-                '* * '+'correctionFiles/JEC/{0}/{0}_L2L3Residual_{1}.txt'.format(tag, AK_str),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.jec.txt'.format(tag, AK_str),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_{1}.jec.txt'.format(tag, AK_str),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_{1}.jec.txt'.format(tag, AK_str),
+                '* * '+'correctionFiles/JEC/{0}/{0}_L2L3Residual_{1}.jec.txt'.format(tag, AK_str),
                 ])
                 tags_done += [tag]
     ext.finalize()

@@ -57,92 +57,73 @@ def rebin_hist(h, axis_name, edges):
                 axis=ax_idx).take(indices=range(new_ax.size+underflow+overflow), axis=ax_idx)
     return hnew
 
-def getTotSyst(result, histname, axis='mreco'):
+# def getTotSyst(result, histname, axis='mreco'):
+#     hist = result[histname]
+#     availSysts = [ax for ax in result[histname].project("syst").axes[0]]
+
+#     availSysts = [syst for syst in availSysts if syst!="nominal"]
+#     sysErr = {}  
+#     for syst in availSysts:
+#         sysErr.update({syst: hist[{'syst':syst}].project(axis).values()})
+#     nom_values = hist[{'syst':'nominal'}].project(axis).values()
+#     sysErrTot_up = np.zeros_like(nom_values)
+#     sysErrTot_dn = np.zeros_like(nom_values)
+#     for syst, syst_vals in sysErr.items():
+#         if "Down" not in syst:
+#             print("adding syst ", syst)
+#             deltasys = syst_vals-nom_values
+#             sysErrTot_up = sysErrTot_up + deltasys**2
+#         else:
+#             deltasys = nom_values-syst_vals
+#             sysErrTot_dn = sysErrTot_dn + deltasys**2
+#     sysErrTot_up = sysErrTot_up**0.5
+#     sysErrTot_dn = sysErrTot_dn**0.5
+#     return sysErrTot_up, sysErrTot_dn
+def getTotSyst(result, histname, axis='mreco', binaxis="ptreco", binned = False):
     hist = result[histname]
+    binedges = [bin[0] for bin in result[histname].project(binaxis).axes[0]] + [result[histname].project(binaxis).axes[0][-1][1]]
     availSysts = [ax for ax in result[histname].project("syst").axes[0]]
-#     syst_uncorr = [
-#     'jerUp','jerDown'
-#     'PUSFUp','PUSFDown', #PDFs WIP
-#     'L1prefiringDown', 'L1prefiringUp', 
-#     'AbsoluteStatUp','AbsoluteStatDown',
-#     'FlavorQCDUp','FlavorQCDDown',
-#     'FragmentationUp','FragmentationDown',
-#     'PileUpDataMCUp','PileUpDataMCDown',
-#     'RelativeBalUp','RelativeBalDown',
-#     'RelativeJEREC1Up','RelativeJEREC1Down',
-#     'RelativeJEREC2Up','RelativeJEREC2Down',
-#     'RelativePtEC1Up','RelativePtEC1Down',
-#     'RelativePtEC2Up','RelativePtEC2Down',
-#     'RelativeSampleUp','RelativeSampleDown',
-#     'RelativeStatECUp','RelativeStatECDown',
-#     'RelativeStatFSRUp','RelativeStatFSRDown',
-#     'RelativeStatHFUp','RelativeStatHFDown',
-# ]
-
-#     absolute = ['AbsoluteMPFBiasUp', 'AbsoluteMPFBiasDown',
-#                 'AbsoluteScaleUp', 'AbsoluteScaleDown']
-#     pileuppt = ['PileUpPtBBUp', 'PileUpPtBBDown', 
-#                 'PileUpPtEC1Up', 'PileUpPtEC1Down',
-#                 'PileUpPtEC2Up', 'PileUpPtEC2Down', 
-#                 'PileUpPtHFUp', 'PileUpPtHFDown', 
-#                 'PileUpPtRefUp', 'PileUpPtRefDown']
-#     relpt = ['RelativePtEC1Up', 'RelativePtEC1Down','RelativePtHFUp', 'RelativePtHFDown']
-#     singlepion =     ['SinglePionECALUp', 'SinglePionECALDown','SinglePionHCALUp', 'SinglePionHCALDown']
-#     timepteta = ['TimePtEtaUp', 'TimePtEtaDown']
-
     availSysts = [syst for syst in availSysts if syst!="nominal"]
-    # syst_list = [syst for syst in availSysts if syst!="nominal" and syst not in syst_uncorr]
-    # syst_uncorr = [syst for syst in syst_uncorr if syst in availSysts]
-    # corr_grps = [absolute, pileuppt, relpt, singlepion, timepteta]
     sysErr = {}  
     for syst in availSysts:
-        sysErr.update({syst: hist[{'syst':syst}].project(axis).values()})
-    nom_values = hist[{'syst':'nominal'}].project(axis).values()
+        sysvals = hist[{'syst':syst}].project(binaxis, axis).values()
+        if not binned:
+            sysvals = sysvals.sum(axis=0)
+        sysErr.update({syst: sysvals})
+    nom_values = hist[{'syst':'nominal'}].project(binaxis, axis).values()
+    if not binned:
+        nom_values = nom_values.sum(axis=0)
     sysErrTot_up = np.zeros_like(nom_values)
     sysErrTot_dn = np.zeros_like(nom_values)
-    #### Loop through uncorrelated groups and make 
-    # for grp in corr_grps:
-    #     grp_unc_total_up  = np.zeros_like(nom_values)
-    #     grp_unc_total_dn  = np.zeros_like(nom_values)
-    #     for syst in grp:
-    #         if syst in availSysts:
-    #             syst_vals = sysErr[syst]
-    #             if "Up" in syst:
-    #                 deltasys = abs(syst_vals-nom_values)
-    #                 grp_unc_total_up += deltasys
-    #             if "Down" in syst:
-    #                 deltasys = abs(nom_values-syst_vals)
-    #                 grp_unc_total_dn += deltasys
-    #     sysErrTot_up += grp_unc_total_up**2
-    #     sysErrTot_dn += grp_unc_total_dn**2
-    #### Loop through uncorrelated uncertainties and add together with correlated groups
     for syst, syst_vals in sysErr.items():
-        if "Up" in syst:
+        if "Down" not in syst:
             deltasys = syst_vals-nom_values
             sysErrTot_up = sysErrTot_up + deltasys**2
-        if "Down" in syst:
+        else:
             deltasys = nom_values-syst_vals
             sysErrTot_dn = sysErrTot_dn + deltasys**2
     sysErrTot_up = sysErrTot_up**0.5
     sysErrTot_dn = sysErrTot_dn**0.5
     return sysErrTot_up, sysErrTot_dn
-def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, channel = "", axVar="mreco", norm = True, rax_lim=None, os_path='plots/syst/', binwnorm=True, trim = False):
-    pt_edges = [bin[0] for bin in hist_mc.project('ptreco').axes[0]] + [hist_mc.project('ptreco').axes[0][-1][1]]
+def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, channel = "", axVar="mreco", norm = True, rax_lim=None, os_path='plots/syst/', binwnorm=True, trim = False, logy=True, yoffset=None):
+    pt_edges = [bin[0] for bin in result_mc[hist_mc].project("ptreco").axes[0]] + [result_mc[hist_mc].project('ptreco').axes[0][-1][1]]
+    m_edges = [bin[0] for bin in result_mc[hist_mc].project("mreco").axes[0]] + [result_mc[hist_mc].project('mreco').axes[0][-1][1]]
+    tot_syst_up, tot_syst_down = getTotSyst(result_mc, hist_mc, axis=axVar, binned=True)
     for i in range(len(pt_edges)-1):
-        stat_unc_up = result_mc[hist_mc][{'syst':'nominal'}].project(axVar).variances()**0.5
-        stat_unc_down = result_mc[hist_mc][{'syst':'nominal'}].project(axVar).variances()**0.5
-        syst_unc_up, syst_unc_down = getTotSyst(result_mc, hist_mc, axis=axVar)
-        print("Syst unc up vals: ", syst_unc_up)
-        print("Syst unc down vals: ", syst_unc_down)
+        stat_unc_up = result_mc[hist_mc][{'syst':'nominal', 'ptreco':i}].project(axVar).variances()**0.5
+        stat_unc_down = result_mc[hist_mc][{'syst':'nominal', 'ptreco':i}].project(axVar).variances()**0.5
+        syst_unc_up = tot_syst_up[i]
+        syst_unc_down = tot_syst_down[i]
         #### following opts may be unnecessary
-        tot_error_opts = {
-                'label': 'Stat. + Syst. Unc.',
-                'facecolor': 'orange',
-    
-                'linewidth': 0
-            }
         stat_error_opts = {
                 'label': 'Stat. Unc.',
+                'edgecolor': 'grey',
+                'hatch': "\\\\",
+            'facecolor': 'none',
+                'linewidth': 0
+            }
+        tot_error_opts = {
+                'label': 'Stat. + Syst. Unc.',
                         'hatch': '///',
                         'edgecolor': 'black',
                 'facecolor': 'none',
@@ -160,14 +141,9 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
         availAxes = [ax.name for ax in result_mc[hist_mc].axes]
         edges = [bin[0] for bin in result_mc[hist_mc].project(axVar).axes[0]] + [result_mc[hist_mc].project(axVar).axes[0][-1][1]]
         widths = result_mc[hist_mc].project(axVar).axes[0].widths
-        if trim:
-            print("Trimming last bin to be size of second to last bin")
-            print("Last two widths ", widths[-2], " ", widths[-1])
-            print("Last two edges ", edges[-2], " ", edges[-1])
-            widths[-1] = widths[-2]
-            edges[-1] = edges[2] + width[-1]
-            ax.set_xticklabels(edges)
-        print("widths", widths)
+        if trim!=None:
+            edges[-1] = trim
+            widths[-1] = edges[-1] - edges[-2]
         xlim = edges[-1]
         fig, (ax, rax) = plt.subplots(
                     nrows=2,
@@ -177,13 +153,17 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
                     sharex=True)
         ax.yaxis.get_minor_locator().set_params(numticks=999, subs=(.2, .4, .6, .8))
         ax.set_ylabel(r'$Events/GeV$', loc = 'top')
+        ax.set_xticklabels(edges)
         if not binwnorm:
             ax.set_ylabel(r'$Events$', loc = 'top')
-        ax.set_yscale('log')
+        if logy:
+            ax.set_yscale('log')
         if "_g" in hist_mc and "m"==axVar[0]:
             rax.set_xlabel(r'$m_{SD, RECO} (GeV)$' )
+        elif "_u" in hist_mc and "m"==axVar[0]:
+            rax.set_xlabel(r'$m_{RECO} (GeV)$' )
         else:
-            rax.set_xlabel(r'$m_{SD, RECO} (GeV)$' )
+            rax.set_xlabel(axVar )
         ratio = np.ones_like(result_mc[hist_mc].project(axVar).values())
         #### Fill ratio plot
         ax.set_xlabel("")
@@ -197,53 +177,55 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
         else:
             mcvals = mchist.project(axVar)
             datavals = datahist.project(axVar)
-        ratio = np.divide(mcvals.values(),datavals.values(),
+        ratio = np.divide(datavals.values(),mcvals.values(),
                           out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                           where=datavals.values()!= 0,)
         #### Add MC error bars
-        print("Total unc up: ", mcvals.values()+stat_unc_up+syst_unc_up)
-        ratio_up_tot = mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5
-        ratio_dn_tot = mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5
-        ratio_up_syst = mcvals.values()+stat_unc_up
-        ratio_dn_syst = mcvals.values()-stat_unc_down
-        print("Unc. ratio upper bound ", ratio_up_tot)
         if binwnorm:
-            ratio_up_tot=ratio_up_tot/widths
-            print("Unc. ratio upper bound ", ratio_up_tot , " after dividing by bin widths")
-            ratio_dn_tot=ratio_dn_tot/widths
-            ratio_up_syst=ratio_up_syst/widths
-            ratio_dn_syst=ratio_dn_syst/widths
-        hep.histplot(datavals, stack=False, histtype='errorbar', binwnorm=binwnorm, 
+            stat_unc_down=stat_unc_down/widths
+            stat_unc_up=stat_unc_up/widths
+            syst_unc_down=syst_unc_down/widths
+            syst_unc_up=syst_unc_up/widths
+            mcvals = mcvals/widths
+            datavals = datavals/widths
+        unc_up_tot = mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5
+        unc_dn_tot = mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5
+        unc_up_syst = mcvals.values()+stat_unc_up
+        unc_dn_syst = mcvals.values()-stat_unc_down
+        hep.histplot(datavals.values(), edges, stack=False, histtype='errorbar', 
                      ax=ax, marker =["."], color = 'Black', linewidth=1, 
                      label=channel + " Data")
-        hep.histplot(mcvals, stack=False, histtype='step',
-                     ax=ax, linestyle ='-', color = 'Black', linewidth=1, binwnorm = binwnorm,
+        hep.histplot(mcvals.values(), edges, stack=False, histtype='step',
+                     ax=ax, linestyle ='-', color = 'Black', linewidth=1,
                      label=channel + " MC "+" pt "+str(pt_edges[i])+"-"+str(pt_edges[i+1]))
-        ax.stairs(values=ratio_up_tot, edges = edges, baseline= ratio_dn_tot, fill=True,
+        ax.stairs(values=unc_up_tot, edges = edges, baseline= unc_dn_tot, fill=True,
                   **tot_error_opts,
                 )
-        ax.stairs(values=ratio_up_syst, edges = edges, baseline= ratio_dn_syst, fill=True,
+        ax.stairs(values=unc_up_syst, edges = edges, baseline= unc_dn_syst, fill=True,
                     **stat_error_opts,
                 )
-        print("Data vals ", datavals.values(), " and MC vals ", mcvals.values())
         ax.autoscale(axis='x', tight=True)
         #### Want to stack uncertainties
             # print("Values in bins: ", mchist.project(axVar).values(), " errors of bins ", mchist.project(axVar).variances())
         if rax_lim != None:
             rax.set_ylim(rax_lim[0], rax_lim[1])
-        leg = ax.legend(loc='upper right', labelspacing=0.25)
+        else:
+            rax.set_ylim(0.5,2.0)
+        leg = ax.legend(loc='upper right', labelspacing=0.25, fontsize='xx-small')
         leg.set_visible(True)
+        if yoffset!=None:
+            ax.set_ylim(0.0, (np.max(datavals.values())+yoffset))
         #### Get ratio err values and plot
-        ratio_totterr_up = np.divide((mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5),datavals.values(),
+        ratio_totterr_up = np.divide((mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5),mcvals.values(),
                           out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                           where=datavals.values()!= 0,)
-        ratio_totterr_down = np.divide(mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5,datavals.values(),
+        ratio_totterr_down = np.divide(mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5,mcvals.values(),
                           out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                           where=datavals.values()!= 0,)
-        ratio_statterr_up = np.divide(mcvals.values()+stat_unc_up,datavals.values(),
+        ratio_statterr_up = np.divide(mcvals.values()+stat_unc_up,mcvals.values(),
                           out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                           where=datavals.values()!= 0,)
-        ratio_statterr_down = np.divide(mcvals.values()-stat_unc_up,datavals.values(),
+        ratio_statterr_down = np.divide(mcvals.values()-stat_unc_up,mcvals.values(),
                           out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                           where=datavals.values()!= 0,)
 
@@ -255,25 +237,35 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
                     fill=True,
                     **stat_error_opts,
                 )
-        hep.histplot(ratio, edges, histtype='step', ax=rax, linestyle ="-", color = 'black', linewidth=1)
+        hep.histplot(ratio, edges,  histtype='errorbar',ax=rax, yerr=np.zeros_like(ratio), marker =["."], color = 'Black',)
         hep.histplot(np.ones_like(ratio), edges, histtype='step',ax=rax,linestyle ="--", color = 'black', linewidth=1)
-        
-        rax.set_ylabel(r'$MC/Data', loc = 'center')
+        if trim:
+            newticks = ax.get_xticks().tolist()
+            newticks[-1] = r'$\infty$'
+            print("new ticks ", newticks)
+            rax.set_xticks(rax.get_xticks().tolist(),
+                   labels=newticks)
+        rax.set_ylabel(r'Data/MC', loc = 'center')
         if ("rapidity" in axVar) | ("phi" in axVar):
             rax.set_xlim(-xlim, xlim)
         elif "pt" in axVar:
             rax.set_xlim(0, 2000)
 
-            # rax.set_ylim(0.0,1.0)
+            rax.set_ylim(0.5,2.0)
         else:
             rax.set_xlim(0, xlim)
-        hep.cms.label("Preliminary", data = True, loc=0, ax=ax, fontsize=18)
+        if IOV == "2018": lumi = 59.83
+        elif IOV == "2017": lumi = 41.48
+        elif IOV == "2016": lumi = 16.8
+        elif IOV == "2016APV": lumi = 19.5
+        else: lumi = 138
+        hep.cms.label("Preliminary", com = 13, lumi = lumi, data = True, loc=0, ax=ax);
         ax.set_xlabel(None) 
         plt.show()
-        if norm:
-            fig.savefig(os_path+"ULwErrs{}{}_{}_{}_pt{}_{}normed.png".format(IOV,channel, hist_mc, axVar, pt_edges[i], pt_edges[i+1]), bbox_inches="tight") 
-        else:
-            fig.savefig(os_path+"ULwErrs{}{}_{}_{}_pt{}_{}.png".format(IOV,channel, hist_mc, axVar, pt_edges[i], pt_edges[i+1]), bbox_inches="tight") 
+        # if norm:
+        #     fig.savefig(os_path+"ULwErrs{}{}_{}_{}_pt{}_{}normed.png".format(IOV,channel, hist_mc, axVar, pt_edges[i], pt_edges[i+1]), bbox_inches="tight") 
+        # else:
+        #     fig.savefig(os_path+"ULwErrs{}{}_{}_{}_pt{}_{}.png".format(IOV,channel, hist_mc, axVar, pt_edges[i], pt_edges[i+1]), bbox_inches="tight") 
 def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os_path=""):
     from cycler import cycler
     colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c', '#9F79EE']
@@ -405,7 +397,7 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os
 from hist.intervals import ratio_uncertainty
 def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, channel = "", norm = False, rax_lim=None, os_path="plots/", ylim = None, xlim = None, trim=None):
     stat_unc_up = result_mc[hist_mc][{'syst':'nominal'}].project(axVar).variances()**0.5
-    stat_unc_down = result_mc[hist_mc][{'syst':'nominal'}].project(axVar).variances()**0.5
+    stat_unc_down = stat_unc_up
     syst_unc_up, syst_unc_down = getTotSyst(result_mc, hist_mc, axis=axVar)
     #### following opts may be unnecessary
     tot_error_opts = {
@@ -416,12 +408,18 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
 
             'linewidth': 0
         }
+    syst_error_opts = {
+            'label': 'Syst. Unc.',
+                    'hatch': '\\',
+                    'edgecolor': 'blue',
+        'facecolor': 'none',
+
+            'linewidth': 0
+        }
     stat_error_opts = {
             'label': 'Stat. Unc.',
-                    'hatch': '///',
-                    'edgecolor': 'grey',
-            'facecolor': 'none',
-            'linewidth': 0
+            'facecolor': 'grey',
+        'edgecolor':'grey',
         }
     data_err_opts = {
             'linestyle': 'none',
@@ -445,8 +443,6 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
         print("New edges ", edges)
     if xlim != None:
         xlim = xlim
-    elif trim != None:
-        xlim = trim
     else:
         xlim = edges[-1]
     fig, (ax, rax) = plt.subplots(2, 1, gridspec_kw=dict(height_ratios=[3, 1], hspace=0.1), sharex=True)
@@ -455,7 +451,7 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     ax.set_ylabel(r'Events/GeV', loc = 'top')
     ax.set_yscale('log')
     if ylim != None:
-        ax.set_ylim(ylim[0], ylim[1])
+        ax.set_ylim(ylim[0], ylim[1]) 
     if "pt" in axVar or "m"==axVar[0]: 
         rax.set_xlabel(r'$p_{T, RECO} \, [GeV]$' )
     if "_g" in hist_mc and "m"==axVar[0]:
@@ -488,9 +484,15 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
                 fill=True,
                 **tot_error_opts,
             )
-    # ax.stairs(values=(mcvals.values()+stat_unc_up)/widths, edges = edges, baseline= (mcvals.values()-stat_unc_down)/widths,
+    print("stat_unc_up vals ", stat_unc_up, " compared to syst vals ", syst_unc_up)
+    print("stat_unc_dn vals ", stat_unc_down, " compared to syst vals ", syst_unc_down)
+    ax.stairs(values=(mcvals.values()+stat_unc_up)/widths, edges = edges, baseline= (mcvals.values()-stat_unc_down)/widths,
+                fill=True,
+                **stat_error_opts,
+            )
+    # ax.stairs(values=(mcvals.values()+syst_unc_up)/widths, edges = edges, baseline= (mcvals.values()-syst_unc_down)/widths,
     #             fill=True,
-    #             **stat_error_opts,
+    #             **syst_error_opts,
     #         )
     print("Data values ", datavals.values(), " and variances ", datavals.variances()**0.5)
     hep.histplot(datavals.values(), edges, stack=False, histtype='errorbar',
@@ -510,20 +512,20 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     ratio_totterr_down = np.divide(mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5,mcvals.values(),
                       out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                       where=datavals.values()!= 0,)
-    # ratio_staterr_up = np.divide(mcvals.values()+stat_unc_up,mcvals.values(),
-    #                   out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
-    #                   where=datavals.values()!= 0,)
-    # ratio_staterr_down = np.divide(mcvals.values()-stat_unc_up,mcvals.values(),
-    #                   out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
-    #                   where=datavals.values()!= 0,)
+    ratio_staterr_up = np.divide(mcvals.values()+stat_unc_up,mcvals.values(),
+                      out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
+                      where=datavals.values()!= 0,)
+    ratio_staterr_down = np.divide(mcvals.values()-stat_unc_up,mcvals.values(),
+                      out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
+                      where=datavals.values()!= 0,)
     rax.stairs(values=ratio_totterr_up, edges = edges, baseline= ratio_totterr_down,
                 fill=True,
                 **tot_error_opts,
             )
-    # rax.stairs(values=ratio_staterr_up, edges = edges, baseline= ratio_staterr_down,
-    #             fill=True,
-    #             **stat_error_opts,
-    #         )
+    rax.stairs(values=ratio_staterr_up, edges = edges, baseline= ratio_staterr_down,
+                fill=True,
+                **stat_error_opts,
+            )
     
     hep.histplot(np.ones_like(ratio), edges, histtype='step',ax=rax,linestyle ="--", color = 'black', linewidth=1)
     hep.histplot(ratio, edges, histtype='errorbar',ax=rax, yerr=ratio_err, marker =["."], color = 'Black', linewidth=1)
@@ -554,13 +556,13 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     elif IOV == "2016": lumi = 16.8
     elif IOV == "2016APV": lumi = 19.5
     else: lumi = 138
-    hep.cms.label("Preliminary "+IOV, com = 13, lumi = lumi, data = True, loc=0, ax=ax);
+    hep.cms.label("Preliminary", com = 13, lumi = lumi, data = True, loc=0, ax=ax);
     ax.set_xlabel(None) 
     plt.show()
-    if norm:
-        fig.savefig(os_path+"ULwErrs{}{}_{}_{}_normed.png".format(IOV,channel, hist_mc, axVar), bbox_inches="tight") 
-    else:
-        fig.savefig(os_path+"ULwErrs{}{}_{}_{}.png".format(IOV,channel, hist_mc, axVar), bbox_inches="tight") 
+    # if norm:
+    #     fig.savefig(os_path+"ULwErrs{}{}_{}_{}_normed.png".format(IOV,channel, hist_mc, axVar), bbox_inches="tight") 
+    # else:
+    #     fig.savefig(os_path+"ULwErrs{}{}_{}_{}.png".format(IOV,channel, hist_mc, axVar), bbox_inches="tight") 
         
 def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig = None, IOV="", channel = "", rax_lim = [0.,2.0], norm = False, x_lim = None):
     if result_herwig!=None:

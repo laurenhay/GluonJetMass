@@ -338,26 +338,31 @@ def applyPrescales(events, year, trigger = "AK8PFJet", turnOnPts = turnOnPts_Jet
     HLT_paths = [trigger + str(i) for i in trigThresh]
     events_mask = np.full(len(events), False)
     weights = np.ones(len(events))
-
+    HLT_cutflow_initial = {}
+    HLT_cutflow_final = {}
+            
     #### allRuns_AK8HLT.csv is the result csv of running 'brilcalc trg --prescale --hltpath "HLT_AK8PFJet*" --output-style                 csv' and is used to create the ps_weight_JSON files
     #### lumimask and requirement of one jet is already applied in jet processor
 
     for i in np.arange(len(HLT_paths))[::-1]:
         path = HLT_paths[i]
-#             print("Index i: ", i, " for path: ", path)
         if path in events.HLT.fields:
+            print("events with HLT path ", HLT_paths[0], " ", events.HLT[path], " with sum ", ak.sum(events.HLT[path]))                  #### booking iniital HLT values
+            HLT_cutflow_initial[path] = ak.sum(events.HLT[path])
             pt0 = ak.firsts(events.FatJet[:,0:].pt)
-            psweights = pseval['prescaleWeight'].evaluate(ak.to_numpy(events.run), path,
-                                                          ak.to_numpy(ak.values_astype(events.luminosityBlock, np.float32)))
+            psweights = pseval['prescaleWeight'].evaluate(ak.to_numpy(events.run), path, ak.to_numpy(ak.values_astype(events.luminosityBlock, np.float32)))
             #### here we will use correctionlib to assign weights
             if (i == (len(HLT_paths) - 1)):
-                events_cut = events[((pt0 > turnOnPts[i]) & events.HLT[path])]
+                # events_cut = events[((pt0 > turnOnPts[i]) & events.HLT[path])]
                 events_mask = np.where(((pt0 > turnOnPts[i]) & events.HLT[path]), True, events_mask)
 #                 print("Number of ", path, "'s trues: ", sum(((pt0 > turnOnPts[i]) & events.HLT[path])), " number of total trues ", sum(events_mask))
                 weights = np.where(((pt0 > turnOnPts[i]) & events.HLT[path]), psweights, weights)
+                n_pass = ak.sum((pt0 > turnOnPts[i]) & events.HLT[path])
             else:
-                events_cut = events[((pt0 > turnOnPts[i]) & (pt0 <= turnOnPts[i+1]) & events.HLT[path])]
+                # events_cut = events[((pt0 > turnOnPts[i]) & (pt0 <= turnOnPts[i+1]) & events.HLT[path])]
                 events_mask = np.where(((pt0 > turnOnPts[i]) & (pt0 <= turnOnPts[i+1]) & events.HLT[path]), True, events_mask)
 #                 print("Number of ", path, "'s path's trues: ", sum(((pt0 > turnOnPts[i]) & (pt0 <= turnOnPts[i+1]) & events.HLT[path])), " number of total trues ", sum(events_mask))
                 weights = np.where(((pt0 > turnOnPts[i]) & (pt0 <= turnOnPts[i+1])), psweights, weights)
-    return events_mask, weights
+                n_pass = ak.sum((pt0 > turnOnPts[i]) & (pt0 <= turnOnPts[i+1]))
+            HLT_cutflow_final[path] = n_pass
+    return events_mask, weights, HLT_cutflow_initial, HLT_cutflow_final
