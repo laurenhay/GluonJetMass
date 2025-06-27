@@ -83,13 +83,13 @@ def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=a
         filename = "fileset_JetHT_wRedirs.json"
 
     if arg.testing and not arg.data:
-        fname = 'coffeaOutput/trijet/trijetHistsTest_newMBins_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest_figherwigxs_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jkstring, year_str)
     elif arg.testing and arg.data:
-        fname = 'coffeaOutput/trijet/trijetHistsTest_newMBins_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest_figherwigxs_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
     elif not arg.testing and arg.data:
-        fname = 'coffeaOutput/trijet/trijetHists_newMBins_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_figherwigxs_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
     else:
-        fname = 'coffeaOutput/trijet/trijetHists_newMBins_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_figherwigxs_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
     if range!=None:
         print("Range input: ", range)
         fname=fname[:-4]+"_"+range[0]+"_"+range[1]+".pkl"

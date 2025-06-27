@@ -107,6 +107,7 @@ class applyPrescales(processor.ProcessorABC):
         HLT_cat = hist.axis.StrCategory([], growth=True, name="HLT_cat",label="")
         self._histos = {
             'hist_pt': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
+            'hist_pt_byHLTpath': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
             'hist_pt_byHLTpath_wPS': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
             'hist_pt_wPS': hist.Hist(dataset_cat, HLT_cat, pt_bin, storage="weight", name="Events"),
             'cutflow':      processor.defaultdict_accumulator(int),
@@ -161,12 +162,15 @@ class applyPrescales(processor.ProcessorABC):
                 if i == (len(HLT_paths) - 1):
                     events_cut = events[((pt0 > turnOnPt[i]) & events.HLT[path])]
                     pt0 = events_cut.FatJet[:,0].pt
+                    out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0, )
+
                     out['hist_pt_byHLTpath_wPS'].fill(dataset = datastring, HLT_cat = path, pt = pt0, 
                                                       weight = pseval['prescaleWeight'].evaluate(ak.to_numpy(events_cut.run), path, ak.to_numpy(ak.values_astype(events_cut.luminosityBlock, np.float32))))
-                    print("last index # events passing pt cut ",  turnOnPt[i], ": ", len(pt0))
                 else:
                     events_cut = events[((pt0 > turnOnPt[i]) & (pt0 <= turnOnPt[i+1]) & events.HLT[path])]
                     pt0 = events_cut.FatJet[:,0].pt
+                    out['hist_pt_byHLTpath'].fill(dataset = datastring, HLT_cat = path, pt = pt0, )
+
                     out['hist_pt_byHLTpath_wPS'].fill(dataset = datastring, HLT_cat = path, pt = pt0, weight =                                                                         pseval['prescaleWeight'].evaluate(ak.to_numpy(events_cut.run), path, ak.to_numpy(ak.values_astype(events_cut.luminosityBlock, np.float32))))
                     print("# events passing pt cut ",  turnOnPt[i], ": ", len(pt0))
         return out

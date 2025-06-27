@@ -113,7 +113,9 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     # samples = {'/JetHT/Run2016E-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD': [redirector+'/store/data/Run2016E/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/40000/0402FC45-D69F-BE47-A2BF-10394485E06E.root']}
     # samples = {'/QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/280000/2CD900FB-1F6B-664F-8A26-C125B36C2B58.root']}
     # samples = {'/JetHT/Run2016F-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD':['root://cmseos.fnal.gov//store/data/Run2016F/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/50000/E27262E3-F8DE-E74A-B82F-E6CF78BD8AE3.root']}
-    # samples = {'/QCD_HT700to1000_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM':['root://cmseos.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_HT700to1000_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/2820000/150F2AD2-0267-AE4F-90F9-D8191F29DC95.root']}
+    samples = {'/QCD_HT300to500_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL17NanoAODv9-106X_mc2017_realistic_v9-v1/NANOAODSIM':['root://cmseos.fnal.gov//store/mc/RunIISummer20UL17NanoAODv9/QCD_HT300to500_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_mc2017_realistic_v9-v1/2820000/092261AA-CB63-864D-A6B4-7D8D844A0CFD.root']}
+
+
     print("Running over datasets ", samples.keys())
     client = None
     cluster = None
@@ -183,7 +185,8 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
                                 schema=NanoAODSchema,
                                 savemetrics=True,
                                 skipbadfiles=False,
-                                chunksize=100000,
+                                chunksize=10,
+                                maxchunks = 1,
                             )
             # result, metrics = run_instance(samples,
             #                                "Events",
@@ -198,9 +201,11 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
 
 #         print("Waiting for at least one worker...")
     else:
+        #### iterative executor to print one file at a time
         print("Running locally")
         run_instance = processor.Runner(
-            executor = processor.FuturesExecutor(compression=None, workers=1),
+            # executor = processor.FuturesExecutor(compression=None, workers=1),
+            executor = processor.IterativeExecutor(workers=1),
             schema=NanoAODSchema,
             # chunksize=None,
             # maxchunks=None,
@@ -217,26 +222,44 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     del cluster
     return result
 def addFiles(files, RespOnly=False):
-    print(files)
-    results = pickle.load( open(files[0], "rb") )
+    respHists = ['response_matrix_u', 'response_matrix_g', 'ptreco_mreco_u', 'ptreco_mreco_g', 'ptgen_mgen_u', 'ptgen_mgen_g','fakes_u', 'misses_u', 'fakes_g', "misses_g"]
+    ### load first file as base of results
+    if RespOnly:
+        results = pickle.load( open(files[0], "rb") )
+        results = {k: results[k] for k in respHists}
+        print(results.keys())
+    else:
+        results = pickle.load( open(files[0], "rb") )
     print("starting file ", files[0])
-    respHists = ['response_matrix_u', 'response_matrix_g', 'ptreco_mreco_u', 'ptreco_mreco_g', 'ptgen_mgen_u', 'ptgen_mgen_g','fakes', 'misses']
+    
     for fname in files[1:]:
+        print("doing file ", fname)
         with open(fname, "rb") as f:
             result = pickle.load( f )
             print(f)
-            for hist in [res for res in result if res in results]:
-                print("Starting ", hist)
-                if hist == "cutflow":
-                    for key in [key for key in result[hist] if key in results[hist].keys()]:
-                        for k in [k for k in result[hist][key] if k in results[hist][key].keys()]:
-                            results[hist][key][k] += result[hist][key][k]
-                            print("success for ", key)
-                elif RespOnly and hist in respHists:
+            if RespOnly:
+                for hist in [res for res in result if (res in results) and (res in respHists)]:
+                    # print("Starting ", hist)
                     results[hist] += result[hist]
-                else:
-                    results[hist] += result[hist]
-                print("Success for ", hist)
+                    # print("Success for ", hist)
+            else:
+                for hist in [res for res in result if res in results]:
+                    # print("Starting ", hist)
+                    if hist == "cutflow":
+                        for key in [key for key in result[hist]]:
+                            print(key)
+                            if key in results[hist].keys():
+                                for k in [k for k in result[hist][key] if k in results[hist][key].keys()]:
+                                    results[hist][key][k] += result[hist][key][k]
+                                    print("success for ", key)
+                            else:
+                                results[hist][key] = {}
+                                for k in [k for k in result[hist][key]]:
+                                    results[hist][key][k] = result[hist][key][k]
+                                    print("success for ", key)
+                    else:
+                        results[hist] += result[hist]
+                        # print("Success for ", hist)
     print("Done")
     return(results)
     

@@ -80,31 +80,35 @@ def rebin_hist(h, axis_name, edges):
 #     return sysErrTot_up, sysErrTot_dn
 def getTotSyst(result, histname, axis='mreco', binaxis="ptreco", binned = False):
     hist = result[histname]
-    binedges = [bin[0] for bin in result[histname].project(binaxis).axes[0]] + [result[histname].project(binaxis).axes[0][-1][1]]
     availSysts = [ax for ax in result[histname].project("syst").axes[0]]
     availSysts = [syst for syst in availSysts if syst!="nominal"]
     sysErr = {}  
     for syst in availSysts:
-        sysvals = hist[{'syst':syst}].project(binaxis, axis).values()
-        if not binned:
-            sysvals = sysvals.sum(axis=0)
+        if binned:
+            sysvals = hist[{'syst':syst}].project(binaxis, axis).values()
+        else:
+            sysvals = hist[{'syst':syst}].project(axis).values()
         sysErr.update({syst: sysvals})
-    nom_values = hist[{'syst':'nominal'}].project(binaxis, axis).values()
-    if not binned:
-        nom_values = nom_values.sum(axis=0)
-    sysErrTot_up = np.zeros_like(nom_values)
-    sysErrTot_dn = np.zeros_like(nom_values)
+    if binned:
+        nomvals = hist[{'syst':'nominal'}].project(binaxis, axis).values()
+    else:
+        nomvals = hist[{'syst':'nominal'}].project(axis).values()
+        print("nomvals shape before summing ", nomvals.shape)
+    sysErrTot_up = np.zeros_like(nomvals)
+    sysErrTot_dn = np.zeros_like(nomvals)
+    print("Syst vals shape ", sysvals.shape)
     for syst, syst_vals in sysErr.items():
         if "Down" not in syst:
-            deltasys = syst_vals-nom_values
+            deltasys = syst_vals-nomvals
             sysErrTot_up = sysErrTot_up + deltasys**2
         else:
-            deltasys = nom_values-syst_vals
+            deltasys = nomvals-syst_vals
             sysErrTot_dn = sysErrTot_dn + deltasys**2
     sysErrTot_up = sysErrTot_up**0.5
     sysErrTot_dn = sysErrTot_dn**0.5
+    print("shape of tot syst output ", sysErrTot_up.shape)
     return sysErrTot_up, sysErrTot_dn
-def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, channel = "", axVar="mreco", norm = True, rax_lim=None, os_path='plots/syst/', binwnorm=True, trim = False, logy=True, yoffset=None):
+def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, channel = "", axVar="mreco", norm = True, rax_lim=None, binwnorm=True, trim = False, logy=True, yoffset=None):
     pt_edges = [bin[0] for bin in result_mc[hist_mc].project("ptreco").axes[0]] + [result_mc[hist_mc].project('ptreco').axes[0][-1][1]]
     m_edges = [bin[0] for bin in result_mc[hist_mc].project("mreco").axes[0]] + [result_mc[hist_mc].project('mreco').axes[0][-1][1]]
     tot_syst_up, tot_syst_down = getTotSyst(result_mc, hist_mc, axis=axVar, binned=True)
@@ -112,6 +116,8 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
         stat_unc_up = result_mc[hist_mc][{'syst':'nominal', 'ptreco':i}].project(axVar).variances()**0.5
         stat_unc_down = result_mc[hist_mc][{'syst':'nominal', 'ptreco':i}].project(axVar).variances()**0.5
         syst_unc_up = tot_syst_up[i]
+        print("Syst unc shape ", syst_unc_up.shape)
+        print("Stat unc shape ", stat_unc_up.shape)
         syst_unc_down = tot_syst_down[i]
         #### following opts may be unnecessary
         stat_error_opts = {
@@ -157,10 +163,6 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
             ax.set_ylabel(r'$Events$', loc = 'top')
         if logy:
             ax.set_yscale('log')
-        if "_g" in hist_mc and "m"==axVar[0]:
-            rax.set_xlabel(r'$m_{Jet, SD} (GeV)$' )
-        else:
-            rax.set_xlabel(r'$m_{Jet, SD} (GeV)$' )
         ratio = np.ones_like(result_mc[hist_mc].project(axVar).values())
         #### Fill ratio plot
         ax.set_xlabel("")
@@ -258,8 +260,17 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
         else: lumi = 138
         hep.cms.label("Preliminary", com = 13, lumi = lumi, data = True, loc=0, ax=ax);
         ax.set_xlabel(None) 
-        plt.show()
-
+        if "_g" in hist_mc and "m"==axVar[0]:
+            rax.set_xlabel(r'$m_{Jet, SD} [GeV]$' )
+            file_str = f"plots/{channel}/{channel}_msd_"+str(int(pt_edges[i]))+"_"+str(int(pt_edges[i+1]))+".png"
+        elif "_u" in hist_mc and "m"==axVar[0]:
+            rax.set_xlabel(r'$m_{Jet} [GeV]$' )
+            file_str= f"plots/{channel}/{channel}_m_"+str(int(pt_edges[i]))+"_"+str(int(pt_edges[i+1]))+".png"
+        else:
+            rax.set_xlabel(axVar )
+            file_str= f"plots/{channel}/{channel}_"+axVar+str(int(pt_edges[i]))+"_"+str(int(pt_edges[i+1]))+".png"
+        print("Saving figure to", file_str)
+        plt.savefig(file_str)
 def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os_path=""):
     from cycler import cycler
     colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c', '#9F79EE']
@@ -375,6 +386,7 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os
                         verticalalignment='bottom',
                         transform=ax.transAxes
                        )
+            plt.savefig("plots/syst/frac_unc_input_"+channel+axVar+syst+".png")
         elif syst in availSysts and "nominal" not in availSysts:
             fig, ax, = plt.subplots(nrows=1,ncols=1,figsize=(8,7))
             mc = [result[histname][{'syst':syst}].project(axVar),  result[histname][{'syst':syst}].project(axVar)]
@@ -384,13 +396,14 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os
         else:
             print("Systematic not in desired hist")
         ax_tot.set_ylabel(r'Events', loc = 'top')
+        plt.savefig("plots/syst/frac_unc_input_"+channel+axVar+"tot.png")
         # leg_tot = ax_tot.legend(loc='best', labelspacing=0.25)
         # add some labels   
 from hist.intervals import ratio_uncertainty
 def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, channel = "", norm = False, rax_lim=None, os_path="plots/", ylim = None, xlim = None, trim=None):
     stat_unc_up = result_mc[hist_mc][{'syst':'nominal'}].project(axVar).variances()**0.5
     stat_unc_down = stat_unc_up
-    syst_unc_up, syst_unc_down = getTotSyst(result_mc, hist_mc, axis=axVar)
+    syst_unc_up, syst_unc_down = getTotSyst(result_mc, hist_mc, axis=axVar, binned=False)
     #### following opts may be unnecessary
     tot_error_opts = {
             'label': 'Stat. + Syst. Unc.',
@@ -474,12 +487,12 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     hep.histplot(mcvals.values(), edges,yerr = datavals.variances()**0.5, stack=False, histtype='fill',
                  ax=ax, linestyle ='-', color = 'orange', linewidth=1, binwnorm=True,
                  label="MG+Pythia8")
+    print("Shape of mcvals ", mcvals.values().shape, " edges len ", len(edges))
+    print("Shape of stat unc ", stat_unc_up.shape, " shape of syst unc ", syst_unc_up.shape)
     ax.stairs(values=(mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5)/widths, edges = edges, baseline= (mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5)/widths,
                 fill=True,
                 **tot_error_opts,
             )
-    print("stat_unc_up vals ", stat_unc_up, " compared to syst vals ", syst_unc_up)
-    print("stat_unc_dn vals ", stat_unc_down, " compared to syst vals ", syst_unc_down)
     ax.stairs(values=(mcvals.values()+stat_unc_up)/widths, edges = edges, baseline= (mcvals.values()-stat_unc_down)/widths,
                 fill=True,
                 **stat_error_opts,
@@ -488,7 +501,6 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     #             fill=True,
     #             **syst_error_opts,
     #         )
-    print("Data values ", datavals.values(), " and variances ", datavals.variances()**0.5)
     hep.histplot(datavals.values(), edges, stack=False, histtype='errorbar',
                  ax=ax, marker =["."], color = 'Black', linewidth=1, binwnorm=True,
                  label="Data")
@@ -550,7 +562,7 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     plt.show()
 
         
-def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig = None, IOV="", channel = "", rax_lim = [0.,2.0], norm = False, x_lim = None):
+def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig = None, IOV="", channel = "", rax_lim = [0.,2.0], norm = False, xlim = None):
     if result_herwig!=None:
         herwig=True
     else:
@@ -582,11 +594,11 @@ def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig 
     #     print("Data mass bins after merging pt bins: ", edges_data)
     availAxes = [ax.name for ax in result_mc[hist_mc].axes]
     edges = [bin[0] for bin in result_mc[hist_mc].project(axVar).axes[0]] + [result_mc[hist_mc].project(axVar).axes[0][-1][1]]
-    print("Edges dervied from mc hist: ", edges)
-    print("Edges from data hist: ", [bin[0] for bin in result_data[hist_mc].project(axVar).axes[0]] + [result_data[hist_mc].project(axVar).axes[0][-1][1]])
-    if x_lim == None:
+    #print("Edges dervied from mc hist: ", edges)
+    #print("Edges from data hist: ", [bin[0] for bin in result_data[hist_mc].project(axVar).axes[0]] + [result_data[hist_mc].project(axVar).axes[0][-1][1]])
+    if xlim == None:
         xlim = edges[-1]
-    else: xlim = x_lim
+    else: xlim = xlim
     fig, (ax, rax) = plt.subplots(
                 nrows=2,
                 ncols=1,
@@ -597,7 +609,11 @@ def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig 
     ax.set_ylabel(r'Events/GeV', loc = 'top')
     ax.set_yscale('log')
     if "_g" in hist_mc and "m"==axVar[0]:
-        rax.set_xlabel(r'$m_{Jet, SD} \, [GeV]$' )
+        rax.set_xlabel(r'$m_{SD,Jet} \, [GeV]$' )
+    elif "_u" in hist_mc and "m"==axVar[0]:
+        rax.set_xlabel(r'$m_{Jet} \, [GeV]$' )
+    elif "pt" in axVar:
+        rax.set_xlabel(r'$p_{T, Jet} \, [GeV]$' )
     ratio = np.ones_like(result_mc[hist_mc].project(axVar).values())
     #### Fill ratio plot
     if norm:
@@ -627,15 +643,15 @@ def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig 
     #                   where=mchist.project(axVar).values()!= 0,)
     hep.histplot(datavals, stack=False, histtype='errorbar',
                  binwnorm=1, ax=ax, marker =["."], color = 'Black', linewidth=1,
-                 label=channel + " Data")
+                 label="Data")
     # print("Values in bins: ", datahist.project(axVar), " errors of bins ", datahist.project(axVar).variances(), )
     hep.histplot(mcvals, stack=False, histtype='step',
                  binwnorm=1, ax=ax, linestyle ='-', color = 'Blue', linewidth=1,
-                 label=channel + " MC")
+                 label="MG+Pythia")
     if herwig:
         hep.histplot(herwigvals, stack=False, histtype='step',
                  binwnorm=1, ax=ax, linestyle ='-', color = 'Red', linewidth=1,
-                 label=channel + " Herwig")
+                 label="MG+HERWIG")
     # print("Values in bins: ", mchist.project(axVar).values(), " errors of bins ", mchist.project(axVar).variances())
     ax.autoscale(axis='x', tight=True)
     if rax_lim != None:

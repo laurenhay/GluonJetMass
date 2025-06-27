@@ -121,6 +121,7 @@ xsdb= { 'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 104000.0,
 'QCD_HT1000to1500_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 1118.0,
 'QCD_HT1500to2000_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8':108.9,
 'QCD_HT2000toInf_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 21.93,
+       'QCD_Pt-15to7000_TuneCH3_Flat_13TeV_herwig7': 1329000000.0,
  }
 
 # in fb^-1 taken from https://twiki.cern.ch/twiki/bin/viewauth/CMS/PdmVAnalysisSummaryTable
@@ -211,7 +212,14 @@ num_gen_herwig = { "2016APV": {'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7
                                'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7': 492537,
                               },
 }
-num_gen = { '2016APV': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 27885000,
+num_gen_herwig_flat = { 
+    '2016': {'QCD_Pt-15to7000_TuneCH3_Flat_13TeV_herwig7' : 53923986},
+    '2016APV': {'QCD_Pt-15to7000_TuneCH3_Flat_13TeV_herwig7': 45952213},
+    '2017': {'QCD_Pt-15to7000_TuneCH3_Flat_13TeV_herwig7' : 99773000},
+    '2018': {'QCD_Pt-15to7000_TuneCH3_Flat_13TeV_herwig7': 99775000}
+}
+
+num_gen_pythia = { '2016APV': {'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 27885000,
 'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 54028000,
 'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 50782000,
 'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 61904000,
@@ -267,8 +275,11 @@ def getXSweight(dataset, IOV):
                 if process in dataset:
                     xs = xsdb[process]
                     if 'herwig' in process:
-                        print("Number of gen events for ", year, " ", process, ": ", num_gen_herwig[year][process])
-                        weight = xs * lum * 1000 / num_gen_herwig[year][process]
+                        if "madgraphMLM" in process:
+                            print("Number of gen events for ", year, " ", process, ": ", num_gen_herwig[year][process])
+                            weight = xs * lum * 1000 / num_gen_herwig[year][process]
+                        else:
+                            weight = xs * lum * 1000 / num_gen_herwig_flat[year][process]
                     else:
                         print("Number of gen events for ", year, " ", process, ": ", num_gen[year][process])
                         weight = xs * lum * 1000 / num_gen[year][process]

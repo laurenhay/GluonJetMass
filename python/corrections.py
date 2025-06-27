@@ -157,10 +157,10 @@ def HEMVeto(FatJets, runs):
     return vetoHEM
 
 def GetLumiUnc(events, IOV):
-    lumi_unc = {"2016": 0.012,
-                "2016APV": 0.012,
-                "2017": 0.023,
-                "2018":0.025}
+    lumi_unc = {"2016": 0.016,#0.012,
+                "2016APV":  0.016,#0.012,
+                "2017":  0.016,#0.023,
+                "2018": 0.016,}#0.025}
     lumi_nom = ak.ones_like(events.L1PreFiringWeight.Nom)
     print("AK ones like event ", lumi_nom)
     print("Lumi unc val", lumi_unc[IOV] )
@@ -189,7 +189,7 @@ def GetPUSF(events, IOV):
     return puNom, puUp, puDown
 
 def GetCorrectedSDMass(corr_jets, events, era, IOV, isData=False, uncertainties=None, useSubjets=True):
-    print("Nevents with negative subjet id ", ak.sum(events.FatJet.subJetIdx1 < 0), " out of ", len(events))
+    # print("Nevents with negative subjet id ", ak.sum(events.FatJet.subJetIdx1 < 0), " out of ", len(events))
     if useSubjets:
         SubJets=events.SubJet
         SubJets["p4"] = ak.with_name(events.SubJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
@@ -204,7 +204,7 @@ def GetCorrectedSDMass(corr_jets, events, era, IOV, isData=False, uncertainties=
         del FatJets
     corr_jets =corr_jets[(corr_jets.subJetIdx1 > -1)]
     fields = []
-    print("Avail corrected jet objs ", corr_jets.fields)
+    # print("Avail corrected jet objs ", corr_jets.fields)
     fields.extend(field for field in corr_jets.fields if ("JES_" in field))
     if ("JER" in corr_jets.fields): fields.append("JER")
     if useSubjets:
@@ -219,7 +219,7 @@ def GetCorrectedSDMass(corr_jets, events, era, IOV, isData=False, uncertainties=
             corr_jets[field]["up"]["msoftdrop"] = corr_subjets[field]["up"].mass
             corr_jets[field]["down"]["msoftdrop"] = corr_subjets[field]["down"].mass
     del corr_subjets
-    print("AK8 sdmass before corr ", events.FatJet.msoftdrop, " and after ", corr_jets.msoftdrop)
+    # print("AK8 sdmass before corr ", events.FatJet.msoftdrop, " and after ", corr_jets.msoftdrop)
     return corr_jets
 def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = None, mode="AK8" ):
     AK_str = 'AK8PFPuppi'
@@ -242,13 +242,21 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
         }
         jer_tag = "Summer19UL18_JRV2_MC"
     elif (IOV=='2017'):
-        jec_tag="Summer19UL17_V5_MC"
+        # jec_tag="Summer19UL17_V5_MC"
+        # jec_tag_data={
+        #     "Run2017B": "Summer19UL17_RunB_V5_DATA",
+        #     "Run2017C": "Summer19UL17_RunC_V5_DATA",
+        #     "Run2017D": "Summer19UL17_RunD_V5_DATA",
+        #     "Run2017E": "Summer19UL17_RunE_V5_DATA",
+        #     "Run2017F": "Summer19UL17_RunF_V5_DATA",
+        # }
+        jec_tag="Summer19UL17_V6_MC"
         jec_tag_data={
-            "Run2017B": "Summer19UL17_RunB_V5_DATA",
-            "Run2017C": "Summer19UL17_RunC_V5_DATA",
-            "Run2017D": "Summer19UL17_RunD_V5_DATA",
-            "Run2017E": "Summer19UL17_RunE_V5_DATA",
-            "Run2017F": "Summer19UL17_RunF_V5_DATA",
+            "Run2017B": "Summer19UL17_RunB_V6_DATA",
+            "Run2017C": "Summer19UL17_RunC_V6_DATA",
+            "Run2017D": "Summer19UL17_RunD_V6_DATA",
+            "Run2017E": "Summer19UL17_RunE_V6_DATA",
+            "Run2017F": "Summer19UL17_RunF_V6_DATA",
         }
         jer_tag = "Summer19UL17_JRV3_MC"
     elif (IOV=='2016'):
@@ -280,6 +288,7 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     ext = extractor()
     if not isData:
     #For MC
+        print("File "+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.jec.txt'.format(jec_tag, AK_str)+" exists: ", os.path.exists('correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.jec.txt'.format(jec_tag, AK_str)))
         ext.add_weight_sets([
             '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.jec.txt'.format(jec_tag, AK_str),
             '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_{1}.jec.txt'.format(jec_tag, AK_str),
@@ -287,6 +296,7 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
             '* * '+'correctionFiles/JEC/{0}/{0}_UncertaintySources_{1}.junc.txt'.format(jec_tag, AK_str),
             '* * '+'correctionFiles/JEC/{0}/{0}_Uncertainty_{1}.junc.txt'.format(jec_tag, AK_str),
         ])
+        print("done adding jec/junc files")
         #### Do AK8PUPPI jer files exist??
         if jer_tag:
             # print("JER tag: ", jer_tag)
@@ -295,7 +305,7 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
             ext.add_weight_sets([
             '* * '+'correctionFiles/JER/{0}/{0}_PtResolution_{1}.jr.txt'.format(jer_tag, AK_str),
             '* * '+'correctionFiles/JER/{0}/{0}_SF_{1}.jersf.txt'.format(jer_tag, AK_str)])
-            # print("JER SF added")
+            print("JER SF added")
     else:       
         #For data, make sure we don't duplicat
         tags_done = []
@@ -307,6 +317,12 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
                 '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_{1}.jec.txt'.format(tag, AK_str),
                 '* * '+'correctionFiles/JEC/{0}/{0}_L2L3Residual_{1}.jec.txt'.format(tag, AK_str),
                 ])
+                #                 ext.add_weight_sets([
+                # '* * '+'correctionFiles/JEC/{0}/{0}_L1FastJet_{1}.jec.txt'.format(tag, AK_str),
+                # '* * '+'correctionFiles/JEC/{0}/{0}_L2Relative_{1}.jec.txt'.format(tag, AK_str),
+                # '* * '+'correctionFiles/JEC/{0}/{0}_L3Absolute_{1}.jec.txt'.format(tag, AK_str),
+                # '* * '+'correctionFiles/JEC/{0}/{0}_L2L3Residual_{1}.jec.txt'.format(tag, AK_str),
+                # ])
                 tags_done += [tag]
     ext.finalize()
 

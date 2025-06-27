@@ -112,6 +112,8 @@ class makeTrijetHists(processor.ProcessorABC):
         parton_cat = hist.axis.StrCategory([],growth=True,name="partonFlav", label="Parton Flavour")
         syst_cat = hist.axis.StrCategory([], growth=True, name='syst', label="Systematic")
         dataset_axis = hist.axis.StrCategory([], growth=True, name="dataset", label="Primary dataset")
+        fine_mass_bin = hist.axis.Regular(130, 0.0, 1300.0, name="mass", label=r"mass [GeV]")
+        fine_pt_bin = hist.axis.Regular(500, 100.0, 10100.0, name="pt", label=r"$p_T$ [GeV]")
         #### if using specific bin edges use hist.axis.Variable() instead
         mgen_bin_edges = np.array([0,5,10,20,40,60,80,100,150,200,300, 400, 500, 900,1300])
         mreco_bin_edges = np.sort(np.append(mgen_bin_edges,[(mgen_bin_edges[i]+mgen_bin_edges[i+1])/2 for i in range(len(mgen_bin_edges)-1)]))
@@ -179,7 +181,7 @@ class makeTrijetHists(processor.ProcessorABC):
             'dphimin_gen':                  hist.Hist(dataset_axis, syst_cat, dphi_axis, storage="weight", label="Events"),
             'dphimin_reco':                 hist.Hist(dataset_axis, syst_cat, dphi_axis, storage="weight", label="Events"),
             'asymm_reco':                   hist.Hist(dataset_axis, syst_cat, pt_bin, frac_axis, storage="weight", label="Events"),
-            'asymm_gen':                    hist.Hist(dataset_axis, syst_cat, pt_bin, frac_axis, storage="weight", label="Events"),
+            'asymm_gen':                    hist.Hist(dataset_axis, syst_cat, pt_gen_bin, frac_axis, storage="weight", label="Events"),
             'mass_orig':                    hist.Hist(dataset_axis, jk_axis, pt_bin, mass_bin, storage="weight", label="Events"),
             'sdmass_orig':                  hist.Hist(dataset_axis, jk_axis, pt_bin, mass_bin, storage="weight", label="Events"),
             'sdmass_ak8corr':               hist.Hist(dataset_axis, jk_axis, pt_bin, mass_bin, storage="weight", label="Events"),
@@ -200,7 +202,8 @@ class makeTrijetHists(processor.ProcessorABC):
             #### for investigation of removing fakes
             'fakes_eta_phi':                hist.Hist(dataset_axis, syst_cat, eta_bin, phi_axis, storage="weight", name="Events"),
             'fakes_asymm_dphi':             hist.Hist(dataset_axis, syst_cat, frac_axis, dphi_axis, storage="weight", name="Events"),
-            
+            'ptreco_mreco_fine_u':           hist.Hist(dataset_axis,syst_cat, jk_axis, fine_pt_bin, fine_mass_bin, storage="weight", label="Counts"),
+            'ptreco_mreco_fine_g':           hist.Hist(dataset_axis,syst_cat, jk_axis, fine_pt_bin, fine_mass_bin, storage="weight",  label="Counts"), 
         #### Plots to get JMR and JMS in MC
         # 'jet_m_pt_u_reco_over_gen': hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, frac_axis, storage="weight",                                                                        label="Events"),
         # 'jet_m_pt_g_reco_over_gen':  hist.Hist(syst_cat, pt_gen_bin, mass_gen_bin, frac_axis, storage="weight",                                                                        label="Events"),
@@ -234,13 +237,31 @@ class makeTrijetHists(processor.ProcessorABC):
         #####################################
         datastr = mctype+IOV
         print(datastr)
+        print("Filename: ", filename)
+        print("Dataset: ", dataset)
         ####################################
         #### Inititalize cutflow table
-        ####################################
-        out['cutflow'][datastr] = defaultdict(int)
-        out['cutflow'][datastr]['nEvents initial ' + dataset] += (len(events.FatJet))
+        ###################################            
+        
+        out['cutflow'][dataset] = defaultdict(int)
+        out['cutflow'][dataset]['nEvents initial'] += (len(events.FatJet))
         out['cutflow']['trigger_init'] = defaultdict(int)
         out['cutflow']['trigger_final'] = defaultdict(int)
+        
+        if (self.do_gen):
+            firstidx = filename.find( "store/mc/" )
+            fname2 = filename[firstidx:]
+            fname_toks = fname2.split("/")
+            # year = fname_toks[ fname_toks.index("mc") + 1]
+            ht_bin = fname_toks[ fname_toks.index("mc") + 2]
+            if "LHEWeight" in events.fields:
+                weights = events["LHEWeight"].originalXWGTUP
+            else:
+                weights = events.genWeight
+            out['cutflow'][dataset]['sumw for '+ht_bin] += np.sum(weights)
+            ## Flag used for number of events
+
+        
         index_list = np.arange(len(events))
         ###### Choose number of slices to break data into for jackknife method
         if self.jk:
@@ -263,17 +284,13 @@ class makeTrijetHists(processor.ProcessorABC):
             jk_sel = ak.where(index_list%range_max == jk_index, False, True)
             ######## Select portion for jackknife and ensure that all jets have a softdrop mass so sd mass correction does not fail
             events_jk = events[jk_sel]
-            print(events_jk)
             del jk_sel
-            #####################################
-            #### Find the era from the file name
-            #### Apply the good lumi mask
-            #####################################
-            # if IOV == '2018' and self.hem:
-            #     nEvents = len(events_jk)
-            #     events_jk = events_jk[HEMVeto(events_jk.FatJet, events_jk.run)]
-            #     print("nEvents removed by HEMveto: ", len(events)- nEvents)
-            #     del nEvents
+            #### only consider pfmuons w/ similar selection to aritra for later jet isolation
+            events_jk = ak.with_field(events_jk, 
+                                      events_jk.Muon[(events_jk.Muon.mediumId > 0)
+                                      &(np.abs(events_jk.Muon.eta) < 2.5)
+                                      &(events_jk.Muon.pfIsoId > 1) ], 
+                                      "Muon")
             FatJet=events_jk.FatJet
             FatJet["p4"] = ak.with_name(events_jk.FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
             print(FatJet)
@@ -285,7 +302,6 @@ class makeTrijetHists(processor.ProcessorABC):
                 era = None
                 GenJetAK8 = events_jk.GenJetAK8
                 GenJetAK8['p4']= ak.with_name(events_jk.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
-                FatJet["pt_gen"] = ak.values_astype(ak.fill_none(FatJet.p4.nearest(GenJetAK8.p4, threshold=0.4).pt, 0), np.float32)
             else:
                 firstidx = filename.find( "store/data/" )
                 fname2 = filename[firstidx:]
@@ -325,10 +341,7 @@ class makeTrijetHists(processor.ProcessorABC):
                     print("Doing nominal")
                     corrected_fatjets = applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets))
                 jet_corrs.update({"nominal": corrected_fatjets})
-            print("Syst list ", self.jet_systematics)
-            print([unc_src for unc_src in self.jet_systematics])
             if self.do_gen:
-                print("Out of avail corrections: ", corrected_fatjets.fields)
                 avail_srcs = [unc_src for unc_src in self.jet_systematics if ("JES_"+unc_src in corrected_fatjets.fields)]
                 for unc_src in avail_srcs:
                     #### Apply JMR and JMS corrections
@@ -337,25 +350,24 @@ class makeTrijetHists(processor.ProcessorABC):
                     jet_corrs.update({
                         unc_src+"Up":corrected_fatjets["JES_"+unc_src].up,
                         unc_src+"Down":corrected_fatjets["JES_"+unc_src].down, })
-            print("Final jet corrs to run over: ", jet_corrs)
+            # print("Final jet corrs to run over: ", jet_corrs)
             for jetsyst in jet_corrs.keys():
                 ###################################
                 ######### INITIALIZE WEIGHTS AND SELECTION
                 ##################################
                 events_corr = ak.with_field(events_jk, jet_corrs[jetsyst], "FatJet")
-                weights = np.ones(len(events_corr))
                 sel = PackedSelection()
-                if (jetsyst == "nominal"): out['cutflow'][datastr]['nEvents initial'] += (len(events.FatJet))
+                if (jetsyst == "nominal"): out['cutflow'][dataset]['nEvents initial'] += (len(events.FatJet))
                 print("mctype ", mctype, " gen? ", self.do_gen)
                 if self.do_gen and (mctype == "pythia"):
                     print("Doing XS scaling")
-                    weights = weights * getXSweight(dataset, IOV)
-                elif self.do_gen and (mctype == "herwig"):
-                    print("Difference between weights calculated from xsdb and LHE :", (events_corr.LHEWeight.originalXWGTUP - getXSweight(dataset, IOV)))
-                    weights = events_corr.LHEWeight.originalXWGTUP
+                    weights = events_corr.genWeight * getXSweight(dataset, IOV)
                 elif self.do_gen:
-                    print("MADGRPAH inputs --> get gen weights from files")
-                    weights = events_corr.LHEWeight.originalXWGTUP
+                    if "LHEWeight" in events_corr.fields: 
+                        #print("Difference between weights calculated from xsdb and LHE :", (events_corr.LHEWeight.originalXWGTUP - getXSweight(dataset, IOV)))
+                        weights = events_corr.LHEWeight.originalXWGTUP
+                    else:
+                        weights = events_corr.genWeight * getXSweight(dataset, IOV)
                 else:
                     ############
                     ### Doing data -- apply lumimask and require at least one jet to apply jet trigger prescales
@@ -376,8 +388,8 @@ class makeTrijetHists(processor.ProcessorABC):
                     weights = ak.where(trigsel, psweights, weights)
                     sel.add("trigsel", trigsel)
                     if (jetsyst == "nominal"): 
-                        out['cutflow'][datastr]['nEvents after trigger sel '] += (ak.sum(sel.all("trigsel")))
-                        print("ADDED TRIGGER TO CUTFLOW FOR NOM FOR KEY ", datastr)
+                        out['cutflow'][dataset]['nEvents after trigger sel '] += (ak.sum(sel.all("trigsel")))
+                        print("ADDED TRIGGER TO CUTFLOW FOR NOM FOR KEY ", dataset)
                 #####################################
                 #### Gen Jet Selection
                 #################################### 
@@ -396,6 +408,7 @@ class makeTrijetHists(processor.ProcessorABC):
                     sel.add("triGenJet_seq", sel.all('npv', 'triGenJet') ) # & pt_cut_gen ) ####removing to be consistent w/ aritra
                     GenJetAK8 = events_corr.GenJetAK8
                     GenJetAK8['p4']= ak.with_name(events_corr.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
+                    genjet = ak.firsts(GenJetAK8[:,2:])
                     rap_cut_gen = ak.where(sel.all("triGenJet_seq"), np.abs(getRapidity(genjet.p4)) < self.ycut, False)
                     sel.add("rapGen", rap_cut_gen)
                     if not self.jk:
@@ -415,7 +428,7 @@ class makeTrijetHists(processor.ProcessorABC):
                     sel.add("dphiGen", dphimin_gen_sel)
                     # genjet2["pt"] = ak.fill_none(genjet2.pt, 0.0001)
                     if not self.jk:
-                        out["asymm_gen"].fill(dataset=datastr, syst=jetsyst, pt=events_corr[sel.all("triGenJet_seq")].GenJetAK8[:,2].pt, frac = asymm_gen[sel.all("triGenJet_seq")], weight=weights[sel.all("triGenJet_seq")])
+                        out["asymm_gen"].fill(dataset=datastr, syst=jetsyst, ptgen=events_corr[sel.all("triGenJet_seq")].GenJetAK8[:,2].pt, frac = asymm_gen[sel.all("triGenJet_seq")], weight=weights[sel.all("triGenJet_seq")])
                         out["dphimin_gen"].fill(dataset=datastr, syst=jetsyst, dphi = dphimin_gen[sel.all("triGenJet_seq")], weight = weights[sel.all("triGenJet_seq")])
                     gensubjets = events_corr.SubGenJetAK8
                     groomed_genjet = get_gen_sd_mass_jet(ak.firsts(GenJetAK8[:,2:]), gensubjets)
@@ -449,9 +462,11 @@ class makeTrijetHists(processor.ProcessorABC):
                     out["jet_rap_reco"].fill(dataset=datastr, syst = jetsyst, rapidity=ak.to_numpy(getRapidity(FatJet[sel.all("triRecoJet_seq")][:,2].p4), allow_missing=True), weight=weights[sel.all("triRecoJet_seq")])
                     out["jet_phi_reco"].fill(dataset=datastr, syst=jetsyst, phi=FatJet[sel.all("triRecoJet_seq")][:,2].phi, weight=weights[sel.all("triRecoJet_seq")]) 
                 #### Add cut on softdrop mass as done in previous two papers --> need to very with JMS/JMR studies
+                #### ak.first fills empty values with none --> ak.singletons 
                 jet1 = ak.firsts(events_corr.FatJet[:,0:])
                 jet2 = ak.firsts(events_corr.FatJet[:,1:])
                 jet3 = ak.firsts(events_corr.FatJet[:,2:])
+                print("ak.first output ", jet3)
                 dphi12 = np.abs(jet1.delta_phi(jet2))
                 dphi13 = np.abs(jet1.delta_phi(jet3))
                 dphi23 = np.abs(jet2.delta_phi(jet3))
@@ -463,11 +478,19 @@ class makeTrijetHists(processor.ProcessorABC):
                 asymm = np.abs(jet1.pt - jet2.pt)/(jet1.pt + jet2.pt)
                 if not self.jk:
                     out["dphimin_reco"].fill(dataset=datastr, syst=jetsyst, dphi = dphimin[sel.all("triRecoJet_seq")], weight=weights[sel.all("triRecoJet_seq")])
-                    out["asymm_reco"].fill(dataset=datastr, syst=jetsyst, pt=events_corr[sel.all("triRecoJet_seq")].FatJet[:,2].pt, frac = asymm[sel.all("triRecoJet_seq")], weight=weights[sel.all("triRecoJet_seq")])
-                jetid_sel = ak.where(sel.all("triRecoJet_seq"), (jet3.jetId > 1), False)
+                    out["asymm_reco"].fill(dataset=datastr, syst=jetsyst, ptreco=events_corr[sel.all("triRecoJet_seq")].FatJet[:,2].pt, frac = asymm[sel.all("triRecoJet_seq")], weight=weights[sel.all("triRecoJet_seq")])
+                #### Check that nearest pfmuon and is at least dR > 0.4 away
+                # Get the nearest muon to that jet
+                print("ak singletons output ", ak.singletons(jet3))
+                print("Nearest muons ", ak.singletons(jet3).nearest(events_corr.Muon))
+                muon_sel =  ak.where(sel.all("triRecoJet_seq"), ak.all(jet3.delta_r(ak.singletons(jet3).nearest(events_corr.Muon))>0.4, axis=-1), False)
+                sel.add("muonIso0p4", muon_sel)
+                print("Number of events w/ jets w/o muon ", ak.sum(sel.require(triRecoJet_seq=True, muonIso0p4=True)))
+                print("Number of evemts w/ jets w/ muon ", ak.sum(sel.require(triRecoJet_seq=True, muonIso0p4=False)))
+                jetid_sel = ak.where(sel.all("triRecoJet_seq"), (jet3.jetId > 2), False)
                 sel.add("jetId", jetid_sel)
                 ####  Get Final RECO selection
-                sel.add("recoTot_seq", sel.all("recodphi_seq", "jetId") & ~ak.is_none(jet3.mass) & ~ak.is_none(jet3.msoftdrop))
+                sel.add("recoTot_seq", sel.all("recodphi_seq", "jetId", "muonIso0p4") & ~ak.is_none(jet3.mass) & ~ak.is_none(jet3.msoftdrop))
                 #### Check eta phi map pre cuts
                 if not self.jk: 
                         out['jet_eta_phi_precuts'].fill(dataset=datastr, syst=jetsyst, phi=events_corr[sel.all("triRecoJet")].FatJet[:,2].phi, eta=events_corr[sel.all("triRecoJet")].FatJet[:,2].eta, weight=weights[sel.all("triRecoJet")])                
@@ -491,7 +514,7 @@ class makeTrijetHists(processor.ProcessorABC):
                     print("Number of misses w/ 2 jets ", ak.sum(miss_sel))
                     if ak.sum(miss_sel) > 0:
                         if jetsyst == "nominal": 
-                            out['cutflow'][datastr]['misses'] += (len(events_corr[miss_sel].GenJetAK8))
+                            out['cutflow'][dataset]['misses'] += (len(events_corr[miss_sel].GenJetAK8))
                             print("NOMINAL ADDING TO CUTFLOW ", ak.sum(miss_sel))
                         print("Number of none missed jets ", ak.sum(ak.is_none(GenJetAK8[miss_sel][:,2])))
                         ###### Applying misses selection to gen jets and getting sd mass
@@ -543,7 +566,7 @@ class makeTrijetHists(processor.ProcessorABC):
                         if not self.jk:
                             out['fakes_eta_phi'].fill(dataset=datastr, syst=jetsyst, phi = fake_jets.phi[~ak.is_none(fake_jets.msoftdrop)], eta = fake_jets.eta[~ak.is_none(fake_jets.msoftdrop)], weight=fake_weights.weight()[~ak.is_none(fake_jets.msoftdrop)])
                     if (jetsyst == "nominal"): 
-                        out['cutflow'][datastr]['fakes'] += (len(events_corr[fakes].FatJet))
+                        out['cutflow'][dataset]['fakes'] += (len(events_corr[fakes].FatJet))
                         print("ADDING FAKES TO CUTFLOW")
                     print("Number of events after all selections ", ak.sum(sel.all("genTot_seq", "recoTot_seq", "removeMisses", "removeFakes")))
                     if len(events_corr[sel.all("genTot_seq", "recoTot_seq", "removeMisses", "removeFakes")])<1: 
@@ -581,7 +604,15 @@ class makeTrijetHists(processor.ProcessorABC):
                 # if len(events_corr)<1:
                 #         print("no more events after jet veto")
                 #         return out
-                
+                ####################################
+                ### Apply HEM veto
+                ####################################
+                if IOV == '2018':
+                    print("Doing hem")
+                    hemveto = HEMVeto(events_corr.FatJet, events_corr.run)
+                    events_corr = events_corr[hemveto]
+                    weights = weights[hemveto]
+                out['cutflow'][dataset]['HEMveto'] += (len(events_corr))  
                 #######################
                 #### Get final jets and weights and fill final plots
                 #######################
@@ -599,7 +630,7 @@ class makeTrijetHists(processor.ProcessorABC):
                     groomed_genjet = get_gen_sd_mass_jet(genjet, events_corr.SubGenJetAK8)
                     weird_jets = events_corr[(events_corr.GenJetAK8[:,2].mass < 20.) & (events_corr.FatJet[:,2].mass >20.)]
                     print("Number of weird (mreco>20, mgen<20) jets ", len(weird_jets))
-                    if jetsyst == "nominal": out['cutflow'][datastr]['nEvents weird (mreco>20, mgen<20) ungroomed'] += len(weird_jets)
+                    if jetsyst == "nominal": out['cutflow'][dataset]['nEvents weird (mreco>20, mgen<20) ungroomed'] += len(weird_jets)
                     #### Get L1 prefiring weights and uncertainties
                     if "L1PreFiringWeight" in events.fields:                
                         prefiringNom, prefiringUp, prefiringDown = GetL1PreFiringWeight(events_corr)
@@ -631,7 +662,7 @@ class makeTrijetHists(processor.ProcessorABC):
                     out["ptreco_mreco_g"].fill(dataset=datastr, syst=jetsyst, jk=jk_index, ptreco=jet.pt, mreco=jet.msoftdrop, weight=self.weights[jetsyst].weight() )
                     #### Outliers
                     if not self.jk:
-                        out["jet_pt_eta_phi"].fill(dataset=datastr, syst=jetsyst, pt=jet.pt, phi=jet.phi, eta=jet.eta, weight=self.weights[jetsyst].weight())
+                        out["jet_pt_eta_phi"].fill(dataset=datastr, syst=jetsyst, ptreco=jet.pt, phi=jet.phi, eta=jet.eta, weight=self.weights[jetsyst].weight())
                     weights = self.weights[jetsyst].weight()
                     if jetsyst=="nominal":
                         for syst in self.weights[jetsyst].variations:
@@ -676,16 +707,16 @@ class makeTrijetHists(processor.ProcessorABC):
                                     out['alljet_ptreco_mreco'].fill(dataset=datastr, jetNumb = jetname, partonFlav = flavor, 
                                                                     mreco = jetobj[flavor].mass, 
                                                                     ptreco = jetobj[flavor].pt)
-                                    out['btag_eta'].fill(dataset=datastr, jetNumb = jetname, partonFlav = flavor, 
+                                    out['btag_eta'].fill(dataset=dataset, jetNumb = jetname, partonFlav = flavor, 
                                                          frac = jetobj[flavor].btagDeepB, eta = jetobj[flavor].eta )
-                        out['cutflow'][datastr]['nGluonJets'] += (len(jet3flav["Gluon"])+len(jet1flav["Gluon"])+len(jet2flav["Gluon"]))
-                        out['cutflow'][datastr]['nJets'] += (len(events_corr.FatJet[:,0])+len(events_corr.FatJet[:,1])+len(events_corr.FatJet[:,2]))
-                        out['cutflow'][datastr]['nSoftestGluonJets'] += (len(jet3flav["Gluon"]))
-                        out['cutflow'][datastr]['nSoftestGluonJets_b'] += (len(jet3_jetb_flav["Gluon"]))
-                        out['cutflow'][datastr]['nSoftestGluonJets_bb'] += (len(jet3_jetbb_flav["Gluon"]))
-                        out['cutflow'][datastr]['nSoftestJets_b'] += (len(jet3_b))
-                        out['cutflow'][datastr]['nSoftestJets_bb'] += (len(jet3_bb))
-                        out['cutflow'][datastr]['n3Jets'] += (len(events_corr.FatJet[:,2].pt))
+                        out['cutflow'][dataset]['nGluonJets'] += (len(jet3flav["Gluon"])+len(jet1flav["Gluon"])+len(jet2flav["Gluon"]))
+                        out['cutflow'][dataset]['nJets'] += (len(events_corr.FatJet[:,0])+len(events_corr.FatJet[:,1])+len(events_corr.FatJet[:,2]))
+                        out['cutflow'][dataset]['nSoftestGluonJets'] += (len(jet3flav["Gluon"]))
+                        out['cutflow'][dataset]['nSoftestGluonJets_b'] += (len(jet3_jetb_flav["Gluon"]))
+                        out['cutflow'][dataset]['nSoftestGluonJets_bb'] += (len(jet3_jetbb_flav["Gluon"]))
+                        out['cutflow'][dataset]['nSoftestJets_b'] += (len(jet3_b))
+                        out['cutflow'][dataset]['nSoftestJets_bb'] += (len(jet3_bb))
+                        out['cutflow'][dataset]['n3Jets'] += (len(events_corr.FatJet[:,2].pt))
 
                 ###############
                 ##### If running over DATA fill only final reco plots
@@ -697,21 +728,21 @@ class makeTrijetHists(processor.ProcessorABC):
                     out["rho_reco_u"].fill(dataset=datastr,syst=jetsyst, jk=jk_index, rhoreco=-np.log((jet.mass/jet.pt)**2), weight=self.weights[jetsyst].weight() )
                     out["rho_reco_g"].fill(dataset=datastr,syst=jetsyst, jk=jk_index, rhoreco=-np.log((jet.msoftdrop/jet.pt)**2), weight=self.weights[jetsyst].weight() )
                     if not self.jk:
-                        out["jet_pt_eta_phi"].fill(dataset=datastr, syst=jetsyst, pt=jet.pt, phi=jet.phi, eta=jet.eta, weight=self.weights[jetsyst].weight())
+                        out["jet_pt_eta_phi"].fill(dataset=datastr, syst=jetsyst, ptreco=jet.pt, phi=jet.phi, eta=jet.eta, weight=self.weights[jetsyst].weight())
                 print("final jets ", jet)
                 print("final jet pt ", jet.pt)
                 if (jetsyst == "nominal"):
                     for name in sel.names:
-                        out["cutflow"][datastr][name] += sel.all(name).sum()
+                        out["cutflow"][dataset][name] += sel.all(name).sum()
                         print("ADDED ", name, " TO CUTFLOW")
                 negMSD = jet.msoftdrop<0.
                 print("Number of negative softdrop values ", ak.sum(negMSD) )
                 if (jetsyst == "nominal"): 
-                    out['cutflow'][datastr]['nEvents failing softdrop condition'] += ak.sum(negMSD)
+                    out['cutflow'][dataset]['nEvents failing softdrop condition'] += ak.sum(negMSD)
                     print("ADDED NEG SD EVENTS TO CUTFLOW")
                 del events_corr, weights
             del events_jk
-        out['cutflow'][datastr]['chunks'] += 1
+        out['cutflow'][dataset]['chunks'] += 1
         return out
     
     def postprocess(self, accumulator):
