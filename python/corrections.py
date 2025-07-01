@@ -41,13 +41,21 @@ def ApplyVetoMap(IOV, jets, mapname='jetvetomap'):
 def applyjmsSF(IOV, FatJet,  var = ''):
     jmsSF = {
 
-        "2016APV":{"sf": 1.00, "sfup": 1.0094, "sfdown": 0.9906}, 
+        # "2016APV":{"sf": 1.00, "sfup": 1.0094, "sfdown": 0.9906}, 
 
-        "2016"   :{"sf": 1.00, "sfup": 1.0094, "sfdown": 0.9906}, 
+        # "2016"   :{"sf": 1.00, "sfup": 1.0094, "sfdown": 0.9906}, 
 
-        "2017"   :{"sf": 0.982, "sfup": 0.986, "sfdown": 0.978},
+        # "2017"   :{"sf": 0.982, "sfup": 0.986, "sfdown": 0.978},
 
-        "2018"   :{"sf": 0.999, "sfup": 1.001, "sfdown": 0.997}} 
+        # "2018"   :{"sf": 0.999, "sfup": 1.001, "sfdown": 0.997}} 
+    
+            "2016APV":{"sf": 1.00, "sfup": 1.01, "sfdown": 0.99}, 
+
+        "2016"   :{"sf": 1.00, "sfup": 1.01, "sfdown": 0.99}, 
+
+        "2017"   :{"sf": 1.0, "sfup": 1.01, "sfdown": 0.99},
+
+        "2018"   :{"sf": 1.0, "sfup": 1.01, "sfdown": 0.99}} 
     
     out = jmsSF[IOV]["sf"+var]
     
@@ -82,24 +90,25 @@ def applyJMSbypt(IOV, FatJet, var = ''):
 def applyjmrSF(IOV, FatJet, var = ''):
     jmrSF = {
 
-       #"2016APV":{"sf": 1.00, "sfup": 1.2, "sfdown": 0.8}, 
-        "2016APV":{"sf": 1.00, "sfup": 1.2, "sfdown": 0.8}, 
-        "2016"   :{"sf": 1.00, "sfup": 1.2, "sfdown": 0.8}, 
+       #  "2016APV":{"sf": 1.00, "sfup": 1.2, "sfdown": 0.8}, 
+       #  "2016"   :{"sf": 1.00, "sfup": 1.2, "sfdown": 0.8}, 
 
-        "2017"   :{"sf": 1.09, "sfup": 1.14, "sfdown": 1.04},
+       #  "2017"   :{"sf": 1.09, "sfup": 1.14, "sfdown": 1.04},
 
-        "2018"   :{"sf": 1.108, "sfup": 1.142, "sfdown": 1.074}}     
+       #  "2018"   :{"sf": 1.108, "sfup": 1.142, "sfdown": 1.074}}   
+    ##### new recmmendations is 2% uncertainty https://twiki.cern.ch/twiki/bin/viewauth/CMS/SoftDropJMSJMRULRun2
+
+        "2016APV":{"sf": 1.0, "sfup": 1.02, "sfdown": 0.98}, 
+        "2016"   :{"sf": 1.0, "sfup": 1.02, "sfdown": 0.98}, 
+
+        "2017"   :{"sf": 1.0, "sfup": 1.02, "sfdown": 0.98},
+
+        "2018"   :{"sf": 1.0, "sfup": 1.02, "sfdown": 0.98}}  
     
     jmrvalnom = jmrSF[IOV]["sf"+var]
     
     recomass = FatJet.mass
-    genmass = FatJet.matched_gen.mass
-
-
-    # counts = ak.num(recomass)
-    # recomass = ak.flatten(recomass)
-    # genmass = ak.flatten(genmass)
-    
+    genmass = FatJet.matched_gen.mass    
     
     deltamass = (recomass-genmass)*(jmrvalnom-1.0)
     condition = ((recomass+deltamass)/recomass) > 0
@@ -284,7 +293,6 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
         print(f"Error: Unknown year \"{IOV}\".")
 
 
-    print("extracting corrections from files for " + jec_tag)
     ext = extractor()
     if not isData:
     #For MC
@@ -352,8 +360,6 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
                 '{0}_L2Relative_{1}'.format(tag, AK_str),
                 '{0}_L2L3Residual_{1}'.format(tag, AK_str),]
 
-
-
     if not isData:
         jec_inputs = {name: evaluator[name] for name in jec_names}
     else:
@@ -394,8 +400,8 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
 
     jet_factory = CorrectedJetsFactory(name_map, jec_stack)
     corrected_jets = jet_factory.build(FatJets, lazy_cache=events_cache)
-    # print("Available uncertainties: ", jet_factory.uncertainties())
-    # print("Corrected jets object: ", corrected_jets.fields)
+    print("Available uncertainties: ", jet_factory.uncertainties())
+    print("Corrected jets object: ", corrected_jets.fields)
     return corrected_jets
 def GetLHEWeight(events):
     from parton import mkPDF

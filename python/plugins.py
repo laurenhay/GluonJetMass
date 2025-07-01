@@ -113,7 +113,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     # samples = {'/JetHT/Run2016E-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD': [redirector+'/store/data/Run2016E/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/40000/0402FC45-D69F-BE47-A2BF-10394485E06E.root']}
     # samples = {'/QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/280000/2CD900FB-1F6B-664F-8A26-C125B36C2B58.root']}
     # samples = {'/JetHT/Run2016F-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD':['root://cmseos.fnal.gov//store/data/Run2016F/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/50000/E27262E3-F8DE-E74A-B82F-E6CF78BD8AE3.root']}
-    samples = {'/QCD_HT300to500_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL17NanoAODv9-106X_mc2017_realistic_v9-v1/NANOAODSIM':['root://cmseos.fnal.gov//store/mc/RunIISummer20UL17NanoAODv9/QCD_HT300to500_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_mc2017_realistic_v9-v1/2820000/092261AA-CB63-864D-A6B4-7D8D844A0CFD.root']}
+    # samples = {'/QCD_HT300to500_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL17NanoAODv9-106X_mc2017_realistic_v9-v1/NANOAODSIM':['root://cmseos.fnal.gov//store/mc/RunIISummer20UL17NanoAODv9/QCD_HT300to500_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_mc2017_realistic_v9-v1/2820000/092261AA-CB63-864D-A6B4-7D8D844A0CFD.root']}
 
 
     print("Running over datasets ", samples.keys())
@@ -164,12 +164,13 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         from lpcjobqueue import LPCCondorCluster
         #### make list of files and directories to upload to dask
         upload_to_dask = ['correctionFiles', 'python']
-        cluster = LPCCondorCluster(memory='12 GiB', transfer_input_files=upload_to_dask, scheduler_options={"dashboard_address": year[:4]})#, ship_env=False)
+        cluster = LPCCondorCluster(memory='12 GiB', transfer_input_files=upload_to_dask)#, ship_env=False)
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
         cluster.adapt(minimum=1, maximum=500)
         print(cluster.dashboard_link)
         with Client(cluster) as client:
             print(client)
+            print("Dashboard link ", client.dashboard_link)
             print(client.get_worker_logs())
             if verbose:
                 run_instance = processor.Runner(
@@ -185,7 +186,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
                                 schema=NanoAODSchema,
                                 savemetrics=True,
                                 skipbadfiles=False,
-                                chunksize=10,
+                                chunksize=100000,
                                 maxchunks = 1,
                             )
             # result, metrics = run_instance(samples,
@@ -204,8 +205,8 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         #### iterative executor to print one file at a time
         print("Running locally")
         run_instance = processor.Runner(
-            # executor = processor.FuturesExecutor(compression=None, workers=1),
-            executor = processor.IterativeExecutor(workers=1),
+            executor = processor.FuturesExecutor(compression=None, workers=1),
+            # executor = processor.IterativeExecutor(workers=1),
             schema=NanoAODSchema,
             # chunksize=None,
             # maxchunks=None,

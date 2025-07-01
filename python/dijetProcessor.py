@@ -17,6 +17,7 @@ from coffea.analysis_tools import Weights, PackedSelection
 from collections import defaultdict
 from python.utils import *
 from python.corrections import *
+from copy import deepcopy
 import hist
 print(hist.__version__)
 
@@ -29,7 +30,7 @@ class makeDijetHists(processor.ProcessorABC):
     With "do_gen == True", will perform GEN selection and create response matrices. 
     Will always plot RECO level quantities. 
     '''
-    def __init__(self, ptcut = 200., ycut = 2.5, data = False, jet_systematics = ['nominal', 'HEM'], systematics = ['L1PreFiringWeight', 'PUSF'], jk=False, jk_range = None):
+    def __init__(self, ptcut = 200., ycut = 2.5, data = False, jet_systematics = ['nominal', 'HEM'], jk=False, jk_range = None):
         # should have separate **lower** ptcut for gen
         self.do_gen = not data
         self.ptcut = ptcut
@@ -41,7 +42,7 @@ class makeDijetHists(processor.ProcessorABC):
             jet_systematics = ["nominal"]
             systematics = []
         self.jet_systematics = jet_systematics
-        self.systematics = systematics
+        # self.systematics = systematics
         print("Data: Gen: ", data, self.do_gen)
         jet_cat = hist.axis.StrCategory([], growth=True, name="jetNumb", label="Jet")
         syst_cat = hist.axis.StrCategory([], growth=True, name='syst', label="Systematic")
@@ -244,64 +245,70 @@ class makeDijetHists(processor.ProcessorABC):
             #####################################
             #### Apply jet corrections
             #####################################
+            print("starting jet corrections")
             corrected_fatjets = GetJetCorrections(FatJet, events_jk, era, IOV, isData=not self.do_gen)
             corrected_fatjets = GetCorrectedSDMass(corrected_fatjets, events_jk, era, IOV, isData=not self.do_gen)
+            
             #####################################
             #### Fill plots to compare jet correction techniques
             #####################################
             if not self.jk:
-                corrected_fatjets_ak8 = corrected_fatjets
-                corrected_fatjets_ak8 = GetCorrectedSDMass(corrected_fatjets, events_jk, era, IOV, isData=not self.do_gen, useSubjets = False)
+                # corrected_fatjets_ak8 = corrected_fatjets.copy()
+                # corrected_fatjets_ak8 = GetCorrectedSDMass(corrected_fatjets, events_jk, era, IOV, isData=not self.do_gen, useSubjets = False)
                 out["sdmass_orig"].fill(dataset=datastr, jk=jk_index, pt=ak.flatten(events_jk[(ak.num(events_jk.FatJet) > 1)].FatJet[:,:2].pt, axis=1), mass=ak.flatten(events_jk[(ak.num(events_jk.FatJet) > 1)].FatJet[:,:2].msoftdrop, axis=1))
                 out["mass_orig"].fill(dataset=datastr,jk=jk_index, pt=ak.flatten(events_jk[(ak.num(events_jk.FatJet) > 1)].FatJet[:,:2].pt, axis=1), mass=ak.flatten(events_jk[(ak.num(events_jk.FatJet) > 1)].FatJet[:,:2].mass, axis=1))
                 out["sdmass_ak4corr"].fill(dataset=datastr, jk=jk_index, pt=ak.flatten(corrected_fatjets[(ak.num(corrected_fatjets) > 1)][:,:2].pt, axis=1), mass=ak.flatten(corrected_fatjets[(ak.num(corrected_fatjets) > 1)][:,:2].msoftdrop, axis=1))
-                out["sdmass_ak8corr"].fill(dataset=datastr, jk=jk_index, pt=ak.flatten(corrected_fatjets_ak8[(ak.num(corrected_fatjets_ak8) > 1)][:,:2].pt, axis=1), mass=ak.flatten(corrected_fatjets_ak8[(ak.num(corrected_fatjets_ak8) > 1)][:,:2].msoftdrop, axis=1))
-            jet_corrs = {}
+                # out["sdmass_ak8corr"].fill(dataset=datastr, jk=jk_index, pt=ak.flatten(corrected_fatjets_ak8[(ak.num(corrected_fatjets_ak8) > 1)][:,:2].pt, axis=1), mass=ak.flatten(corrected_fatjets_ak8[(ak.num(corrected_fatjets_ak8) > 1)][:,:2].msoftdrop, axis=1))
             self.weights = {}
             print("successfully corrected jets")
-            #####################################
-            #### For each jet correction, we need to add JMR and JMS corrections on top (except if we're doing data).
-            #####################################
-            if 'HEM' in self.jet_systematics and self.do_gen:
-                jet_corrs.update({
-                           "HEM": HEMCleaning(IOV,applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets)))
-                          })
-            if 'JER' in self.jet_systematics and self.do_gen and "JER" in corrected_fatjets.fields:
-                corrected_fatjets.JER.up = applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets.JER.up))
-                corrected_fatjets.JER.down = applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets.JER.down))
-                jet_corrs.update({"JERUp": corrected_fatjets.JER.up,
-                                    "JERDown": corrected_fatjets.JER.down
-                                })
-            if "JMR" in self.jet_systematics and self.do_gen:
-                jet_corrs.update({"JMRUp": applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets, var = "up")),
-                                    "JMRDown": applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets, var = "down"))})
-            if "JMS" in self.jet_systematics and self.do_gen:
-                jet_corrs.update({"JMSUp": applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets), var = "up"),
-                                    "JMSDown": applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets), var = "down")})
-            if 'nominal' in self.jet_systematics:
-                if not self.do_gen:
-                    print("Doing nominal data")
-                else:
-                    corrected_fatjets = applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets))
-                jet_corrs.update({"nominal": corrected_fatjets})
-            if self.do_gen:
-                # print("avail sys ", self.jet_systematics)
-                avail_srcs = [unc_src for unc_src in self.jet_systematics if ("JES_"+unc_src in corrected_fatjets.fields)]
-                # print("Input jet syst", self.jet_systematics)
-                for unc_src in avail_srcs:
-                    corrected_fatjets["JES_"+unc_src].up = applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets["JES_"+unc_src].up))
-                    corrected_fatjets["JES_"+unc_src].down = applyjmsSF(IOV, applyjmrSF(IOV,corrected_fatjets["JES_"+unc_src].down))
-                    jet_corrs.update({
-                        "JES_"+unc_src+"Up":corrected_fatjets["JES_"+unc_src].up,
-                        "JES_"+unc_src+"Down":corrected_fatjets["JES_"+unc_src].down, })
                     
             #####################################
             #### Loop over each jet correction
             #####################################
             # print("Final jet corrs to run over: ", jet_corrs)
-            for jetsyst in jet_corrs.keys():
-                print("Doing analysis for corr ", jetsyst)
-                events_corr = ak.with_field(events_jk, jet_corrs[jetsyst], "FatJet")
+            for jetsyst in self.jet_systematics:
+                print("Doing analysis for corr ", jetsyst) 
+                #####################################
+                #### For each jet correction, we need to add JMR and JMS corrections on top (except if we're doing data).
+                #####################################
+                if jetsyst == 'nominal':
+                    if not self.do_gen:
+                        print("Doing nominal data")
+                        corr_jets_final = deepcopy(corrected_fatjets)
+                    else:
+                        corr_jets_final = applyjmrSF(IOV, applyjmsSF(IOV,corrected_fatjets))
+                elif jetsyst=="HEM" and self.do_gen:
+                   corr_jets_final = HEMCleaning(IOV,applyjmrSF(IOV, applyjmsSF(IOV,corrected_fatjets)))
+                elif 'JER' in jetsyst and self.do_gen:
+                    if "Up" in jetsyst:
+                        corr_jets_final  = applyjmrSF(IOV, applyjmsSF(IOV,corrected_fatjets.JER.up))
+                    else: 
+                        corr_jets_final  = applyjmrSF(IOV, applyjmsSF(IOV,corrected_fatjets.JER.down))
+                elif "JMR" in jetsyst and self.do_gen:
+                    if "Up" in jetsyst:
+                        corr_jets_final  = applyjmrSF(IOV, applyjmsSF(IOV,corrected_fatjets), var = "up")
+                    else: 
+                        corr_jets_final  =  applyjmrSF(IOV, applyjmsSF(IOV,corrected_fatjets), var = "down")
+                    correct_fatjets = applyjmsSF(IOV,corrected_fatjets)
+                elif "JMS" in jetsyst and self.do_gen:
+                    if "Up" in jetsyst:
+                        corr_jets_final  = applyjmrSF(IOV, applyjmsSF(IOV,corrected_fatjets, var = "up"))
+                    else:
+                        corr_jets_final =  applyjmrSF(IOV, applyjmsSF(IOV,corrected_fatjets, var = "down"))
+                elif "JES" in jetsyst and self.do_gen:
+                    if jetsyst[-2:]=="Up":
+                        corr_jets_final =  applyjmrSF(IOV, applyjmsSF(IOV,corrected_fatjets[jetsyst[:-2]].up))
+                    elif jetsyst[-4:]=="Down":
+                        corr_jets_final =  applyjmrSF(IOV, applyjmsSF(IOV,corrected_fatjets[jetsyst[:-4]].down))
+                print(corr_jets_final)
+                #################################################################
+                #### sort corrected jets by pt before being put into events object
+                #################################################################
+
+                sortJets_ind = ak.argsort(corr_jets_final.pt, ascending=False)
+                corr_jets_sorted = corr_jets_final[sortJets_ind]
+                events_corr = ak.with_field(events_jk, corr_jets_sorted, "FatJet")  
+                del corr_jets_sorted, corr_jets_final
                 out['cutflow'][dataset]['nEvents initial '+jetsyst] += (len(events_corr.FatJet))
                 ###################################
                 ######### INITIALIZE WEIGHTS AND SELECTION
@@ -554,31 +561,42 @@ class makeDijetHists(processor.ProcessorABC):
                     #######################
                     #### Check jec's with selection
                     #######################
-                    print("Checking consistency of correction vals after selection for ", jetsyst, "for reco masses < 50 and pt < 290")
-                    #jets of interest
-                    joi = (ak.all(events_corr.FatJet[:,:2].mass < 50., axis=-1) & ak.all(events_corr.FatJet[:,:2].pt <290., axis=-1))
-
-                    d = {
-                        "reco_pt_leadingJERC" : events_corr[sel.all("final_seq") &joi].FatJet[:8,0].pt,
-                        "reco_pt_leadingJEC" : events_corr[sel.all("final_seq") &joi].FatJet[:8,0].pt_jec,
-                        "reco_pt_leadingAbsPFUp_pt" : events_corr[sel.all("final_seq") &joi].FatJet[:8,0].JES_AbsoluteMPFBias.up.pt,
-                        "reco_pt_leadingAbsPFDown_pt" : events_corr[sel.all("final_seq") &joi].FatJet[:8,0].JES_AbsoluteMPFBias.down.pt,
-                        "gen_pt_leading" : events_corr[sel.all("final_seq")&joi].GenJetAK8[:8,0].pt,
-                        "reco_ptRAW_leading": events_jk[sel.all("final_seq")&joi].FatJet[:8,0].pt,
-                        "raw/jec": events_jk[sel.all("final_seq")&joi].FatJet[:8,0].pt/events_corr[sel.all("final_seq") &joi].FatJet[:8,0].pt_jec,
-                        "gen/reco": events_corr[sel.all("final_seq")&joi].GenJetAK8[:8,0].pt/events_corr[sel.all("final_seq")&joi].FatJet[:8,0].pt,
-                        "reco_rho_leading": np.log((events_corr[sel.all("final_seq")&joi].FatJet[:8,0].mass/events_corr[sel.all("final_seq")&joi].FatJet[:8,0].pt)**2),
-                        "reco_eta_leading" : events_corr[sel.all("final_seq")&joi].FatJet[:8,0].eta,
-                        "reco_phi_leading": events_corr[sel.all("final_seq")&joi].FatJet[:8,0].phi,
-                        "reco_pt_subleading" : events_corr[sel.all("final_seq")&joi].FatJet[:8,1].pt,
-                        "gen_pt_subleading" : events_corr[sel.all("final_seq")&joi].GenJetAK8[:8,1].pt,
-                        "reco_ptRAW_subleading" : events_jk[sel.all("final_seq")&joi].FatJet[:8,1].pt,
-                        "reco_rho_subleading" : np.log((events_corr[sel.all("final_seq")&joi].FatJet[:8,1].mass/events_corr[sel.all("final_seq")&joi].FatJet[:8,1].pt)**2),
-                        "reco_eta_subleading" : events_corr[sel.all("final_seq")&joi].FatJet[:8,1].eta,
-                        "reco_phi_subleading" : events_corr[sel.all("final_seq")&joi].FatJet[:8,1].phi, }
-                    pd.set_option('display.max_rows', None)
-                    df = pd.DataFrame.from_dict(d, orient="index")
-                    print(df.to_string())
+                    # print("Checking consistency of correction vals after selection for ", jetsyst, "for reco masses < 50 and pt < 290")
+                    # #jets of interest
+                    # joi = (ak.all(events_corr.FatJet[:,:2].mass < 50., axis=-1) & ak.all(events_corr.FatJet[:,:2].pt <290., axis=-1))
+                    # jets_to_print = events_corr[sel.all("final_seq") &joi].FatJet[:8,0]
+                    # avail_srcs = [unc_src[4:] for unc_src in jets_to_print.fields if "JES_" in unc_src]
+                    # print(jets_to_print.fields)
+                    # print(avail_srcs)
+                    # d = {
+                    #     "reco_pt_leadingJERC" : jets_to_print.pt,
+                    #     "gen_pt_leading" : jets_to_print.pt,
+                    #     "reco_ptRAW_leading": events_jk[sel.all("final_seq")&joi].FatJet[:8,0].pt,
+                    #     "gen/reco": events_corr[sel.all("final_seq")&joi].GenJetAK8[:8,0].pt/jets_to_print.pt,
+                    #     "reco_rho_leading": np.log((jets_to_print.mass/jets_to_print.pt)**2),
+                    #     "reco_eta_leading" : jets_to_print.eta,
+                    #     "reco_phi_leading": jets_to_print.phi,
+                    #     # "reco_pt_subleading" : events_corr[sel.all("final_seq")&joi].FatJet[:8,1].pt,
+                    #     # "gen_pt_subleading" : events_corr[sel.all("final_seq")&joi].GenJetAK8[:8,1].pt,
+                    #     # "reco_ptRAW_subleading" : events_jk[sel.all("final_seq")&joi].FatJet[:8,1].pt,
+                    #     # "reco_rho_subleading" : np.log((events_corr[sel.all("final_seq")&joi].FatJet[:8,1].mass/events_corr[sel.all("final_seq")&joi].FatJet[:8,1].pt)**2),
+                    #     # "reco_eta_subleading" : events_corr[sel.all("final_seq")&joi].FatJet[:8,1].eta,
+                    #     # "reco_phi_subleading" : events_corr[sel.all("final_seq")&joi].FatJet[:8,1].phi, 
+                    # }
+                    # if jetsyst == "nominal":
+                    #     for src in avail_srcs:
+                    #         print(src)
+                    #         d["raw/jec"] = events_jk[sel.all("final_seq")&joi].FatJet[:8,0].pt/jets_to_print.pt_jec
+                    #         d["reco_pt_leadingJEC"]  = jets_to_print.pt_jec
+                    #         d["reco_nominal_jec_factor"] =  jets_to_print.jet_energy_correction
+                    #         d[src+" sf up"] = jets_to_print["jet_energy_uncertainty_"+src][:,0]
+                    #         d[src+" sf dn"] = jets_to_print["jet_energy_uncertainty_"+src][:,1]
+                    #         d[src+" pt up"] = jets_to_print["JES_"+src].up.pt
+                    #         d[src+" pt dn"] = jets_to_print["JES_"+src].down.pt
+                    # pd.set_option('display.max_rows', None)
+                    # df = pd.DataFrame.from_dict(d, orient="index")
+                    # print(df.to_string())
+                    # display(df)
                     
                 else:
                     sel.add("final_seq", sel.all("recoTot_seq"))

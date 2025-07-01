@@ -112,6 +112,8 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
     pt_edges = [bin[0] for bin in result_mc[hist_mc].project("ptreco").axes[0]] + [result_mc[hist_mc].project('ptreco').axes[0][-1][1]]
     m_edges = [bin[0] for bin in result_mc[hist_mc].project("mreco").axes[0]] + [result_mc[hist_mc].project('mreco').axes[0][-1][1]]
     tot_syst_up, tot_syst_down = getTotSyst(result_mc, hist_mc, axis=axVar, binned=True)
+    print("tot up ", tot_syst_up)
+    print("tot down ", tot_syst_down)
     for i in range(len(pt_edges)-1):
         stat_unc_up = result_mc[hist_mc][{'syst':'nominal', 'ptreco':i}].project(axVar).variances()**0.5
         stat_unc_down = result_mc[hist_mc][{'syst':'nominal', 'ptreco':i}].project(axVar).variances()**0.5
@@ -187,6 +189,7 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
             syst_unc_up=syst_unc_up/widths
             mcvals = mcvals/widths
             datavals = datavals/widths
+        print("stat unc down vals ", stat_unc_down)
         unc_up_tot = mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5
         unc_dn_tot = mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5
         unc_up_syst = mcvals.values()+stat_unc_up
@@ -221,10 +224,12 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
         ratio_totterr_down = np.divide(mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5,mcvals.values(),
                           out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                           where=datavals.values()!= 0,)
+        print("ratio to up ", ratio_totterr_up)
+        print("ratio tot down ", ratio_totterr_down)
         ratio_statterr_up = np.divide(mcvals.values()+stat_unc_up,mcvals.values(),
                           out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                           where=datavals.values()!= 0,)
-        ratio_statterr_down = np.divide(mcvals.values()-stat_unc_up,mcvals.values(),
+        ratio_statterr_down = np.divide(mcvals.values()-stat_unc_down,mcvals.values(),
                           out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                           where=datavals.values()!= 0,)
 
@@ -487,8 +492,6 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     hep.histplot(mcvals.values(), edges,yerr = datavals.variances()**0.5, stack=False, histtype='fill',
                  ax=ax, linestyle ='-', color = 'orange', linewidth=1, binwnorm=True,
                  label="MG+Pythia8")
-    print("Shape of mcvals ", mcvals.values().shape, " edges len ", len(edges))
-    print("Shape of stat unc ", stat_unc_up.shape, " shape of syst unc ", syst_unc_up.shape)
     ax.stairs(values=(mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5)/widths, edges = edges, baseline= (mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5)/widths,
                 fill=True,
                 **tot_error_opts,
@@ -521,7 +524,7 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     ratio_staterr_up = np.divide(mcvals.values()+stat_unc_up,mcvals.values(),
                       out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                       where=datavals.values()!= 0,)
-    ratio_staterr_down = np.divide(mcvals.values()-stat_unc_up,mcvals.values(),
+    ratio_staterr_down = np.divide(mcvals.values()-stat_unc_down,mcvals.values(),
                       out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                       where=datavals.values()!= 0,)
     rax.stairs(values=ratio_totterr_up, edges = edges, baseline= ratio_totterr_down,

@@ -1,21 +1,14 @@
 #!/bin/bash
 
+target_dir="mydir"
 
-files=`ls -1`
-
-for file in $files
-do
-
+find "$target_dir" -type f -name '*.txt' | while IFS= read -r file; do
     if [[ "$file" == *"Uncertainty"* ]]; then
-
-        newfile=`echo $file | sed s/\.txt/\.junc\.txt/`
-        echo 'moving '$file' to '$newfile
-        mv $file $newfile
-        
+        newfile="${file%.txt}.junc.txt"
     else
-        newfile=`echo $file | sed s/\.txt/\.jec\.txt/`
-        echo 'moving '$file' to '$newfile
-        mv $file $newfile
+        newfile="${file%.txt}.jec.txt"
     fi
-done
 
+    echo "Renaming '$file' -> '$newfile'"
+    mv -- "$file" "$newfile"
+done
