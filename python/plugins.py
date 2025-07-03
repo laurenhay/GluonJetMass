@@ -223,28 +223,44 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     del cluster
     return result
 def addFiles(files, RespOnly=False):
-    respHists = ['response_matrix_u', 'response_matrix_g', 'ptreco_mreco_u', 'ptreco_mreco_g', 'ptgen_mgen_u', 'ptgen_mgen_g','fakes_u', 'misses_u', 'fakes_g', "misses_g"]
+    respHists = ['response_matrix_u', 'response_matrix_g', 'ptreco_mreco_u', 'ptreco_mreco_g', 'ptgen_mgen_u', 'ptgen_mgen_g','fakes','fakes_u', 'misses', 'misses_u', 'fakes_g', "misses_g"]
     ### load first file as base of results
     if RespOnly:
         results = pickle.load( open(files[0], "rb") )
-        results = {k: results[k] for k in respHists}
         print(results.keys())
+        results = {k: results[k] for k in respHists if k in results.keys()}
+        if "misses" in results.keys():
+            results["misses_u"] = results.pop("misses")
+        if "fakes" in results.keys():
+            results["fakes_u"] = results.pop("fakes")
     else:
         results = pickle.load( open(files[0], "rb") )
+        if "misses" in results.keys():
+            results["misses_u"] = results.pop("misses")
+        if "fakes" in results.keys():
+            results["fakes_u"] = results.pop("fakes")
     print("starting file ", files[0])
-    
+    print("new keys ", results.keys())
     for fname in files[1:]:
         print("doing file ", fname)
         with open(fname, "rb") as f:
             result = pickle.load( f )
             print(f)
             if RespOnly:
-                for hist in [res for res in result if (res in results) and (res in respHists)]:
-                    # print("Starting ", hist)
-                    results[hist] += result[hist]
+                for hist in [res for res in result if (res in respHists)]:
+                    print("Starting ", hist)
+                    if hist == "fakes" or hist == "fakes_u":
+                        if hist in result.keys():
+                            results["fakes_u"] += result[hist]
+                            print("success for ", hist)
+                    elif hist == "misses" or hist == "misses_u":
+                        if hist in result.keys():
+                            results["misses_u"] += result[hist]
+                            print("success for ", hist)
+                    else: results[hist] += result[hist]
                     # print("Success for ", hist)
             else:
-                for hist in [res for res in result if res in results]:
+                for hist in [res for res in result if (res in results) or res=="fakes" or res=="misses"]:
                     # print("Starting ", hist)
                     if hist == "cutflow":
                         for key in [key for key in result[hist]]:
@@ -259,7 +275,15 @@ def addFiles(files, RespOnly=False):
                                     results[hist][key][k] = result[hist][key][k]
                                     print("success for ", key)
                     else:
-                        results[hist] += result[hist]
+                        if hist == "fakes" or hist == "fakes_u":
+                            if hist in result.keys():
+                                results["fakes_u"] += result[hist]
+                                print("success for ", hist)
+                        elif hist == "misses" or hist == "misses_u":
+                            if hist in result.keys():
+                                results["misses_u"] += result[hist]
+                                print("success for ", hist)
+                        else: results[hist] += result[hist]
                         # print("Success for ", hist)
     print("Done")
     return(results)

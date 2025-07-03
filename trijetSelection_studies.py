@@ -17,12 +17,18 @@ import argparse
 def list_of_ints(arg):
     return list(map(int, arg.split(',')))
 parser = argparse.ArgumentParser()
-unc_srcs = ["nominal","HEM", "JER", "JMR", "JMS", "AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1",
-"PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1",
-            "RelativeJEREC2","RelativeJERHF","RelativePtBB","RelativePtEC1",
-            "RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample",
-            "RelativeStatEC","RelativeStatFSR","RelativeStatHF","SinglePionECAL",
-            "SinglePionHCAL","TimePtEta"]
+unc_srcs = ['nominal', 'JERUp', 'JERDown', 'HEM',
+ 'JES_AbsoluteMPFBiasUp', 'JES_AbsoluteMPFBiasDown', 'JES_AbsoluteScaleUp', 'JES_AbsoluteScaleDown', 
+ 'JES_AbsoluteStatUp', 'JES_AbsoluteStatDown', 'JES_FlavorQCDUp', 'JES_FlavorQCDDown', 'JES_FragmentationUp', 
+ 'JES_FragmentationDown', 'JES_PileUpDataMCUp', 'JES_PileUpDataMCDown', 'JES_PileUpPtBBUp', 'JES_PileUpPtBBDown', 
+ 'JES_PileUpPtEC1Up', 'JES_PileUpPtEC1Down', 'JES_PileUpPtEC2Up', 'JES_PileUpPtEC2Down', 'JES_PileUpPtHFUp', 'JES_PileUpPtHFDown', 
+ 'JES_PileUpPtRefUp', 'JES_PileUpPtRefDown', 'JES_RelativeFSRUp', 'JES_RelativeFSRDown', 'JES_RelativeJEREC1Up', 'JES_RelativeJEREC1Down',
+ 'JES_RelativeJEREC2Up', 'JES_RelativeJEREC2Down', 'JES_RelativeJERHFUp', 'JES_RelativeJERHFDown', 'JES_RelativePtBBUp', 'JES_RelativePtBBDown',
+ 'JES_RelativePtEC1Up', 'JES_RelativePtEC1Down', 'JES_RelativePtEC2Up', 
+ 'JES_RelativePtEC2Down', 'JES_RelativePtHFUp', 'JES_RelativePtHFDown', 'JES_RelativeBalUp', 
+ 'JES_RelativeBalDown', 'JES_RelativeSampleUp', 'JES_RelativeSampleDown', 'JES_RelativeStatECUp', 'JES_RelativeStatECDown',
+ 'JES_RelativeStatFSRUp', 'JES_RelativeStatFSRDown', 'JES_RelativeStatHFUp', 'JES_RelativeStatHFDown', 'JES_SinglePionECALUp', 'JES_SinglePionECALDown', 
+ 'JES_SinglePionHCALUp', 'JES_SinglePionHCALDown', 'JES_TimePtEtaUp', 'JES_TimePtEtaDown', 'JMRUp', 'JMRDown', 'JMSUp', 'JMSDown']
 environmentGroup = parser.add_mutually_exclusive_group(required=False)
 environmentGroup.add_argument('--casa', action='store_true', help='Use Coffea-Casa redirector: root://xcache/')
 environmentGroup.add_argument('--lpc', action='store_true', help='Use CMSLPC redirector: root://cmsxrootd.fnal.gov/')
@@ -37,7 +43,7 @@ parser.add_argument('--testing', action='store_true', help='Testing; run on only
 parser.add_argument('--verbose', type=bool, help='Have processor output status; set false if making log files', default='True')
 parser.add_argument('--allUncertaintySources', action='store_true', help='Run processor for each unc. source separately')
 parser.add_argument('--jetSyst', default=unc_srcs, nargs='+')
-parser.add_argument('--syst', default=['PUSF', 'L1PreFiringWeight'], nargs='+')
+# parser.add_argument('--syst', default=['PUSF', 'L1PreFiringWeight'], nargs='+')
 parser.add_argument('--datasetRange', default=None, help="Run on subset of available datasets")
 parser.add_argument('--jk', action='store_true', help="Run jackknife processor")
 parser.add_argument('--jkRange', default=None, help="Run on subset of jk indices", type=list_of_ints)
@@ -49,12 +55,14 @@ environments = [arg.casa, arg.lpc, arg.winterfell]
 if not np.any(environments): #if user forgets to assign something here
     print('Default environment -> lpc')
     arg.lpc = True
-if arg.mctype!='pythia':
-    arg.jetSyst.extend(["Q2", "PDF"])
-#### WE'RE MISSING 2016B ver2 -- AK8 PF HLT is missing need to use AK4 trigger isntead
+if arg.data:
+    arg.jetSyst = ['nominal']
+if arg.mctype == 'herwig':
+    arg.jetSyst = ['nominal']
+    
 ### Run coffea processor and make plots
-def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, syst=arg.syst, range=arg.datasetRange, mctype = arg.mctype, jk=arg.jk, jk_range = arg.jkRange):
-    processor = makeTrijetHists(data = arg.data, btag = arg.btag, jet_systematics = jet_syst, systematics = syst, jk=jk, jk_range = jk_range)
+def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, range=arg.datasetRange, mctype = arg.mctype, jk=arg.jk, jk_range = arg.jkRange):
+    processor = makeTrijetHists(data = arg.data, btag = arg.btag, jet_systematics = jet_syst, jk=jk, jk_range = jk_range)
     if jk:
         if jk_range != None:
             jkstring = "JK" + str(jk_range[0]) + "_" + str(jk_range[1])
@@ -83,13 +91,13 @@ def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=a
         filename = "fileset_JetHT_wRedirs.json"
 
     if arg.testing and not arg.data:
-        fname = 'coffeaOutput/trijet/trijetHistsTest_figherwigxs_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest_fixSDmass_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jkstring, year_str)
     elif arg.testing and arg.data:
-        fname = 'coffeaOutput/trijet/trijetHistsTest_figherwigxs_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest_fixSDmass_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
     elif not arg.testing and arg.data:
-        fname = 'coffeaOutput/trijet/trijetHists_figherwigxs_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_fixSDmass_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
     else:
-        fname = 'coffeaOutput/trijet/trijetHists_figherwigxs_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_fixSDmass_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
     if range!=None:
         print("Range input: ", range)
         fname=fname[:-4]+"_"+range[0]+"_"+range[1]+".pkl"
@@ -100,9 +108,18 @@ def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=a
     with open(fname, "wb") as f:
         pickle.dump( result, f)
 if arg.allUncertaintySources:
-    unc_srcs =["nominal","AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","JER","JMR","JMS","HEM", "Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","FlavorQCD","JER","JMR","JMS","Fragmentation","PileUpDataMC","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativeJEREC1","RelativeJEREC2","RelativeJERHF""RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample","RelativeStatEC","RelativeStatFSR","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
-    if arg.mctype!='pythia':
-        unc_srcs.append(["Q2", "PDF"])
+    unc_srcs =unc_srcs = ['nominal', 'JERUp', 'JERDown', 'HEM',
+ 'JES_AbsoluteMPFBiasUp', 'JES_AbsoluteMPFBiasDown', 'JES_AbsoluteScaleUp', 'JES_AbsoluteScaleDown', 
+ 'JES_AbsoluteStatUp', 'JES_AbsoluteStatDown', 'JES_FlavorQCDUp', 'JES_FlavorQCDDown', 'JES_FragmentationUp', 
+ 'JES_FragmentationDown', 'JES_PileUpDataMCUp', 'JES_PileUpDataMCDown', 'JES_PileUpPtBBUp', 'JES_PileUpPtBBDown', 
+ 'JES_PileUpPtEC1Up', 'JES_PileUpPtEC1Down', 'JES_PileUpPtEC2Up', 'JES_PileUpPtEC2Down', 'JES_PileUpPtHFUp', 'JES_PileUpPtHFDown', 
+ 'JES_PileUpPtRefUp', 'JES_PileUpPtRefDown', 'JES_RelativeFSRUp', 'JES_RelativeFSRDown', 'JES_RelativeJEREC1Up', 'JES_RelativeJEREC1Down',
+ 'JES_RelativeJEREC2Up', 'JES_RelativeJEREC2Down', 'JES_RelativeJERHFUp', 'JES_RelativeJERHFDown', 'JES_RelativePtBBUp', 'JES_RelativePtBBDown',
+ 'JES_RelativePtEC1Up', 'JES_RelativePtEC1Down', 'JES_RelativePtEC2Up', 
+ 'JES_RelativePtEC2Down', 'JES_RelativePtHFUp', 'JES_RelativePtHFDown', 'JES_RelativeBalUp', 
+ 'JES_RelativeBalDown', 'JES_RelativeSampleUp', 'JES_RelativeSampleDown', 'JES_RelativeStatECUp', 'JES_RelativeStatECDown',
+ 'JES_RelativeStatFSRUp', 'JES_RelativeStatFSRDown', 'JES_RelativeStatHFUp', 'JES_RelativeStatHFDown', 'JES_SinglePionECALUp', 'JES_SinglePionECALDown', 
+ 'JES_SinglePionHCALUp', 'JES_SinglePionHCALDown', 'JES_TimePtEtaUp', 'JES_TimePtEtaDown', 'JMRUp', 'JMRDown', 'JMSUp', 'JMSDown']
     for src in unc_srcs:
         print("Running processor for ", src)
         runTrijetAnalysis(jet_syst=[src])

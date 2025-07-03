@@ -108,18 +108,13 @@ def getTotSyst(result, histname, axis='mreco', binaxis="ptreco", binned = False)
     sysErrTot_dn = sysErrTot_dn**0.5
     print("shape of tot syst output ", sysErrTot_up.shape)
     return sysErrTot_up, sysErrTot_dn
-def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, channel = "", axVar="mreco", norm = True, rax_lim=None, binwnorm=True, trim = False, logy=True, yoffset=None):
+def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV="", channel = "", axVar="mreco", norm = True, rax_lim=None, binwnorm=True, trim = None, logy=True, yoffset=None, mcstring=""):
     pt_edges = [bin[0] for bin in result_mc[hist_mc].project("ptreco").axes[0]] + [result_mc[hist_mc].project('ptreco').axes[0][-1][1]]
-    m_edges = [bin[0] for bin in result_mc[hist_mc].project("mreco").axes[0]] + [result_mc[hist_mc].project('mreco').axes[0][-1][1]]
     tot_syst_up, tot_syst_down = getTotSyst(result_mc, hist_mc, axis=axVar, binned=True)
-    print("tot up ", tot_syst_up)
-    print("tot down ", tot_syst_down)
     for i in range(len(pt_edges)-1):
         stat_unc_up = result_mc[hist_mc][{'syst':'nominal', 'ptreco':i}].project(axVar).variances()**0.5
         stat_unc_down = result_mc[hist_mc][{'syst':'nominal', 'ptreco':i}].project(axVar).variances()**0.5
         syst_unc_up = tot_syst_up[i]
-        print("Syst unc shape ", syst_unc_up.shape)
-        print("Stat unc shape ", stat_unc_up.shape)
         syst_unc_down = tot_syst_down[i]
         #### following opts may be unnecessary
         stat_error_opts = {
@@ -136,6 +131,7 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
                 'facecolor': 'none',
                 'linewidth': 0
             }
+
         data_err_opts = {
                 'linestyle': 'none',
                 'marker': '.',
@@ -160,11 +156,13 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
                     sharex=True)
         ax.yaxis.get_minor_locator().set_params(numticks=999, subs=(.2, .4, .6, .8))
         ax.set_ylabel(r'$Events/GeV$', loc = 'top')
-        ax.set_xticklabels(edges)
+
         if not binwnorm:
             ax.set_ylabel(r'$Events$', loc = 'top')
         if logy:
             ax.set_yscale('log')
+        else:
+                ax.yaxis.offsetText.set_x(-0.08)
         ratio = np.ones_like(result_mc[hist_mc].project(axVar).values())
         #### Fill ratio plot
         ax.set_xlabel("")
@@ -189,24 +187,30 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
             syst_unc_up=syst_unc_up/widths
             mcvals = mcvals/widths
             datavals = datavals/widths
-        print("stat unc down vals ", stat_unc_down)
         unc_up_tot = mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5
         unc_dn_tot = mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5
         unc_up_syst = mcvals.values()+stat_unc_up
         unc_dn_syst = mcvals.values()-stat_unc_down
         hep.histplot(datavals.values(), edges, stack=False, histtype='errorbar', 
                      ax=ax, marker =["."], color = 'Black', linewidth=1, 
-                     label=channel + " Data")
-        hep.histplot(mcvals.values(), edges, stack=False, histtype='step',
-                     ax=ax, linestyle ='-', color = 'Black', linewidth=1,
-                     label=channel + " MC "+" pt "+str(pt_edges[i])+"-"+str(pt_edges[i+1]))
+                     label="Data")
+        if channel == "trijet": fillcolor = "pink"
+        elif channel == "dijet": fillcolor = "powderblue"
+        else: fillcolor = "orange"
+        if "phi" in axVar:
+            label = mcstring+r" $p_T$ "+str(pt_edges[i])+"-"+str(pt_edges[i+1])
+        else:
+            label = mcstring+"\n"+r" $p_T$ "+str(pt_edges[i])+"-"+str(pt_edges[i+1])
+        hep.histplot(mcvals.values(), edges, stack=False, histtype='fill',
+                     ax=ax, color = fillcolor, linewidth=1,
+                     label=label)
         ax.stairs(values=unc_up_tot, edges = edges, baseline= unc_dn_tot, fill=True,
                   **tot_error_opts,
                 )
         ax.stairs(values=unc_up_syst, edges = edges, baseline= unc_dn_syst, fill=True,
                     **stat_error_opts,
                 )
-        ax.autoscale(axis='x', tight=True)
+        # ax.autoscale(axis='x', tight=True)
         #### Want to stack uncertainties
             # print("Values in bins: ", mchist.project(axVar).values(), " errors of bins ", mchist.project(axVar).variances())
         if rax_lim != None:
@@ -217,6 +221,8 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
         leg.set_visible(True)
         if yoffset!=None:
             ax.set_ylim(0.0, (np.max(datavals.values())+yoffset))
+        else:
+            ax.set_ylim(0.0, (np.max(datavals.values())+(np.max(datavals.values())/2)))
         #### Get ratio err values and plot
         ratio_totterr_up = np.divide((mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5),mcvals.values(),
                           out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
@@ -224,8 +230,6 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
         ratio_totterr_down = np.divide(mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5,mcvals.values(),
                           out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                           where=datavals.values()!= 0,)
-        print("ratio to up ", ratio_totterr_up)
-        print("ratio tot down ", ratio_totterr_down)
         ratio_statterr_up = np.divide(mcvals.values()+stat_unc_up,mcvals.values(),
                           out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                           where=datavals.values()!= 0,)
@@ -250,13 +254,14 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
             rax.set_xticks(rax.get_xticks().tolist(),
                    labels=newticks)
         rax.set_ylabel(r'Data/MC', loc = 'center')
-        if ("rapidity" in axVar) | ("phi" in axVar):
+        if ("rapidity" in axVar) | ("phi" in axVar) | ("eta" in axVar):
             rax.set_xlim(-xlim, xlim)
+        
         elif "pt" in axVar:
             rax.set_xlim(0, 2000)
-
             rax.set_ylim(0.5,2.0)
         else:
+            ax.set_xlim(0, xlim)
             rax.set_xlim(0, xlim)
         if IOV == "2018": lumi = 59.83
         elif IOV == "2017": lumi = 41.48
@@ -267,13 +272,13 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV, cha
         ax.set_xlabel(None) 
         if "_g" in hist_mc and "m"==axVar[0]:
             rax.set_xlabel(r'$m_{Jet, SD} [GeV]$' )
-            file_str = f"plots/{channel}/{channel}_msd_"+str(int(pt_edges[i]))+"_"+str(int(pt_edges[i+1]))+".png"
+            file_str = f"plots/{channel}/{channel}_msd_"+str(int(pt_edges[i]))+"_"+str(int(pt_edges[i+1]))+IOV+".png"
         elif "_u" in hist_mc and "m"==axVar[0]:
             rax.set_xlabel(r'$m_{Jet} [GeV]$' )
-            file_str= f"plots/{channel}/{channel}_m_"+str(int(pt_edges[i]))+"_"+str(int(pt_edges[i+1]))+".png"
+            file_str= f"plots/{channel}/{channel}_m_"+str(int(pt_edges[i]))+"_"+str(int(pt_edges[i+1]))+IOV+".png"
         else:
             rax.set_xlabel(axVar )
-            file_str= f"plots/{channel}/{channel}_"+axVar+str(int(pt_edges[i]))+"_"+str(int(pt_edges[i+1]))+".png"
+            file_str= f"plots/{channel}/{channel}_"+axVar+str(int(pt_edges[i]))+"_"+str(int(pt_edges[i+1]))+IOV+".png"
         print("Saving figure to", file_str)
         plt.savefig(file_str)
 def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os_path=""):

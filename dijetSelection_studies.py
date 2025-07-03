@@ -54,6 +54,8 @@ if not np.any(environments): #if user forgets to assign environment
     arg.lpc = True
 if arg.data:
     arg.jetSyst = ['nominal']
+if arg.mctype == 'herwig':
+    arg.jetSyst = ['nominal']
     
 
 from python.plugins import *
@@ -92,13 +94,13 @@ def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=ar
         # filename = "datasets_UL_NANOAOD.json"
         filename = "fileset_JetHT_wRedirs.json"
     if arg.testing and not data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest_removeJMRJMS_{}_rap{}_{}_{}_{}_{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0],jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHistsTest_fixSDmass_{}_rap{}_{}_{}_{}_{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0],jkstring, year_str)
     elif arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest_removeJMRJMS_{}_rap{}_{}_{}.pkl'.format(datastring, processor.ycut, jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHistsTest_fixSDmass_{}_rap{}_{}_{}.pkl'.format(datastring, processor.ycut, jkstring, year_str)
     elif not arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHists_removeJMRJMS_{}_rap{}_{}{}.pkl'.format(datastring, processor.ycut, jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHists_fixSDmass_{}_rap{}_{}{}.pkl'.format(datastring, processor.ycut, jkstring, year_str)
     else:
-        fname = 'coffeaOutput/dijet/dijetHists_removeJMRJMS_{}_rap{}_{}_{}_{}_{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0], jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHists_fixSDmass_{}_rap{}_{}_{}_{}_{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0], jkstring, year_str)
     if range!=None:
         print("Range input: ", range)
         fname=fname[:-4]+"_"+str(range[0])+"_"+str(range[1])+".pkl"
