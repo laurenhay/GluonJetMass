@@ -478,6 +478,37 @@ def GetQ2Weights(events):
 
     return q2Nom, q2Up, q2Down
 
+
+def GetQ2muF(events):
+    muF = ak.ones_like(events.event)
+    up = ak.ones_like(events.event)
+    down = ak.ones_like(events.event)
+    if ("LHEScaleWeight" in ak.fields(events)):
+        if ak.all(ak.num(events.LHEScaleWeight, axis=1)==9):
+            nom = events.LHEScaleWeight[:,4]
+            up = events.LHEScaleWeight[:,5]/nom
+            down = events.LHEScaleWeight[:,3]/nom
+        elif ak.all(ak.num(events.LHEScaleWeight, axis=1)==8):
+            up = events.LHEScaleWeight[:,4]
+            down = events.LHEScaleWeight[:,3]
+    return nom, up, down
+    
+
+def GetQ2muR(events):
+    muR = ak.ones_like(events.event)
+    up = ak.ones_like(events.event)
+    down = ak.ones_like(events.event)
+    if ("LHEScaleWeight" in ak.fields(events)):
+        if ak.all(ak.num(events.LHEScaleWeight, axis=1)==9):
+            nom = events.LHEScaleWeight[:,7]
+            up = events.LHEScaleWeight[:,5]/nom
+            down = events.LHEScaleWeight[:,1]/nom
+        elif ak.all(ak.num(events.LHEScaleWeight, axis=1)==8):
+            up = events.LHEScaleWeight[:,6]
+            down = events.LHEScaleWeight[:,1]
+    return nom, up, down
+
+
 def GetPDFWeights(events):
     
     # hessian pdf weights https://arxiv.org/pdf/1510.03865v1.pdf
@@ -509,3 +540,54 @@ def GetPDFWeights(events):
         
 
     return pdf_nom, pdf_up, pdf_down
+
+
+
+## --------------------------------- MET Filters ------------------------------#
+## Reference: https://twiki.cern.ch/twiki/bin/viewauth/CMS/MissingETOptionalFiltersRun2#2018_2017_data_and_MC_UL
+
+MET_filters = {'2016APV':["goodVertices",
+                          "globalSuperTightHalo2016Filter",
+                          "HBHENoiseFilter",
+                          "HBHENoiseIsoFilter",
+                          "EcalDeadCellTriggerPrimitiveFilter",
+                          "BadPFMuonFilter",
+                          "BadPFMuonDzFilter",
+                          "eeBadScFilter",
+                          "hfNoisyHitsFilter"],
+               '2016'   :["goodVertices",
+                          "globalSuperTightHalo2016Filter",
+                          "HBHENoiseFilter",
+                          "HBHENoiseIsoFilter",
+                          "EcalDeadCellTriggerPrimitiveFilter",
+                          "BadPFMuonFilter",
+                          "BadPFMuonDzFilter",
+                          "eeBadScFilter",
+                          "hfNoisyHitsFilter"],
+               '2017'   :["goodVertices",
+                          "globalSuperTightHalo2016Filter",
+                          "HBHENoiseFilter",
+                          "HBHENoiseIsoFilter",
+                          "EcalDeadCellTriggerPrimitiveFilter",
+                          "BadPFMuonFilter",
+                          "BadPFMuonDzFilter",
+                          "hfNoisyHitsFilter",
+                          "eeBadScFilter",
+                          "ecalBadCalibFilter"],
+               '2018'   :["goodVertices",
+                          "globalSuperTightHalo2016Filter",
+                          "HBHENoiseFilter",
+                          "HBHENoiseIsoFilter",
+                          "EcalDeadCellTriggerPrimitiveFilter",
+                          "BadPFMuonFilter",
+                          "BadPFMuonDzFilter",
+                          "hfNoisyHitsFilter",
+                          "eeBadScFilter",
+                          "ecalBadCalibFilter"]}
+
+corrlib_namemap = {
+    "2016APV":"2016preVFP_UL",
+    "2016":"2016postVFP_UL",
+    "2017":"2017_UL",
+    "2018":"2018_UL"
+}

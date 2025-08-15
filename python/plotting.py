@@ -83,6 +83,7 @@ def getTotSyst(result, histname, axis='mreco', binaxis="ptreco", binned = False)
     availSysts = [ax for ax in result[histname].project("syst").axes[0]]
     availSysts = [syst for syst in availSysts if syst!="nominal"]
     sysErr = {}  
+    print(availSysts)
     for syst in availSysts:
         if binned:
             sysvals = hist[{'syst':syst}].project(binaxis, axis).values()
@@ -108,7 +109,7 @@ def getTotSyst(result, histname, axis='mreco', binaxis="ptreco", binned = False)
     sysErrTot_dn = sysErrTot_dn**0.5
     print("shape of tot syst output ", sysErrTot_up.shape)
     return sysErrTot_up, sysErrTot_dn
-def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV="", channel = "", axVar="mreco", norm = True, rax_lim=None, binwnorm=True, trim = None, logy=True, yoffset=None, mcstring=""):
+def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV="", channel = "", axVar="mreco", norm = True, rax_lim=None, binwnorm=True, trim = None, logy=True, ylim=None, mcstring=""):
     pt_edges = [bin[0] for bin in result_mc[hist_mc].project("ptreco").axes[0]] + [result_mc[hist_mc].project('ptreco').axes[0][-1][1]]
     tot_syst_up, tot_syst_down = getTotSyst(result_mc, hist_mc, axis=axVar, binned=True)
     for i in range(len(pt_edges)-1):
@@ -219,10 +220,10 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV="", 
             rax.set_ylim(0.5,2.0)
         leg = ax.legend(loc='upper right', labelspacing=0.25, fontsize='xx-small')
         leg.set_visible(True)
-        if yoffset!=None:
-            ax.set_ylim(0.0, (np.max(datavals.values())+yoffset))
+        if ylim!=None:
+            rax.set_ylim(ylim[0], ylim[1])
         else:
-            ax.set_ylim(0.0, (np.max(datavals.values())+(np.max(datavals.values())/2)))
+            ax.set_ylim(1e0, (np.max(datavals.values())+(np.max(datavals.values())/2)))
         #### Get ratio err values and plot
         ratio_totterr_up = np.divide((mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5),mcvals.values(),
                           out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
@@ -268,7 +269,7 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV="", 
         elif IOV == "2016": lumi = 16.8
         elif IOV == "2016APV": lumi = 19.5
         else: lumi = 138
-        hep.cms.label("Preliminary", com = 13, lumi = lumi, data = True, loc=0, ax=ax);
+        hep.cms.label("Private Work", com = 13, lumi = lumi, data = True, loc=0, ax=ax);
         ax.set_xlabel(None) 
         if "_g" in hist_mc and "m"==axVar[0]:
             rax.set_xlabel(r'$m_{Jet, SD} [GeV]$' )
@@ -410,7 +411,7 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os
         # leg_tot = ax_tot.legend(loc='best', labelspacing=0.25)
         # add some labels   
 from hist.intervals import ratio_uncertainty
-def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, channel = "", norm = False, rax_lim=None, os_path="plots/", ylim = None, xlim = None, trim=None):
+def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, channel = "", norm = False, rax_lim=None, os_path="plots/", ylim = None, xlim = None, trim=None, logy = True):
     stat_unc_up = result_mc[hist_mc][{'syst':'nominal'}].project(axVar).variances()**0.5
     stat_unc_down = stat_unc_up
     syst_unc_up, syst_unc_down = getTotSyst(result_mc, hist_mc, axis=axVar, binned=False)
@@ -418,7 +419,7 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     tot_error_opts = {
             'label': 'Stat. + Syst. Unc.',
                     'hatch': '///',
-                    'edgecolor': 'black',
+                    'edgecolor': 'grey',
         'facecolor': 'none',
 
             'linewidth': 0
@@ -433,9 +434,9 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
         }
     stat_error_opts = {
             'label': 'Stat. Unc.',
-                    # 'hatch': '///',
-                    # 'edgecolor': 'grey',
-            'facecolor': 'grey',
+                    'hatch': '\\\\',
+                    'edgecolor': 'black',
+            'facecolor': 'none',
             'linewidth': 0
         }
     data_err_opts = {
@@ -466,7 +467,8 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     rax.set_xlabel(mchist.project(axVar).axes.name[0])
     ax.yaxis.get_minor_locator().set_params(numticks=999, subs=(.2, .4, .6, .8))
     ax.set_ylabel(r'Events/GeV', loc = 'top')
-    ax.set_yscale('log')
+    if logy == True:
+        ax.set_yscale('log')
     if ylim != None:
         ax.set_ylim(ylim[0], ylim[1]) 
     if "pt" in axVar or "m"==axVar[0]: 
@@ -494,8 +496,11 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
                       out=np.empty(np.array(mcvals.values()).shape).fill(np.nan),
                       where=mcvals.values()!= 0,)
     #### Add MC error bars
+    if channel == "trijet": fillcolor = "pink"
+    elif channel == "dijet": fillcolor = "powderblue"
+    else: fillcolor = "orange"
     hep.histplot(mcvals.values(), edges,yerr = datavals.variances()**0.5, stack=False, histtype='fill',
-                 ax=ax, linestyle ='-', color = 'orange', linewidth=1, binwnorm=True,
+                 ax=ax, linestyle ='-', color = fillcolor, linewidth=1, binwnorm=True,
                  label="MG+Pythia8")
     ax.stairs(values=(mcvals.values()+(stat_unc_up**2+syst_unc_up**2)**0.5)/widths, edges = edges, baseline= (mcvals.values()-(stat_unc_down**2+syst_unc_down**2)**0.5)/widths,
                 fill=True,
@@ -565,10 +570,20 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
         print("new ticks ", newticks)
         rax.set_xticks(rax.get_xticks().tolist(),
                labels=newticks)
-    hep.cms.label("Preliminary", com = 13, lumi = 138, data = True, loc=0, ax=ax);
+    hep.cms.label("Private Work", com = 13, lumi = 138, data = True, loc=0, ax=ax);
     ax.set_xlabel(None) 
     plt.show()
-
+    if "_g" in hist_mc and "m"==axVar[0]:
+        rax.set_xlabel(r'$m_{Jet, SD} [GeV]$' )
+        file_str = f"plots/{channel}/{channel}_msd_"+"_"+IOV+".png"
+    elif "_u" in hist_mc and "m"==axVar[0]:
+        rax.set_xlabel(r'$m_{Jet} [GeV]$' )
+        file_str= f"plots/{channel}/{channel}_m_"+"_"+IOV+".png"
+    else:
+        rax.set_xlabel(axVar )
+        file_str= f"plots/{channel}/{channel}_"+axVar+"_"+IOV+".png"
+    print("Saving figure to", file_str)
+    plt.savefig(file_str)
         
 def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig = None, IOV="", channel = "", rax_lim = [0.,2.0], norm = False, xlim = None):
     if result_herwig!=None:
@@ -681,7 +696,7 @@ def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig 
         ax.set_xlim(0, xlim)
     
     ax.set_xlabel(None)        
-    cms = plt.text(0.25, 0.88, 'CMS $\it{Preliminary}$',
+    cms = plt.text(0.25, 0.88, 'CMS $\it{Private Work}$',
                   fontsize=22,
                   fontfamily='sans',
                   fontweight='bold',

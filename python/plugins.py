@@ -53,9 +53,14 @@ def handleData(jsonFile, redirector, year = '', testing = True, data = False, ch
                 print("Era: ", era)
                 qualifiers.append(era)
     else:
-        if (redirector == '/mnt/data/cms'):
-            jsonFile = "QCD_flat_files.json"
-            inputs = 'QCD_flat'
+        if "Wjet" in jsonFile:
+            inputs = 'WJets'
+
+        elif "Zjet" in jsonFile:
+            inputs = 'ZJets_binned'
+        elif "TTbar" in jsonFile:
+            inputs = 'TTJets'
+                        
         else:
             inputs = 'QCD_binned'
         if year == '2016' or year == '2017' or year == '2018' or year == '2016APV':
@@ -93,6 +98,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         #### default redirector
     else:
         redirector = ''
+        # redirector = 'root://cmsxrootd.fnal.gov/'
         #### Nebraska redirector
         # redirector= 'root://xrootd-local.unl.edu/'
         #### MIT redirector
@@ -110,10 +116,8 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         print("Total avail datasets ", len(samples.keys()))
         samples = {key:samples[key] for key in list(samples.keys())[datasetRange[0]:datasetRange[1]]}
     #single files for testing
-    # samples = {'/JetHT/Run2016E-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD': [redirector+'/store/data/Run2016E/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/40000/0402FC45-D69F-BE47-A2BF-10394485E06E.root']}
-    # samples = {'/QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/280000/2CD900FB-1F6B-664F-8A26-C125B36C2B58.root']}
-    # samples = {'/JetHT/Run2016F-HIPM_UL2016_MiniAODv2_NanoAODv9-v2/NANOAOD':['root://cmseos.fnal.gov//store/data/Run2016F/JetHT/NANOAOD/HIPM_UL2016_MiniAODv2_NanoAODv9-v2/50000/E27262E3-F8DE-E74A-B82F-E6CF78BD8AE3.root']}
-    # samples = {'/QCD_HT300to500_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL17NanoAODv9-106X_mc2017_realistic_v9-v1/NANOAODSIM':['root://cmseos.fnal.gov//store/mc/RunIISummer20UL17NanoAODv9/QCD_HT300to500_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_mc2017_realistic_v9-v1/2820000/092261AA-CB63-864D-A6B4-7D8D844A0CFD.root']}
+    # samples={'/ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/100000/9F546290-05D0-0447-B3D7-BE2AAF645ACA.root']}
+
 
 
     print("Running over datasets ", samples.keys())
@@ -124,8 +128,6 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         from coffea_casa import CoffeaCasaCluster
         client = Client("tls://lauren-2emeryl-2ehay-40cern-2ech.dask.cmsaf-prod.flatiron.hollandhpc.org:8786")
         # client.register_worker_plugin(UploadDirectory("/home/cms-jovyan/GluonJetMass", restart=True, update_path=True), nanny=True)
-        client.upload_file("fileset_QCD.json")
-        client.upload_file("datasets_UL_NANOAOD.json")
         client.upload_file("python/plugins.py")
         client.upload_file("python/utils.py")
         client.upload_file("python/corrections.py")
@@ -164,7 +166,8 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         from lpcjobqueue import LPCCondorCluster
         #### make list of files and directories to upload to dask
         upload_to_dask = ['correctionFiles', 'python']
-        cluster = LPCCondorCluster(memory='12 GiB', transfer_input_files=upload_to_dask)#, ship_env=False)
+        cluster = LPCCondorCluster(memory='10 GiB', transfer_input_files=upload_to_dask)#, ship_env=False)
+        ### memory is max memory per worker -- last I checked the max memory workers were using was ~2GiB
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
         cluster.adapt(minimum=1, maximum=500)
         print(cluster.dashboard_link)
@@ -205,8 +208,8 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         #### iterative executor to print one file at a time
         print("Running locally")
         run_instance = processor.Runner(
-            executor = processor.FuturesExecutor(compression=None, workers=1),
-            # executor = processor.IterativeExecutor(workers=1),
+            # executor = processor.FuturesExecutor(compression=None, workers=1),
+            executor = processor.IterativeExecutor(workers=1),
             schema=NanoAODSchema,
             # chunksize=None,
             # maxchunks=None,

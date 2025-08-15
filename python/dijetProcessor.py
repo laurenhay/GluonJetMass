@@ -50,7 +50,7 @@ class makeDijetHists(processor.ProcessorABC):
         dataset_axis = hist.axis.StrCategory([], growth=True, name="dataset", label="Primary dataset")
         fine_mass_bin = hist.axis.Regular(130, 0.0, 1300.0, name="mass", label=r"mass [GeV]")
         fine_pt_bin = hist.axis.Regular(500, 100.0, 10100.0, name="pt", label=r"$p_T$ [GeV]")
-        mgen_bin_edges = np.array([0,5,10,20,40,60,80,100,150,200,300, 400, 500, 900,1300])
+        mgen_bin_edges = np.array([0,5,10,20,40,60,80,100,120,140,160,180,200,300,400,13000])
         mreco_bin_edges = np.sort(np.append(mgen_bin_edges,[(mgen_bin_edges[i]+mgen_bin_edges[i+1])/2 for i in range(len(mgen_bin_edges)-1)]))
         mass_gen_bin =  hist.axis.Variable(mgen_bin_edges, name="mgen", label=r"$m_{GEN}$ [GeV]")                         
         mass_bin = hist.axis.Variable(mreco_bin_edges, name="mreco", label=r"$m_{RECO}$ [GeV]")
@@ -59,10 +59,10 @@ class makeDijetHists(processor.ProcessorABC):
         pt_bin = hist.axis.Variable(ptgen_edges, name="ptreco", label=r"$p_{T,RECO}$ [GeV]")     
         pt_gen_bin = hist.axis.Variable(ptgen_edges, name="ptgen", label=r"$p_{T,GEN}$ [GeV]") 
         y_bin = hist.axis.Regular(25, -4.0, 4.0, name="rapidity", label=r"$y$")
-        rho_gen_bin = hist.axis.Regular(20, 0.0, 10.0, name="rhogen", label=r"$-\log(\rho^2)_{GEN}$")
-        rho_bin = hist.axis.Regular(40, 0, 10.0, name="rhoreco", label=r"$-\log(\rho^2)$")
+        rho_gen_bin = hist.axis.Regular(20, -5.0, 0.0, name="rhogen", label=r"$-\log(\rho^2)_{GEN}$")
+        rho_bin = hist.axis.Regular(40, -5.0, 0.0, name="rhoreco", label=r"$-\log(\rho^2)$")
         eta_bin = hist.axis.Regular(25, -4.0, 4.0, name="eta", label=r"$\eta$")
-        frac_axis = hist.axis.Regular(10, 0.0, 1., name="frac", label="Fraction")
+        frac_axis = hist.axis.Regular(100, 0.0, 1., name="frac", label="Fraction")
         n_axis = hist.axis.Regular(5, 0, 5, name="n", label=r"Number")
         dr_axis = hist.axis.Regular(25, 0, 6.0, name="dr", label=r"$\Delta R$")
         phi_axis = hist.axis.Regular(25, -np.pi, np.pi, name="phi", label=r"$\phi$")
@@ -85,18 +85,19 @@ class makeDijetHists(processor.ProcessorABC):
                 #### Plots to be unfolded
                 'ptreco_mreco_u':              hist.Hist(dataset_axis,syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
                 'ptreco_mreco_g':              hist.Hist(dataset_axis,syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
-                'rho_reco_u':            hist.Hist(dataset_axis, syst_cat, jk_axis, pt_bin, rho_bin, storage="weight", name="Events"),
-                'rho_reco_g':            hist.Hist(dataset_axis, syst_cat, jk_axis, pt_bin, rho_bin, storage="weight", name="Events"),
+                'rho_reco_u':            hist.Hist(dataset_axis, syst_cat, jk_axis, rho_bin, storage="weight", name="Events"),
+                'rho_reco_g':            hist.Hist(dataset_axis, syst_cat, jk_axis, rho_bin, storage="weight", name="Events"),
         
                 #### Plots for comparison
                 'ptgen_mgen_u':                hist.Hist(dataset_axis,syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", label="Counts"),       
                 'ptgen_mgen_g':                hist.Hist(dataset_axis,syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", label="Counts"),
             
                 #### Plots for the analysis in the proper binning
-                'response_rho_u':         hist.Hist(dataset_axis, syst_cat, jk_axis, pt_bin, rho_bin,  pt_gen_bin, rho_gen_bin, storage="weight", label="Counts"),
-                'response_rho_g':         hist.Hist(dataset_axis, syst_cat, jk_axis, pt_bin, rho_bin,  pt_gen_bin, rho_gen_bin, storage="weight", label="Counts"),
+                'response_rho_u':         hist.Hist(dataset_axis, syst_cat, jk_axis, rho_bin,  rho_gen_bin, storage="weight", label="Counts"),
+                'response_rho_g':         hist.Hist(dataset_axis, syst_cat, jk_axis, rho_bin,  rho_gen_bin, storage="weight", label="Counts"),
                 'response_matrix_u':           hist.Hist(dataset_axis,syst_cat, jk_axis, pt_bin, mass_bin, pt_gen_bin, mass_gen_bin, storage="weight",                                                         label="Counts"),
                 'response_matrix_g':           hist.Hist(dataset_axis,syst_cat, jk_axis, pt_bin, mass_bin, pt_gen_bin, mass_gen_bin, storage="weight",                                                         label="Counts"),
+            
                      
                 #### misc.
                 'cutflow':            cutflow,
@@ -115,8 +116,9 @@ class makeDijetHists(processor.ProcessorABC):
             'sdmass_orig':               hist.Hist(dataset_axis,jk_axis, fine_pt_bin, fine_mass_bin, storage="weight", label="Events"),
             'sdmass_ak8corr':            hist.Hist(dataset_axis,jk_axis, fine_pt_bin, fine_mass_bin, storage="weight", label="Events"),
             'sdmass_ak4corr':            hist.Hist(dataset_axis,jk_axis, fine_pt_bin, fine_mass_bin, storage="weight", label="Events"),
-            'njet_reco':                 hist.Hist(dataset_axis,syst_cat, n_axis, storage="weight", label="Counts"),
-            'njet_gen':                  hist.Hist(dataset_axis,syst_cat, n_axis, storage="weight", label="Counts"),
+            'MET_over_sumET_pt_reco':    hist.Hist(dataset_axis, syst_cat, frac_axis, pt_bin, storage="weight", label="Events"),
+            'njet_reco':                 hist.Hist(dataset_axis, syst_cat, n_axis, storage="weight", label="Counts"),
+            'njet_gen':                  hist.Hist(dataset_axis, syst_cat, n_axis, storage="weight", label="Counts"),
             #'jet_dr_reco_gen':           hist.Hist(dr_axis, storage="weight", label="Counts"),
             # 'eta_reco':              hist.Hist(syst_cat, eta_bin, storage="weight", name="Events"),
             # 'eta_gen':               hist.Hist(syst_cat, eta_bin, storage="weight",name="Events"),
@@ -175,7 +177,7 @@ class makeDijetHists(processor.ProcessorABC):
                else '2018'    if ( any(re.findall(r'UL18', dataset)) or any(re.findall(r'UL2018',    dataset)))
                else '2017'    if ( any(re.findall(r'UL17', dataset)) or any(re.findall(r'UL2017',    dataset)))
                else '2016')
-        datastr = mctype+IOV
+        datastr = dataset[:6]+mctype+IOV
         print(datastr)
         out['cutflow'][datastr] = defaultdict(int)
         out['cutflow'][datastr]['nEvents initial ' + dataset] += (len(events.FatJet))
@@ -252,7 +254,6 @@ class makeDijetHists(processor.ProcessorABC):
             #print(" Uncorrected subjet mass", events0.SubJet.mass)
             print("starting softdrop mass correction")
             corrected_subjets = GetJetCorrections(events_jk.SubJet, events_jk, era, IOV, isData = not self.do_gen, mode = 'AK4')
-                
             corrected_fatjets['msoftdrop'] =   (corrected_subjets[corrected_fatjets.subJetIdx1] + corrected_subjets[corrected_fatjets.subJetIdx2]).mass 
             
             #####################################
@@ -321,11 +322,13 @@ class makeDijetHists(processor.ProcessorABC):
                 events_corr = ak.with_field(events_jk, corr_jets_sorted, "FatJet")  
                 del corr_jets_sorted, corr_jets_final
                 out['cutflow'][datastr]['nEvents initial '+jetsyst] += (len(events_corr.FatJet))
+                
                 ###################################
                 ######### INITIALIZE WEIGHTS AND SELECTION
                 ##################################
                 sel = PackedSelection()
                 print("mctype ", mctype, " gen? ", self.do_gen)
+                
                 ###############
                 #### For data: apply lumimask and require at least one jet to apply jet trigger prescales
                 ##############
@@ -365,7 +368,19 @@ class makeDijetHists(processor.ProcessorABC):
                     sel.add("npv", events_corr.PV.npvsGood > 0)
                 else:
                     sel.add("npv", sel.all("trigsel") & (events_corr.PV.npvsGood > 0))
-                    
+
+                ###################################
+                #### Apply MET filters
+                ###################################
+                METsel = np.array([events_corr.Flag[MET_filters[IOV][i]] for i in range(len(MET_filters[IOV])) if MET_filters[IOV][i] in events_corr.Flag.fields])
+                METsel = np.logical_and.reduce(METsel, axis=0) ## a passing event should pass "ALL" the MET filters
+                sel.add("METfilters", METsel)
+                print("Nevents before met filters ", len(events_corr), " nevents after met filters ", np.sum(METsel))
+                if ak.sum(METsel) < 1 :
+                    print("No events passing MET filters.")
+                    return output
+
+                
                 #####################################
                 #### Begin GEN specific selections
                 #### see CMS PAS SMP-20-010 for selections
@@ -379,7 +394,7 @@ class makeDijetHists(processor.ProcessorABC):
                                          weight = weights[sel.all("npv")] )
                     #### pt_cut_gen = ak.all(events_corr.GenJetAK8[:,:2].pt > 200., axis = -1) ### 80% of reco pt cut --> for now removing
                     sel.add("twoGenJet", (ak.num(events_corr.GenJetAK8) > 1))
-                    sel.add("twoGenJet_seq", sel.all('npv', 'twoGenJet')) # & pt_cut_gen ) ### --> for now removing
+                    sel.add("twoGenJet_seq", sel.all('npv', 'METfilters', 'twoGenJet')) # & pt_cut_gen ) ### --> for now removing
                     GenJetAK8 = events_corr.GenJetAK8
                     GenJetAK8['p4']= ak.with_name(events_corr.GenJetAK8[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
                     rap_cut_gen = ak.all(np.abs(getRapidity(GenJetAK8[:,:2].p4)) < self.ycut, axis = -1)
@@ -424,7 +439,7 @@ class makeDijetHists(processor.ProcessorABC):
                 # print("num reco jets ", ak.num(events_corr.FatJet))
                 # print("num single or 0 reco jets ", ak.sum(ak.num(events_corr.FatJet) < 2))
                 sel.add("twoRecoJet", (ak.num(events_corr.FatJet) > 1))
-                sel.add("twoRecoJet_seq",  sel.all("npv", "twoRecoJet") & pt_cut_reco)
+                sel.add("twoRecoJet_seq",  sel.all('npv', 'METfilters', "twoRecoJet") & pt_cut_reco)
                 # print("Nevents after 2 jets ", len(events_corr[sel.all("twoRecoJet_seq")]))
                 FatJet = events_corr.FatJet
                 FatJet["p4"] = ak.with_name(FatJet[["pt", "eta", "phi", "mass"]],"PtEtaPhiMLorentzVector")
@@ -652,8 +667,7 @@ class makeDijetHists(processor.ProcessorABC):
                 self.weights[jetsyst] = Weights(len(dijet_weights))
                 self.weights[jetsyst].add('dijetWeight', weight=dijet_weights)
                 negMSD = ak.flatten(events_corr.FatJet[:,:2].msoftdrop<0, axis=1)
-                print("Number of negative softdrop values ", ak.sum(negMSD))
-                print("Number of final jets ", len(dijet))
+                
                 if jetsyst == "nominal": out['cutflow'][datastr]['nEvents failing softdrop condition'] += ak.sum(negMSD)
                 
                 ##################
@@ -690,15 +704,17 @@ class makeDijetHists(processor.ProcessorABC):
                         pdfNom, pdfUp, pdfDown = GetPDFWeights(events_corr)
                         self.weights[jetsyst].add("PDF", weight=np.repeat(pdfNom, 2), weightUp=np.repeat(pdfUp, 2),
                                            weightDown=np.repeat(pdfDown, 2),) 
-                        q2Nom, q2Up, q2Down = GetQ2Weights(events_corr)
-                        self.weights[jetsyst].add("Q2", weight=np.repeat(q2Nom, 2), weightUp=np.repeat(q2Up, 2),
-                                           weightDown=np.repeat(q2Down, 2),) 
+                        q2muFNom, q2muFUp, q2muFDown = GetQ2muF(events_corr)
+                        self.weights[jetsyst].add("Q2muF", weight=np.repeat(q2muFNom, 2), weightUp=np.repeat(q2muFUp, 2),
+                                           weightDown=np.repeat(q2muFDown, 2),) 
+                        q2muRNom, q2muRUp, q2muRDown = GetQ2muR(events_corr)
+                        self.weights[jetsyst].add("Q2muR", weight=np.repeat(q2muRNom, 2), weightUp=np.repeat(q2muRUp, 2),
+                                           weightDown=np.repeat(q2muRDown, 2),) 
                     if not self.jk:
-                        # out["jet_dr_gen_subjet"].fill(syst=jetsyst, 
-                        #                     dr=events_corr.SubGenJetAK8[:,0].delta_r(events_corr.FatJet[:,0]),
-                        #                           weight=self.weights[jetsyst].weight())
-                        # print("Len of dijet phi ", len(dijet.phi), " len of rap ", len(ak.to_numpy(ak.flatten(getRapidity(events_corr.FatJet[:,:2].p4)))))
+                        #### plots for checking whether jet veto map is needed
                         out["jet_pt_eta_phi"].fill(dataset=datastr, syst=jetsyst, ptreco=dijet.pt, phi=dijet.phi, eta=dijet.eta, weight=self.weights[jetsyst].weight())
+                        #### plots for checking MET/sumET
+                        out["MET_over_sumET_pt_reco"].fill(dataset=datastr,syst=jetsyst, frac=events_corr.MET.pt/events_corr.MET.sumEt, ptreco=events_corr.FatJet[:,0].pt, weight=weights)
                     #### Final GEN plots
                     out['ptgen_mgen_u'].fill(dataset=datastr, syst=jetsyst, jk=jk_index, ptgen=gen_dijet.pt, mgen=gen_dijet.mass, weight=self.weights[jetsyst].weight() )
                     out['ptgen_mgen_g'].fill(dataset=datastr, syst=jetsyst, jk=jk_index, ptgen=gen_dijet.pt, mgen=groomed_gen_dijet.mass, weight=self.weights[jetsyst].weight() )
@@ -707,8 +723,8 @@ class makeDijetHists(processor.ProcessorABC):
                                                   weight=self.weights[jetsyst].weight())
                     out["response_matrix_g"].fill(dataset=datastr, syst=jetsyst, jk=jk_index,ptreco=dijet.pt, mreco=dijet.msoftdrop,
                                                   ptgen=gen_dijet.pt, mgen=groomed_gen_dijet.mass, weight=self.weights[jetsyst].weight())
-                    out["response_rho_u"].fill(dataset=datastr, syst=jetsyst, jk=jk_index,  ptreco = dijet.pt, rhoreco=np.log((dijet.mass/dijet.pt)**2), ptgen = gen_dijet.pt, rhogen=-np.log((gen_dijet.mass/gen_dijet.pt)**2), weight=self.weights[jetsyst].weight())
-                    out["response_rho_g"].fill(dataset=datastr, syst=jetsyst, jk=jk_index,  ptreco = dijet.pt, rhoreco=np.log((dijet.msoftdrop/dijet.pt)**2), ptgen = gen_dijet.pt,rhogen=-np.log((gen_dijet.pt/groomed_gen_dijet.mass)**2), weight=self.weights[jetsyst].weight())
+                    out["response_rho_u"].fill(dataset=datastr, syst=jetsyst, jk=jk_index,  rhoreco=np.log((dijet.mass/dijet.pt)**2), rhogen=np.log((gen_dijet.mass/gen_dijet.pt)**2), weight=self.weights[jetsyst].weight())
+                    out["response_rho_g"].fill(dataset=datastr, syst=jetsyst, jk=jk_index, rhoreco=np.log((dijet.msoftdrop/dijet.pt)**2), rhogen=np.log((groomed_gen_dijet.mass/gen_dijet.pt)**2), weight=self.weights[jetsyst].weight())
                     out["ptreco_mreco_u"].fill(dataset=datastr, syst=jetsyst, jk=jk_index, ptreco=dijet.pt, mreco=dijet.mass, weight=self.weights[jetsyst].weight() )
                     out["ptreco_mreco_g"].fill(dataset=datastr, syst=jetsyst, jk=jk_index, ptreco=dijet.pt, mreco=dijet.msoftdrop, weight=self.weights[jetsyst].weight() )
                     if jetsyst == "nominal":
@@ -723,8 +739,8 @@ class makeDijetHists(processor.ProcessorABC):
                                                    ptgen=gen_dijet.pt, mgen=gen_dijet.mass, weight=self.weights[jetsyst].weight(syst))
                             out["response_matrix_g"].fill(dataset=datastr,syst=syst, jk=jk_index, ptreco=dijet.pt, mreco=dijet.msoftdrop,
                                                           ptgen=gen_dijet.pt, mgen=groomed_gen_dijet.mass, weight=self.weights[jetsyst].weight(syst))
-                            out["response_rho_u"].fill(dataset=datastr, syst=syst, jk=jk_index, ptreco = dijet.pt, rhoreco=-np.log((dijet.mass/dijet.pt)**2), ptgen =gen_dijet.pt, rhogen=-np.log((gen_dijet.mass/gen_dijet.pt)**2), weight=self.weights[jetsyst].weight(syst))
-                            out["response_rho_g"].fill(dataset=datastr, syst=syst, jk=jk_index,  ptreco = dijet.pt, rhoreco=-np.log((dijet.msoftdrop/dijet.pt)**2), ptgen = gen_dijet.pt, rhogen=-np.log((gen_dijet.pt/groomed_gen_dijet.mass)**2), weight=self.weights[jetsyst].weight(syst))
+                            out["response_rho_u"].fill(dataset=datastr, syst=syst, jk=jk_index, rhoreco=np.log((dijet.mass/dijet.pt)**2), rhogen=np.log((gen_dijet.mass/gen_dijet.pt)**2), weight=self.weights[jetsyst].weight(syst))
+                            out["response_rho_g"].fill(dataset=datastr, syst=syst, jk=jk_index, rhoreco=np.log((dijet.msoftdrop/dijet.pt)**2), rhogen=np.log((groomed_gen_dijet.mass/gen_dijet.pt)**2), weight=self.weights[jetsyst].weight(syst))
                             out["ptreco_mreco_u"].fill(dataset=datastr,syst=syst, jk=jk_index, ptreco=dijet.pt, mreco=dijet.mass, weight=self.weights[jetsyst].weight(syst) )
                             out["ptreco_mreco_g"].fill(dataset=datastr,syst=syst, jk=jk_index, ptreco=dijet.pt, mreco=dijet.msoftdrop, weight=self.weights[jetsyst].weight(syst) )
                             # if ak.sum(fakes)>0:
@@ -740,11 +756,15 @@ class makeDijetHists(processor.ProcessorABC):
                 ###############
                 
                 else:
+                    
                     out["ptreco_mreco_u"].fill(dataset=datastr,syst=jetsyst, jk=jk_index, ptreco=dijet.pt, mreco=dijet.mass, weight=self.weights[jetsyst].weight() )
                     out["ptreco_mreco_g"].fill(dataset=datastr,syst=jetsyst, jk=jk_index, ptreco=dijet.pt, mreco=dijet.msoftdrop, weight=self.weights[jetsyst].weight() )
-                    out["rho_reco_u"].fill(dataset=datastr,syst=jetsyst, jk=jk_index, ptreco = dijet.pt, rhoreco=-np.log((dijet.mass/dijet.pt)**2), weight=self.weights[jetsyst].weight() )
-                    out["rho_reco_g"].fill(dataset=datastr,syst=jetsyst, jk=jk_index, ptreco = dijet.pt, rhoreco=-np.log((dijet.msoftdrop/dijet.pt)**2), weight=self.weights[jetsyst].weight() )
+                    out["rho_reco_u"].fill(dataset=datastr,syst=jetsyst, jk=jk_index, rhoreco=np.log((dijet.mass/dijet.pt)**2), weight=self.weights[jetsyst].weight() )
+                    out["rho_reco_g"].fill(dataset=datastr,syst=jetsyst, jk=jk_index, rhoreco=np.log((dijet.msoftdrop/dijet.pt)**2), weight=self.weights[jetsyst].weight() )
                     if not self.jk:
+                        #### plots for checking MET/sumET
+                        out["MET_over_sumET_pt_reco"].fill(dataset=datastr,syst=jetsyst, frac=events_corr.MET.pt/events_corr.MET.sumEt, ptreco=events_corr.FatJet[:,0], weight=weights)
+                        #### plots for checking whether jet veto is needed
                         out["jet_pt_eta_phi"].fill(dataset=datastr,syst=jetsyst, ptreco=dijet.pt, phi=dijet.phi, eta=dijet.eta, weight=self.weights[jetsyst].weight())
                 if (jetsyst == "nominal"): 
                     for name in sel.names:
