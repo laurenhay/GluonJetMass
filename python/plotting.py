@@ -551,8 +551,8 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     rax.set_ylabel(r'Data/MC', loc = 'center')
     if ("rapidity" in axVar):
         print(xlim)
-        ax.set_xlim(-xlim, xlim)
-        rax.set_xlim(-xlim, xlim)
+        ax.set_xlim(-3.5, 3.5)
+        rax.set_xlim(-3.5, 3.5)
         rax.set_xlabel(r"$y$")
     elif ("phi" in axVar):
         ax.set_xlim(-xlim, xlim)
@@ -570,7 +570,9 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
         print("new ticks ", newticks)
         rax.set_xticks(rax.get_xticks().tolist(),
                labels=newticks)
-    hep.cms.label("Private Work", com = 13, lumi = 138, data = True, loc=0, ax=ax);
+    if logy: loc=0
+    else: loc=1
+    hep.cms.label("Private Work", com = 13, lumi = 138, data = True, loc=loc, ax=ax);
     ax.set_xlabel(None) 
     plt.show()
     if "_g" in hist_mc and "m"==axVar[0]:

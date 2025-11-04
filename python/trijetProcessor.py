@@ -111,21 +111,21 @@ class makeTrijetHists(processor.ProcessorABC):
         syst_cat = hist.axis.StrCategory([], growth=True, name='syst', label="Systematic")
         dataset_axis = hist.axis.StrCategory([], growth=True, name="dataset", label="Primary dataset")
         fine_mass_bin = hist.axis.Regular(130, 0.0, 1300.0, name="mass", label=r"mass [GeV]")
-        fine_pt_bin = hist.axis.Regular(500, 100.0, 10100.0, name="pt", label=r"$p_T$ [GeV]")
+        fine_pt_bin = hist.axis.Regular(500, 0.0, 10000.0, name="pt", label=r"$p_T$ [GeV]")
         #### if using specific bin edges use hist.axis.Variable() instead
-        mgen_bin_edges = np.array([0,5,10,20,40,60,80,100,150,200,300, 400, 500, 900,1300])
+        mgen_bin_edges = np.array([0,5,10,20,40,60,80,100,120,140,160,180,200,300, 400, 500, 900,1300])
         mreco_bin_edges = np.sort(np.append(mgen_bin_edges,[(mgen_bin_edges[i]+mgen_bin_edges[i+1])/2 for i in range(len(mgen_bin_edges)-1)]))
         mass_gen_bin =  hist.axis.Variable(mgen_bin_edges, name="mgen", label=r"m_{GEN} (GeV)")                         
         mass_bin = hist.axis.Variable(mreco_bin_edges, name="mreco", label=r"m_{RECO} (GeV)")
         # ptgen_edges = np.array([200,300,390,480,570,680,690,750,810,13000]) #### Old values
-        ptgen_edges = np.array([200,290,400,480,570,680,760,820,13000]) #### NEW VALUES TO SWITCH TO
+        ptgen_edges = np.array([0,200,290,400,480,570,680,760,820,13000]) #### NEW VALUES TO SWITCH TO
         pt_bin = hist.axis.Variable(ptgen_edges, name="ptreco", label=r"p_{T,RECO} (GeV)")  
         pt_gen_bin = hist.axis.Variable(ptgen_edges, name="ptgen", label=r"p_{T,GEN} (GeV)")
         rho_gen_bin = hist.axis.Regular(20, -5.0, 0.0, name="rhogen", label=r"$-\log(\rho^2)_{GEN}$")
         rho_bin = hist.axis.Regular(40, -5.0, 0.0, name="rhoreco", label=r"$-\log(\rho^2)$")
         y_bin = hist.axis.Regular(25, -4.0, 4.0, name="rapidity", label=r"$y$")
         eta_bin = hist.axis.Regular(25, -4., 4., name="eta", label=r"$\eta$")
-        frac_axis = hist.axis.Regular(10, 0.0, 1., name="frac", label="Fraction")
+        frac_axis = hist.axis.Regular(50, 0.0, 1., name="frac", label="Fraction")
         n_axis = hist.axis.Regular(5, 0, 5, name="n", label=r"Number")
         dr_axis = hist.axis.Regular(150, 0, 6.0, name="dr", label=r"$\Delta R$")
         dphi_axis = hist.axis.Regular(150, -np.pi, np.pi, name="dphi", label=r"$\Delta \phi$")
@@ -137,6 +137,8 @@ class makeTrijetHists(processor.ProcessorABC):
             #### For jackknife only need resp. matrix hists
                 'misses_u':                    hist.Hist(dataset_axis, syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
                 'misses_g':                  hist.Hist(dataset_axis, syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
+                'passes_u':                   hist.Hist(dataset_axis, syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
+                'passes_g':                    hist.Hist(dataset_axis, syst_cat, jk_axis, pt_gen_bin, mass_gen_bin, storage="weight", name="Events"),
                 'fakes_u':                     hist.Hist(dataset_axis, syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
                 'fakes_g':                   hist.Hist(dataset_axis, syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
                 'underflow':                 hist.Hist(dataset_axis, syst_cat, jk_axis, pt_bin, mass_bin, storage="weight", name="Events"),
@@ -167,10 +169,12 @@ class makeTrijetHists(processor.ProcessorABC):
 
         if not self.jk:
             self._histos.update({ 
-            #### btag study histos
+            #### gluon content/ btag study histos
             'alljet_ptreco_mreco':          hist.Hist(dataset_axis, jet_cat, parton_cat, mass_bin, pt_bin, storage="weight", name="Events"),
-            'MET_over_sumET_pt_reco':    hist.Hist(dataset_axis, syst_cat, frac_axis, pt_bin, storage="weight", label="Events"),
             'btag_eta':                     hist.Hist(dataset_axis, jet_cat, parton_cat, frac_axis, eta_bin, storage="weight", name="Events"),
+            #### MET content histos
+            'MET_over_sumET_pt_reco':       hist.Hist(dataset_axis, syst_cat, frac_axis, pt_bin, storage="weight", label="Events"),
+            'MET_pt_reco':                  hist.Hist(dataset_axis, syst_cat, fine_pt_bin, pt_bin, storage="weight", label="Events"),
             #### Plots of things during the selection process / for debugging
             'njet_gen':                     hist.Hist(dataset_axis, syst_cat, n_axis, storage="weight", label="Events"),
             'njet_reco':                    hist.Hist(dataset_axis, syst_cat, n_axis, storage="weight", label="Events"),
@@ -309,6 +313,13 @@ class makeTrijetHists(processor.ProcessorABC):
             corrected_fatjets = GetJetCorrections(FatJet, events_jk, era, IOV, isData=not self.do_gen)
             corrected_fatjets = corrected_fatjets[corrected_fatjets.subJetIdx1 > -1]
             #print(" Uncorrected subjet mass", events0.SubJet.mass)
+            print(" Uncorrected subjet mass", events_jk.SubJet.mass)
+            print(" Uncorrected jet mass", events_jk.FatJet.mass)
+            print("ak sum of subjet mass ", ak.sum(events_jk.SubJet.mass))
+            print("ak sum of fat jet mass", ak.sum(events_jk.FatJet.mass))
+            if ak.sum(ak.num(events_jk.SubJet.mass)>0)<1:
+                print("No subjets")
+                return out
             corrected_subjets = GetJetCorrections(events_jk.SubJet, events_jk, era, IOV, isData = not self.do_gen, mode = 'AK4')
             corrected_fatjets['msoftdrop'] =   (corrected_subjets[corrected_fatjets.subJetIdx1] + corrected_subjets[corrected_fatjets.subJetIdx2]).mass 
             print("finished correcting mass")
@@ -378,7 +389,7 @@ class makeTrijetHists(processor.ProcessorABC):
                 elif self.do_gen:
                     if "LHEWeight" in events_corr.fields: 
                         #print("Difference between weights calculated from xsdb and LHE :", (events_corr.LHEWeight.originalXWGTUP - getXSweight(dataset, IOV)))
-                        weights = events_corr.LHEWeight.originalXWGTUP
+                        weights = events_corr.LHEWeight.originalXWGTUP * getXSweight(dataset, IOV)
                     else:
                         weights = events_corr.genWeight * getXSweight(dataset, IOV)
                 else:
@@ -591,7 +602,6 @@ class makeTrijetHists(processor.ProcessorABC):
                             out['fakes_eta_phi'].fill(dataset=datastr, syst=jetsyst, phi = fake_jets.phi[~ak.is_none(fake_jets.msoftdrop)], eta = fake_jets.eta[~ak.is_none(fake_jets.msoftdrop)], weight=fake_weights.weight()[~ak.is_none(fake_jets.msoftdrop)])
                     if (jetsyst == "nominal"): 
                         out['cutflow'][datastr]['fakes'] += (len(events_corr[fakes].FatJet))
-                        print("ADDING FAKES TO CUTFLOW")
                     print("Number of events after all selections ", ak.sum(sel.all("genTot_seq", "recoTot_seq", "removeMisses", "removeFakes")))
                     if len(events_corr[sel.all("genTot_seq", "recoTot_seq", "removeMisses", "removeFakes")])<1: 
                         print("No events after all selections and removing fakes & misses")
@@ -689,6 +699,7 @@ class makeTrijetHists(processor.ProcessorABC):
                     if not self.jk:
                         #### plots for checking MET/sumET --> potentially need cut <0.3
                         out["MET_over_sumET_pt_reco"].fill(dataset=datastr,syst=jetsyst, frac=events_corr.MET.pt/events_corr.MET.sumEt, ptreco=jet.pt, weight=self.weights[jetsyst].weight() )
+                        out["MET_pt_reco"].fill(dataset=datastr,syst=jetsyst, pt=events_corr.MET.pt, ptreco=jet.pt, weight=self.weights[jetsyst].weight() )
                         #### plots for checking whether jet veto map is needed
                         out["jet_pt_eta_phi"].fill(dataset=datastr, syst=jetsyst, ptreco=jet.pt, phi=jet.phi, eta=jet.eta, weight=self.weights[jetsyst].weight())
                     weights = self.weights[jetsyst].weight()
@@ -757,6 +768,7 @@ class makeTrijetHists(processor.ProcessorABC):
                     out["rho_reco_g"].fill(dataset=datastr,syst=jetsyst, jk=jk_index, rhoreco=np.log((jet.msoftdrop/jet.pt)**2), weight=self.weights[jetsyst].weight() )
                     if not self.jk:
                         out["MET_over_sumET_pt_reco"].fill(dataset=datastr,syst=jetsyst, frac=events_corr.MET.pt/events_corr.MET.sumEt, ptreco=jet.pt, weight=self.weights[jetsyst].weight() )
+                        out["MET_pt_reco"].fill(dataset=datastr,syst=jetsyst, pt=events_corr.MET.pt, ptreco=jet.pt, weight=self.weights[jetsyst].weight() )
                         out["jet_pt_eta_phi"].fill(dataset=datastr, syst=jetsyst, ptreco=jet.pt, phi=jet.phi, eta=jet.eta, weight=self.weights[jetsyst].weight())
                 print("final jets ", jet)
                 print("final jet pt ", jet.pt)

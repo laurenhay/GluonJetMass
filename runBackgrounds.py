@@ -19,19 +19,20 @@ environmentGroup.add_argument('--winterfell', action='store_true', help='Get ava
 
 def list_of_ints(arg):
     return list(map(int, arg.split(',')))
-unc_srcs = ['nominal', 'JERUp', 'JERDown', 'HEM',
- 'JES_AbsoluteMPFBiasUp', 'JES_AbsoluteMPFBiasDown', 'JES_AbsoluteScaleUp', 'JES_AbsoluteScaleDown', 
- 'JES_AbsoluteStatUp', 'JES_AbsoluteStatDown', 'JES_FlavorQCDUp', 'JES_FlavorQCDDown', 'JES_FragmentationUp', 
- 'JES_FragmentationDown', 'JES_PileUpDataMCUp', 'JES_PileUpDataMCDown', 'JES_PileUpPtBBUp', 'JES_PileUpPtBBDown', 
- 'JES_PileUpPtEC1Up', 'JES_PileUpPtEC1Down', 'JES_PileUpPtEC2Up', 'JES_PileUpPtEC2Down', 'JES_PileUpPtHFUp', 'JES_PileUpPtHFDown', 
- 'JES_PileUpPtRefUp', 'JES_PileUpPtRefDown', 'JES_RelativeFSRUp', 'JES_RelativeFSRDown', 'JES_RelativeJEREC1Up', 'JES_RelativeJEREC1Down',
- 'JES_RelativeJEREC2Up', 'JES_RelativeJEREC2Down', 'JES_RelativeJERHFUp', 'JES_RelativeJERHFDown', 'JES_RelativePtBBUp', 'JES_RelativePtBBDown',
- 'JES_RelativePtEC1Up', 'JES_RelativePtEC1Down', 'JES_RelativePtEC2Up', 
- 'JES_RelativePtEC2Down', 'JES_RelativePtHFUp', 'JES_RelativePtHFDown', 'JES_RelativeBalUp', 
- 'JES_RelativeBalDown', 'JES_RelativeSampleUp', 'JES_RelativeSampleDown', 'JES_RelativeStatECUp', 'JES_RelativeStatECDown',
- 'JES_RelativeStatFSRUp', 'JES_RelativeStatFSRDown', 'JES_RelativeStatHFUp', 'JES_RelativeStatHFDown', 'JES_SinglePionECALUp', 'JES_SinglePionECALDown', 
- 'JES_SinglePionHCALUp', 'JES_SinglePionHCALDown', 'JES_TimePtEtaUp', 'JES_TimePtEtaDown', 'JMRUp', 'JMRDown', 'JMSUp', 'JMSDown']
-
+unc_srcs = ['nominal']
+# , 'JERUp', 'JERDown', 'HEM',
+#  'JES_AbsoluteMPFBiasUp', 'JES_AbsoluteMPFBiasDown', 'JES_AbsoluteScaleUp', 'JES_AbsoluteScaleDown', 
+#  'JES_AbsoluteStatUp', 'JES_AbsoluteStatDown', 'JES_FlavorQCDUp', 'JES_FlavorQCDDown', 'JES_FragmentationUp', 
+#  'JES_FragmentationDown', 'JES_PileUpDataMCUp', 'JES_PileUpDataMCDown', 'JES_PileUpPtBBUp', 'JES_PileUpPtBBDown', 
+#  'JES_PileUpPtEC1Up', 'JES_PileUpPtEC1Down', 'JES_PileUpPtEC2Up', 'JES_PileUpPtEC2Down', 'JES_PileUpPtHFUp', 'JES_PileUpPtHFDown', 
+#  'JES_PileUpPtRefUp', 'JES_PileUpPtRefDown', 'JES_RelativeFSRUp', 'JES_RelativeFSRDown', 'JES_RelativeJEREC1Up', 'JES_RelativeJEREC1Down',
+#  'JES_RelativeJEREC2Up', 'JES_RelativeJEREC2Down', 'JES_RelativeJERHFUp', 'JES_RelativeJERHFDown', 'JES_RelativePtBBUp', 'JES_RelativePtBBDown',
+#  'JES_RelativePtEC1Up', 'JES_RelativePtEC1Down', 'JES_RelativePtEC2Up', 
+#  'JES_RelativePtEC2Down', 'JES_RelativePtHFUp', 'JES_RelativePtHFDown', 'JES_RelativeBalUp', 
+#  'JES_RelativeBalDown', 'JES_RelativeSampleUp', 'JES_RelativeSampleDown', 'JES_RelativeStatECUp', 'JES_RelativeStatECDown',
+#  'JES_RelativeStatFSRUp', 'JES_RelativeStatFSRDown', 'JES_RelativeStatHFUp', 'JES_RelativeStatHFDown', 'JES_SinglePionECALUp', 'JES_SinglePionECALDown', 
+#  'JES_SinglePionHCALUp', 'JES_SinglePionHCALDown', 'JES_TimePtEtaUp', 'JES_TimePtEtaDown', 'JMRUp', 'JMRDown', 'JMSUp', 'JMSDown']
+parser.add_argument('--bg', choices=['TTjets', 'Wjets', 'Zjets', None], default="None", help="Which background sample to run of. If none run all successively")
 parser.add_argument('--year', choices=['2016', '2017', '2018', '2016APV', None], default="None", help="Year to run on")
 parser.add_argument('--mctype', choices=['herwig', 'pythia', 'MG'], default="MG", help="MC generator running on")
 parser.add_argument('--data', action='store_true', help="Run on data") 
@@ -65,7 +66,7 @@ import pickle
 #### WE'RE MISSING 2016B ver2 -- AK8 PF HLT is missing need to use AK4 trigger isntead
 ### Run coffea processor and make plots
         
-def runBackgrounds(jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, range=arg.datasetRange, mctype = arg.mctype, jk=arg.jk, jk_range = arg.jkRange):
+def runBackgrounds(jet_syst=arg.jetSyst, year=arg.year, bg = arg.bg, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, range=arg.datasetRange, mctype = arg.mctype, jk=arg.jk, jk_range = arg.jkRange):
     processor_dijet = makeDijetHists(data = False, jet_systematics = jet_syst, jk = jk, jk_range = jk_range)
     processor_trijet = makeTrijetHists(data = False, jet_systematics = jet_syst, jk = jk, jk_range = jk_range)
     if jk:
@@ -80,7 +81,14 @@ def runBackgrounds(jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfel
         year_str = year
     else:
         year_str = "All"
-    bg_files = ['fileset_Zjets_MG.json', 'fileset_Wjets_MG.json', 'fileset_TTbar_MG.json']
+    if bg == "TTjets":
+        bg_files = ['fileset_TTbar_MG_wRedirs.json']
+    elif bg == "Zjets":
+        bg_files = ['fileset_Zjets_MG_wRedirs.json']
+    elif bg == "Wjets":
+        bg_files = ['fileset_Wjets_MG_wRedirs.json']
+    else:
+        bg_files = ['fileset_Zjets_MG_wRedirs.json', 'fileset_Wjets_MG_wRedirs.json', 'fileset_TTbar_MG_wRedirs.json']
     if testing:
         test_str = "Test"
     else:
@@ -88,8 +96,8 @@ def runBackgrounds(jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfel
     for filename in bg_files:
         print(filename)
         print(filename[8:13])
-        fname_dijet = 'coffeaOutput/dijet/{}_dijetSel_{}_fixSDmass_{}_{}.pkl'.format(filename[8:13], test_str, mctype, year_str)
-        fname_trijet = 'coffeaOutput/trijet/{}_trijetSel_{}_fixSDmass_{}_{}.pkl'.format(filename[8:13], test_str, mctype, year_str)
+        fname_dijet = 'coffeaOutput/dijet/{}_dijetSel_{}_fixXSandpt_{}_{}.pkl'.format(filename[8:13], test_str, mctype, year_str)
+        fname_trijet = 'coffeaOutput/trijet/{}_trijetSel_{}_fixXSandpt_{}_{}.pkl'.format(filename[8:13], test_str, mctype, year_str)
         result_dijet = runCoffeaJob(processor_dijet, jsonFile = filename, casa = casa, winterfell = winterfell, testing = testing, dask = dask, data = not processor_dijet.do_gen, year=year)
         result_trijet = runCoffeaJob(processor_trijet, jsonFile = filename, casa = casa, winterfell = winterfell, testing = testing, dask = dask, data = not processor_trijet.do_gen, year=year)
         with open(fname_dijet, "wb") as f:

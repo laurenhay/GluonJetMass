@@ -400,6 +400,7 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     events_cache = events.caches[0]
 
     jet_factory = CorrectedJetsFactory(name_map, jec_stack)
+    print("Fat jets for index 0 ", FatJets)
     corrected_jets = jet_factory.build(FatJets, lazy_cache=events_cache)
     # print("Available uncertainties: ", jet_factory.uncertainties())
     # print("Corrected jets object: ", corrected_jets.fields)
@@ -480,9 +481,9 @@ def GetQ2Weights(events):
 
 
 def GetQ2muF(events):
-    muF = ak.ones_like(events.event)
-    up = ak.ones_like(events.event)
-    down = ak.ones_like(events.event)
+    muF = np.ones(len(events))
+    up = np.ones(len(events))
+    down = np.ones(len(events))
     if ("LHEScaleWeight" in ak.fields(events)):
         if ak.all(ak.num(events.LHEScaleWeight, axis=1)==9):
             nom = events.LHEScaleWeight[:,4]
@@ -491,13 +492,13 @@ def GetQ2muF(events):
         elif ak.all(ak.num(events.LHEScaleWeight, axis=1)==8):
             up = events.LHEScaleWeight[:,4]
             down = events.LHEScaleWeight[:,3]
-    return nom, up, down
+    return muF, up, down
     
 
 def GetQ2muR(events):
-    muR = ak.ones_like(events.event)
-    up = ak.ones_like(events.event)
-    down = ak.ones_like(events.event)
+    muR = np.ones(len(events))
+    up = np.ones(len(events))
+    down = np.ones(len(events))
     if ("LHEScaleWeight" in ak.fields(events)):
         if ak.all(ak.num(events.LHEScaleWeight, axis=1)==9):
             nom = events.LHEScaleWeight[:,7]
@@ -506,7 +507,7 @@ def GetQ2muR(events):
         elif ak.all(ak.num(events.LHEScaleWeight, axis=1)==8):
             up = events.LHEScaleWeight[:,6]
             down = events.LHEScaleWeight[:,1]
-    return nom, up, down
+    return muR, up, down
 
 
 def GetPDFWeights(events):
