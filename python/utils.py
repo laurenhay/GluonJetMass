@@ -126,7 +126,7 @@ xsdb= { 'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 104000.0,
        #### Values used to produce 2017/2018 mc
        'QCD_HT100to200_TuneCP5_13TeV-madgraph-pythia8': 23700000.0,
        'QCD_HT200to300_TuneCP5_13TeV-madgraphMLM-pythia8' : 1552000.0,
-       'QCD_HT300to500_TuneCP5_13TeV-madgraphMLM-pythia8' :  3221100.0,
+       'QCD_HT300to500_TuneCP5_13TeV-madgraphMLM-pythia8' :  321100.0,
        'QCD_HT500to700_TuneCP5_13TeV-madgraphMLM-pythia8' :   30980.0,
        'QCD_HT700to1000_TuneCP5_13TeV-madgraphMLM-pythia8' :   6398.0,
        'QCD_HT1000to1500_TuneCP5_13TeV-madgraphMLM-pythia8' :   1122.0,
@@ -376,7 +376,7 @@ def getXSweight(dataset, IOV):
                             weight = xs * lum * 1000 / num_gen_herwig_flat[year][process]
                     else:
                         if "QCD" in process and process in sumw_qcd_mg[year].keys():
-                            print("Number of gen events for ", year, " ", process, ": ", sumw_qcd_mg[year][process])
+                            print("Sumw of events for ", year, " ", process, ": ", sumw_qcd_mg[year][process])
                             weight = xs * lum * 1000 / sumw_qcd_mg[year][process]
                         elif process in num_gen_bg[year].keys():
                             print("Number of gen events for ", year, " ", process, ": ", num_gen_bg[year][process])

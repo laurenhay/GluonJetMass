@@ -128,23 +128,26 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     if casa and dask:
         print("Running on coffea casa")
         from coffea_casa import CoffeaCasaCluster
-        client = Client("tls://lauren-2emeryl-2ehay-40cern-2ech.dask.cmsaf-prod.flatiron.hollandhpc.org:8786")
+        cluster = CoffeaCasaCluster(job_extra = {'transfer_input_files':[ "correctionFiles", "python"] }, memory="10 GiB")
+        cluster.adapt(minimum=4, maximum=70)
+        client = Client(cluster)
+        # client = Client("tls://lauren-2emeryl-2ehay-40cern-2ech.dask.cmsaf-prod.flatiron.hollandhpc.org:8786")
         # client.register_worker_plugin(UploadDirectory("/home/cms-jovyan/GluonJetMass", restart=True, update_path=True), nanny=True)
-        client.upload_file("python/plugins.py")
-        client.upload_file("python/utils.py")
-        client.upload_file("python/corrections.py")
-        client.upload_file("python/trijetProcessor.py") #upload additional files to the client                               
-        client.upload_file("python/dijetProcessor.py")
-        client.upload_file("python/triggerProcessor.py")
-        client.upload_file("correctionFiles/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt")
-        client.upload_file("correctionFiles/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt")
-        client.upload_file("correctionFiles/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt")
-        client.upload_file("correctionFiles/ps_weight_JSON_2016.json")
-        client.upload_file("correctionFiles/ps_weight_JSON_2017.json")
-        client.upload_file("correctionFiles/ps_weight_JSON_2018.json")
-        client.upload_file("correctionFiles/ps_weight_JSON_PFJet2016.json")
-        client.upload_file("correctionFiles/ps_weight_JSON_PFJet2017.json")
-        client.upload_file("correctionFiles/ps_weight_JSON_PFJet2018.json")
+        # client.upload_file("python/plugins.py")
+        # client.upload_file("python/utils.py")
+        # client.upload_file("python/corrections.py")
+        # client.upload_file("python/trijetProcessor.py") #upload additional files to the client                               
+        # client.upload_file("python/dijetProcessor.py")
+        # client.upload_file("python/triggerProcessor.py")
+        # client.upload_file("correctionFiles/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt")
+        # client.upload_file("correctionFiles/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt")
+        # client.upload_file("correctionFiles/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt")
+        # client.upload_file("correctionFiles/ps_weight_JSON_2016.json")
+        # client.upload_file("correctionFiles/ps_weight_JSON_2017.json")
+        # client.upload_file("correctionFiles/ps_weight_JSON_2018.json")
+        # client.upload_file("correctionFiles/ps_weight_JSON_PFJet2016.json")
+        # client.upload_file("correctionFiles/ps_weight_JSON_PFJet2017.json")
+        # client.upload_file("correctionFiles/ps_weight_JSON_PFJet2018.json")
         # cluster = CoffeaCasaCluster(cores=11, memory="20 GiB", death_timeout = 60)
         # cluster.adapt(minimum=2, maximum=14)
         # client = Client(cluster)
@@ -168,10 +171,10 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         from lpcjobqueue import LPCCondorCluster
         #### make list of files and directories to upload to dask
         upload_to_dask = ['correctionFiles', 'python']
-        cluster = LPCCondorCluster(memory='8 GiB', transfer_input_files=upload_to_dask)#, ship_env=False)
+        cluster = LPCCondorCluster(memory='8 GiB', transfer_input_files=upload_to_dask, ship_env=False, scheduler_options={"dashboard_address": ":2018"})
         ### memory is max memory per worker -- last I checked the max memory workers were using was ~2GiB
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
-        cluster.adapt(minimum=1, maximum=500)
+        cluster.adapt(minimum=1, maximum=100)
         print(cluster.dashboard_link)
         with Client(cluster) as client:
             print(client)

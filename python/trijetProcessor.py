@@ -389,9 +389,9 @@ class makeTrijetHists(processor.ProcessorABC):
                 elif self.do_gen:
                     if "LHEWeight" in events_corr.fields: 
                         #print("Difference between weights calculated from xsdb and LHE :", (events_corr.LHEWeight.originalXWGTUP - getXSweight(dataset, IOV)))
-                        weights = events_corr.LHEWeight.originalXWGTUP * getXSweight(dataset, IOV)
+                        weights = events_corr.LHEWeight.originalXWGTUP #* getXSweight(dataset, IOV)
                     else:
-                        weights = events_corr.genWeight * getXSweight(dataset, IOV)
+                        weights = events_corr.genWeight #* getXSweight(dataset, IOV)
                 else:
                     ############
                     ### Doing data -- apply lumimask and require at least one jet to apply jet trigger prescales
