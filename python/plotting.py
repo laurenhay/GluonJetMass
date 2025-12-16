@@ -109,7 +109,7 @@ def getTotSyst(result, histname, axis='mreco', binaxis="ptreco", binned = False)
     sysErrTot_dn = sysErrTot_dn**0.5
     print("shape of tot syst output ", sysErrTot_up.shape)
     return sysErrTot_up, sysErrTot_dn
-def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV="", channel = "", axVar="mreco", norm = True, rax_lim=None, binwnorm=True, trim = None, logy=True, ylim=None, mcstring=""):
+def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV="", channel = "", axVar="mreco", norm = True, rax_lim=None, binwnorm=True, trim = None, logy=True, ylim=None, mcstring="", cms_str="Private Work"):
     pt_edges = [bin[0] for bin in result_mc[hist_mc].project("ptreco").axes[0]] + [result_mc[hist_mc].project('ptreco').axes[0][-1][1]]
     tot_syst_up, tot_syst_down = getTotSyst(result_mc, hist_mc, axis=axVar, binned=True)
     for i in range(len(pt_edges)-1):
@@ -269,7 +269,7 @@ def plotDataMCwErrorsBinned(result_mc, result_data, hist_mc, hist_data, IOV="", 
         elif IOV == "2016": lumi = 16.8
         elif IOV == "2016APV": lumi = 19.5
         else: lumi = 138
-        hep.cms.label("Private Work", com = 13, lumi = lumi, data = True, loc=0, ax=ax);
+        hep.cms.label(cms_str, com = 13, lumi = lumi, data = True, loc=0, ax=ax);
         ax.set_xlabel(None) 
         if "_g" in hist_mc and "m"==axVar[0]:
             rax.set_xlabel(r'$m_{Jet, SD} [GeV]$' )
@@ -411,7 +411,7 @@ def plotSyst(result, histname, axVar, label, logy=True, IOV = '', channel='', os
         # leg_tot = ax_tot.legend(loc='best', labelspacing=0.25)
         # add some labels   
 from hist.intervals import ratio_uncertainty
-def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, channel = "", norm = False, rax_lim=None, os_path="plots/", ylim = None, xlim = None, trim=None, logy = True):
+def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, channel = "", norm = False, rax_lim=None, os_path="plots/", ylim = None, xlim = None, trim=None, logy = True, cms_str="Private Work"):
     stat_unc_up = result_mc[hist_mc][{'syst':'nominal'}].project(axVar).variances()**0.5
     stat_unc_down = stat_unc_up
     syst_unc_up, syst_unc_down = getTotSyst(result_mc, hist_mc, axis=axVar, binned=False)
@@ -572,7 +572,7 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
                labels=newticks)
     if logy: loc=0
     else: loc=1
-    hep.cms.label("Private Work", com = 13, lumi = 138, data = True, loc=loc, ax=ax);
+    hep.cms.label(cms_str, com = 13, lumi = 138, data = True, loc=loc, ax=ax);
     ax.set_xlabel(None) 
     plt.show()
     if "_g" in hist_mc and "m"==axVar[0]:
@@ -587,7 +587,7 @@ def plotDataMCwErrors(result_mc, result_data, hist_mc, hist_data, axVar, IOV, ch
     print("Saving figure to", file_str)
     plt.savefig(file_str)
         
-def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig = None, IOV="", channel = "", rax_lim = [0.,2.0], norm = False, xlim = None):
+def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig = None, IOV="", channel = "", rax_lim = [0.,2.0], norm = False, xlim = None, cms_str = "Private Work"):
     if result_herwig!=None:
         herwig=True
     else:
@@ -697,20 +697,12 @@ def plotDataMC(result_mc, result_data, hist_mc, hist_data, axVar, result_herwig 
         rax.set_xlim(0, xlim)
         ax.set_xlim(0, xlim)
     
-    ax.set_xlabel(None)        
-    cms = plt.text(0.25, 0.88, 'CMS $\it{Private Work}$',
-                  fontsize=22,
-                  fontfamily='sans',
-                  fontweight='bold',
-                  horizontalalignment='left',
-                  verticalalignment='bottom',
-                  transform=ax.transAxes
-                 )
-    lumi = plt.text(1., 1., IOV,
-                fontsize=16,
-                horizontalalignment='right',
-                verticalalignment='bottom',
-                transform=ax.transAxes
-               )
+    ax.set_xlabel(None)    
+    if IOV == "2018": lumi = 59.83
+    elif IOV == "2017": lumi = 41.48
+    elif IOV == "2016": lumi = 16.8
+    elif IOV == "2016APV": lumi = 19.5
+    else: lumi = 138
+    hep.cms.label(cms_str, com = 13, lumi = lumi, data = True, loc=0, ax=ax);
 
     
