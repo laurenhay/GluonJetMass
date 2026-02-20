@@ -11,7 +11,7 @@ import hist
 
 
 from python.plugins import *
-from python.trijetProcessor import makeTrijetHists
+from python.trijetProcessor import TrijetProcessor
 import pickle
 import argparse
 def list_of_ints(arg):
@@ -62,7 +62,7 @@ if arg.mctype == 'herwig':
     
 ### Run coffea processor and make plots
 def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, range=arg.datasetRange, mctype = arg.mctype, jk=arg.jk, jk_range = arg.jkRange):
-    processor = makeTrijetHists(data = arg.data, btag = arg.btag, jet_systematics = jet_syst, jk=jk, jk_range = jk_range)
+    processor = TrijetProcessor(data = arg.data, btag = arg.btag, jet_systematics = jet_syst, jk=jk, jk_range = jk_range)
     if jk:
         if jk_range != None:
             jkstring = "JK" + str(jk_range[0]) + "_" + str(jk_range[1])
@@ -75,29 +75,31 @@ def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=a
         year_str = year
     else:
         year_str = "All"
-    datastring = "JetHT" if processor.do_gen == False else "QCDsim"
-    if processor.do_gen==True and arg.winterfell:
-        filename = "QCD_flat_files.json"
-    elif processor.do_gen==True:
+    if data==False:
         # filename = "fileset_QCD.json"
         if mctype == "MG":
             filename = "fileset_MG_pythia8_wRedirs.json"
+            datastr = "QCD_MG"
         elif mctype == "herwig":
             filename = "fileset_HERWIG_wRedirs.json"
-        elif mctype == "pythia":
-            filename = "fileset_QCD_wRedirs.json"
+            datastr = "QCD_herwig"
+        elif mctype == "Wjets":
+            filename = "fileset_Wjets_MG_wRedirs.json"
+            datastr = "WjetsMG"
+        elif mctype == "Zjets":
+            filename = "fileset_Zjets_MG_wRedirs.json"
+            datastr = "WjetsMG"
+        elif mctype == "TTjets":
+            filename = "fileset_TTjets_MG_wRedirs.json"
+            datastr = "TTjetsMG"
     else:
-        # filename = "datasets_UL_NANOAOD.json"
         filename = "fileset_JetHT_wRedirs.json"
+        datastr = "JetHT"
 
-    if arg.testing and not arg.data:
-        fname = 'coffeaOutput/trijet/trijetHistsTest_addMETplotsNOXS_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut, mctype, jkstring, year_str)
-    elif arg.testing and arg.data:
-        fname = 'coffeaOutput/trijet/trijetHistsTest_addMETplotsNOXS_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
-    elif not arg.testing and arg.data:
-        fname = 'coffeaOutput/trijet/trijetHists_addMETplotsNOXS_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
+    if arg.testing:
+        fname = 'coffeaOutput/trijet/trijetHistsTest_fixFakes_{}_rap{}_{}{}.pkl'.format(datastr, processor.ycut, jkstring, year_str)
     else:
-        fname = 'coffeaOutput/trijet/trijetHists_addMETplotsNOXS_{}_rap{}_{}_{}{}.pkl'.format(datastring, processor.ycut,mctype, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_fixFakes_{}_rap{}_{}{}.pkl'.format(datastr, processor.ycut, jkstring, year_str)
     if range!=None:
         print("Range input: ", range)
         fname=fname[:-4]+"_"+range[0]+"_"+range[1]+".pkl"

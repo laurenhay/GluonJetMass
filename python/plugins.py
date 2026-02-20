@@ -116,11 +116,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         print("Total avail datasets ", len(samples.keys()))
         samples = {key:samples[key] for key in list(samples.keys())[datasetRange[0]:datasetRange[1]]}
     #single files for testing
-    # samples={'/ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v1/100000/9F546290-05D0-0447-B3D7-BE2AAF645ACA.root']}
-
-    # samples = {'/WJetsToLNu_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1_ext1-v2/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL18NanoAODv9/WJetsToLNu_TuneCP5_13TeV-madgraphMLM-pythia8/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1_ext1-v2/50000/5646FCCC-F33D-234F-B627-0CDEB05823E2.root',] }
-
-
+    # samples={'/QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7/RunIISummer20UL16NanoAODAPVv9-106X_mcRun2_asymptotic_preVFP_v11-v1/NANOAODSIM': ['root://cmsxrootd.fnal.gov//store/mc/RunIISummer20UL16NanoAODAPVv9/QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7/NANOAODSIM/106X_mcRun2_asymptotic_preVFP_v11-v1/60000/4503E31F-B62F-D446-82E4-288C0406F80F.root']}
 
     print("Running over datasets ", samples.keys())
     client = None
@@ -171,7 +167,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
         from lpcjobqueue import LPCCondorCluster
         #### make list of files and directories to upload to dask
         upload_to_dask = ['correctionFiles', 'python']
-        cluster = LPCCondorCluster(memory='8 GiB', transfer_input_files=upload_to_dask, ship_env=False, scheduler_options={"dashboard_address": ":2018"})
+        cluster = LPCCondorCluster(memory='10 GiB', transfer_input_files=upload_to_dask, ship_env=False)
         ### memory is max memory per worker -- last I checked the max memory workers were using was ~2GiB
         #### minimum > 0: https://github.com/CoffeaTeam/coffea/issues/465
         cluster.adapt(minimum=1, maximum=100)
@@ -182,21 +178,21 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
             print(client.get_worker_logs())
             if verbose:
                 run_instance = processor.Runner(
-                                executor=processor.DaskExecutor(client=client, retries=5, treereduction=6,),#, status=False),
+                                executor=processor.DaskExecutor(client=client, retries=10, treereduction=4,),#, status=False),
                                 schema=NanoAODSchema,
                                 savemetrics=True,
                                 skipbadfiles=False,
-                                chunksize=100000,
+                                chunksize=150000,
                     maxchunks = None,
                             )
             else:
                 run_instance = processor.Runner(
-                                executor=processor.DaskExecutor(client=client, retries=5, status=False, treereduction=6,),
+                                executor=processor.DaskExecutor(client=client, retries=6, status=False, treereduction=4,),
                                 schema=NanoAODSchema,
                                 savemetrics=True,
                                 skipbadfiles=False,
-                                chunksize=100000,
-                                maxchunks = 1,
+                                chunksize=150000,
+                                maxchunks = None,
                             )
             # result, metrics = run_instance(samples,
             #                                "Events",
@@ -232,7 +228,7 @@ def runCoffeaJob(processor_inst, jsonFile, dask = False, casa = False, testing =
     del cluster
     return result
 def addFiles(files, RespOnly=False):
-    respHists = ['response_matrix_u', 'response_matrix_g', 'ptreco_mreco_u', 'ptreco_mreco_g', 'ptgen_mgen_u', 'ptgen_mgen_g','fakes','fakes_u', 'misses', 'misses_u', 'fakes_g', "misses_g"]
+    respHists = ['response_matrix_u', 'response_matrix_g', 'ptreco_mreco_u', 'ptreco_mreco_g', 'ptgen_mgen_u', 'ptgen_mgen_g','fakes','fakes_u', 'misses', 'misses_u', 'fakes_g', "misses_g", 'jet_pt_eta_phi']
     ### load first file as base of results
     if RespOnly:
         results = pickle.load( open(files[0], "rb") )

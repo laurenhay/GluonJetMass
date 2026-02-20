@@ -149,10 +149,6 @@ def HEMVeto(FatJets, runs):
     
     runid = (runs >= 319077)
     print(runid)
-    # print("Fat jet phi ", FatJets.phi)
-    # print("Fat jet phi length ", len(FatJets.phi))
-    # print("Fat jet eta ", FatJets.eta)
-    # print("Fat jet eta length ", len(FatJets.eta))
     detector_region1 = ((FatJets.phi < -0.87) & (FatJets.phi > -1.57) &
                        (FatJets.eta < -1.3) & (FatJets.eta > -2.5))
     detector_region2 = ((FatJets.phi < -0.87) & (FatJets.phi > -1.57) &
@@ -160,10 +156,9 @@ def HEMVeto(FatJets, runs):
     jet_selection    = ((FatJets.jetId > 1) & (FatJets.pt > 15))
 
     vetoHEMFatJets = ak.any((detector_region1 & jet_selection & runid) ^ (detector_region2 & jet_selection & runid), axis=1)
-    print("Number of hem vetoed jets: ", ak.sum(vetoHEMFatJets))
     vetoHEM = ~(vetoHEMFatJets)
     
-    return vetoHEM
+    return vetoHEM, ak.sum(vetoHEMFatJets)
 
 def GetLumiUnc(events, IOV):
     lumi_unc = {"2016": 0.016,#0.012,
@@ -383,7 +378,7 @@ def GetJetCorrections(FatJets, events, era, IOV, isData=False, uncertainties = N
     FatJets['pt_raw'] = (1 - FatJets['rawFactor']) * FatJets['pt']
     FatJets['mass_raw'] = (1 - FatJets['rawFactor']) * FatJets['mass']
     FatJets['rho'] = ak.broadcast_arrays(events.fixedGridRhoFastjetAll, FatJets.pt)[0]
-    FatJets["pt"]= ak.values_astype(ak.fill_none(FatJets.pt, 0), np.float32)
+
     name_map = jec_stack.blank_name_map
     # print("N events missing pt entry ", ak.sum(ak.num(FatJets.pt)<1))
     # print("N events w/ pt entry ", ak.sum(ak.num(FatJets.pt)>0))

@@ -97,41 +97,51 @@ turnOnPts_JetHT_old = {'2016': {'AK8PFJet40':0.,
 
 # in 
 xsdb= { 'QCD_Pt_170to300_TuneCP5_13TeV_pythia8' : 104000.0,
-        'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' : 6806.0,
-        'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' : 552.0,
-        'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' : 154.6,
-        'QCD_Pt_800to1000_TuneCP5_13TeV_pythia8' : 26.15,
-        'QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8' : 0.03567,
-        'QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8' : 0.6419,
-        'QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8' : 0.0877,
-        'QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8' : 0.005241,
-        'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' : 0.0001346,
-        'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7': 11370.0,
-        'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7': 883.5,
-        'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7': 259.6,
-        'QCD_HT500to700_TuneCH3_13TeV-madgraphMLM-herwig7': 23.63,
-        'QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7':  4.943,
-        'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7': 0.8013,
-        'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7': 0.06815,
-        'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7': 0.01245,
+        'QCD_Pt_300to470_TuneCP5_13TeV_pythia8' :  6806.0,
+        'QCD_Pt_470to600_TuneCP5_13TeV_pythia8' :   552.0,
+        'QCD_Pt_600to800_TuneCP5_13TeV_pythia8' :   154.6,
+        'QCD_Pt_800to1000_TuneCP5_13TeV_pythia8' :   26.15,
+        'QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8' :   0.03567,
+        'QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8' :   0.6419,
+        'QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8' :   0.0877,
+        'QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8' :   0.005241,
+        'QCD_Pt_3200toInf_TuneCP5_13TeV_pythia8' :    0.0001346,
+
+        'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7': 23640000.0,
+        'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7':  1546000.0,
+        'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7':   321600.0,
+        'QCD_HT500to700_TuneCH3_13TeV-madgraphMLM-herwig7':    30250.0,
+        'QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7':    6364.0,
+        'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7':   1117.0,
+        'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7':    108.4,
+        'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7':      22.36,
+        
+        # 'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7': 11370.0,
+        # 'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7':   883.5,
+        # 'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7':   259.6,
+        # 'QCD_HT500to700_TuneCH3_13TeV-madgraphMLM-herwig7':    23.63,
+        # 'QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7':    4.943,
+        # 'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7':   0.8013,
+        # 'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7':   0.06815,
+        # 'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7':    0.01245,
        #### Values used to produce 2016/2017
-       'QCD_HT100to200_TuneCP5_PSWeights_13TeV-madgraph-pythia8': 23640000.0,
-        'QCD_HT200to300_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 1546000.0,
-        'QCD_HT300to500_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 321600.0,
-        'QCD_HT500to700_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 30250.0,
-        'QCD_HT700to1000_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 6364.0,
-        'QCD_HT1000to1500_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 1117.0,
-        'QCD_HT1500to2000_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8':108.4,
-        'QCD_HT2000toInf_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8': 22.36,
+       'QCD_HT100to200_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8':   23640000.0,
+        'QCD_HT200to300_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8':   1546000.0,
+        'QCD_HT300to500_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8':    321600.0,
+        'QCD_HT500to700_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8':      30250.0,
+        'QCD_HT700to1000_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8':      6364.0,
+        'QCD_HT1000to1500_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8':     1117.0,
+        'QCD_HT1500to2000_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8':      108.4,
+        'QCD_HT2000toInf_TuneCP5_PSWeights_13TeV-madgraphMLM-pythia8':        22.36,
        #### Values used to produce 2017/2018 mc
-       'QCD_HT100to200_TuneCP5_13TeV-madgraph-pythia8': 23700000.0,
+       'QCD_HT100to200_TuneCP5_13TeV-madgraphMLM-pythia8': 23700000.0,
        'QCD_HT200to300_TuneCP5_13TeV-madgraphMLM-pythia8' : 1552000.0,
        'QCD_HT300to500_TuneCP5_13TeV-madgraphMLM-pythia8' :  321100.0,
        'QCD_HT500to700_TuneCP5_13TeV-madgraphMLM-pythia8' :   30980.0,
        'QCD_HT700to1000_TuneCP5_13TeV-madgraphMLM-pythia8' :   6398.0,
-       'QCD_HT1000to1500_TuneCP5_13TeV-madgraphMLM-pythia8' :   1122.0,
-       'QCD_HT1500to2000_TuneCP5_13TeV-madgraphMLM-pythia8' :    109.4,
-       'QCD_HT2000toInf_TuneCP5_13TeV-madgraphMLM-pythia8' :      21.74,
+       'QCD_HT1000to1500_TuneCP5_13TeV-madgraphMLM-pythia8' :  1122.0,
+       'QCD_HT1500to2000_TuneCP5_13TeV-madgraphMLM-pythia8' :   109.4,
+       'QCD_HT2000toInf_TuneCP5_13TeV-madgraphMLM-pythia8' :     21.74,
        
         'QCD_Pt-15to7000_TuneCH3_Flat_13TeV_herwig7': 1329000000.0,
         #### Backgrounds 
@@ -235,6 +245,43 @@ num_gen_herwig = { "2016APV": {'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7
                               },
 }
 
+sumw_herwig = { "2016APV": {'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7':  141536808960.0,
+                               'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7': 8881636224.0,
+                               'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7': 1006554600.0,
+                               'QCD_HT500to700_TuneCH3_13TeV-madgraphMLM-herwig7':   50850553.5,
+                               'QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7':  11126359.375,
+                               'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7':  1957313.9375,
+                               'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7':   180116.1953125,
+                               'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7':     36778.2041015625,
+                              },
+                  "2016": {'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7':   144014468096.0,
+                               'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7': 8579037856.0,
+                               'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7': 1083017536.0,
+                               'QCD_HT500to700_TuneCH3_13TeV-madgraphMLM-herwig7':   56391885.375,
+                               'QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7':  11584725.5,
+                               'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7':  2099561.78125,
+                               'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7':   181317.447265625,
+                               'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7':     34087.36328125,
+                              },
+                  "2017": {'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7':   120172825088.0,
+                               'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7': 5956648160.0,
+                               'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7':  906730648.0,
+                               'QCD_HT500to700_TuneCH3_13TeV-madgraphMLM-herwig7':   44980886.0,
+                               'QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7':   9735645.125,
+                               'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7':  1673187.5625,
+                               'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7':   155704.818359375,
+                               'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7':     29484.88671875,
+                              },
+                  "2018": {'QCD_HT100to200_TuneCH3_13TeV-madgraphMLM-herwig7':   117946849024.0,
+                               'QCD_HT200to300_TuneCH3_13TeV-madgraphMLM-herwig7': 7728662208.0,
+                               'QCD_HT300to500_TuneCH3_13TeV-madgraphMLM-herwig7':  754584448.0,
+                               'QCD_HT500to700_TuneCH3_13TeV-madgraphMLM-herwig7':   37442241.0,
+                               'QCD_HT700to1000_TuneCH3_13TeV-madgraphMLM-herwig7':   9712919.75,
+                               'QCD_HT1000to1500_TuneCH3_13TeV-madgraphMLM-herwig7':  1673205.375,
+                               'QCD_HT1500to2000_TuneCH3_13TeV-madgraphMLM-herwig7':   155008.26953125,
+                               'QCD_HT2000toInf_TuneCH3_13TeV-madgraphMLM-herwig7':     29513.98876953125,
+                              }, }
+
 num_gen_herwig_flat = { 
     '2016': {'QCD_Pt-15to7000_TuneCH3_Flat_13TeV_herwig7' : 53923986},
     '2016APV': {'QCD_Pt-15to7000_TuneCH3_Flat_13TeV_herwig7': 45952213},
@@ -292,7 +339,9 @@ num_gen_bg = {
        'ZJetsToNuNu_HT-600To800_TuneCP5_13TeV-madgraphMLM-pythia8':  2030858,
        'ZJetsToNuNu_HT-800To1200_TuneCP5_13TeV-madgraphMLM-pythia8':  703970,
        'ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8': 136393,
-       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':  111838,},
+       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':  111838,
+    'TTJets_TuneCP5_13TeV-madgraphMLM-pythia8': 5047017 ,
+    },
     '2016': {
         'ZJetsToNuNu_HT-100To200_TuneCP5_13TeV-madgraphMLM-pythia8': 7083216,
        'ZJetsToNuNu_HT-200To400_TuneCP5_13TeV-madgraphMLM-pythia8':  6814106,
@@ -300,7 +349,9 @@ num_gen_bg = {
        'ZJetsToNuNu_HT-600To800_TuneCP5_13TeV-madgraphMLM-pythia8':  1881671,
        'ZJetsToNuNu_HT-800To1200_TuneCP5_13TeV-madgraphMLM-pythia8':  633500,
        'ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8': 115609,
-       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':  110461,},
+       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':  110461,
+    'TTJets_TuneCP5_13TeV-madgraphMLM-pythia8': 5068919,
+    },
     '2017': {
         'ZJetsToNuNu_HT-100To200_TuneCP5_13TeV-madgraphMLM-pythia8': 18948271,
        'ZJetsToNuNu_HT-200To400_TuneCP5_13TeV-madgraphMLM-pythia8':  17189820,
@@ -308,7 +359,9 @@ num_gen_bg = {
        'ZJetsToNuNu_HT-600To800_TuneCP5_13TeV-madgraphMLM-pythia8':   4418971,
        'ZJetsToNuNu_HT-800To1200_TuneCP5_13TeV-madgraphMLM-pythia8':  1513585,
        'ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8':  267125,
-       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':   176201,},
+       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':   176201,
+     'TTJets_TuneCP5_13TeV-madgraphMLM-pythia8': 10052151,
+    },
     '2018': {
         'ZJetsToNuNu_HT-100To200_TuneCP5_13TeV-madgraphMLM-pythia8': 28876062,
        'ZJetsToNuNu_HT-200To400_TuneCP5_13TeV-madgraphMLM-pythia8':  22749608,
@@ -316,7 +369,9 @@ num_gen_bg = {
        'ZJetsToNuNu_HT-600To800_TuneCP5_13TeV-madgraphMLM-pythia8':   5968910,
        'ZJetsToNuNu_HT-800To1200_TuneCP5_13TeV-madgraphMLM-pythia8':  2129122,
        'ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8':  381695,
-       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':   268224,},
+       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':   268224,
+        'WJetsToLNu_TuneCP5_13TeV-madgraphMLM-pythia8':    79645994,
+    },
     
 }
 
@@ -328,7 +383,8 @@ sumw_bg = {
        'ZJetsToNuNu_HT-600To800_TuneCP5_13TeV-madgraphMLM-pythia8':  2030858,
        'ZJetsToNuNu_HT-800To1200_TuneCP5_13TeV-madgraphMLM-pythia8':  703970,
        'ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8': 136393,
-       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':  111838,},
+       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':  111838,
+     'TTJets_TuneCP5_13TeV-madgraphMLM-pythia8': 9238796.376953125},
     '2016': {
         'ZJetsToNuNu_HT-100To200_TuneCP5_13TeV-madgraphMLM-pythia8': 7083216,
        'ZJetsToNuNu_HT-200To400_TuneCP5_13TeV-madgraphMLM-pythia8':  6814106,
@@ -336,7 +392,8 @@ sumw_bg = {
        'ZJetsToNuNu_HT-600To800_TuneCP5_13TeV-madgraphMLM-pythia8':  1881671,
        'ZJetsToNuNu_HT-800To1200_TuneCP5_13TeV-madgraphMLM-pythia8':  633500,
        'ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8': 115609,
-       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':  110461,},
+       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':  110461,
+ 'TTJets_TuneCP5_13TeV-madgraphMLM-pythia8': 10952247.5546875},
     '2017': {
         'ZJetsToNuNu_HT-100To200_TuneCP5_13TeV-madgraphMLM-pythia8': 18948271,
        'ZJetsToNuNu_HT-200To400_TuneCP5_13TeV-madgraphMLM-pythia8':  17189820,
@@ -344,15 +401,20 @@ sumw_bg = {
        'ZJetsToNuNu_HT-600To800_TuneCP5_13TeV-madgraphMLM-pythia8':   4418971,
        'ZJetsToNuNu_HT-800To1200_TuneCP5_13TeV-madgraphMLM-pythia8':  1513585,
        'ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8':  267125,
-       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':   176201,},
+       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':   176201,
+        'WJetsToLNu_TuneCP5_13TeV-madgraphMLM-pythia8': 9566440293248.0,
+   },
     '2018': {
         'ZJetsToNuNu_HT-100To200_TuneCP5_13TeV-madgraphMLM-pythia8': 6299042.111694336,
        'ZJetsToNuNu_HT-200To400_TuneCP5_13TeV-madgraphMLM-pythia8':  1676015.0802001953,
-       'ZJetsToNuNu_HT-400To600_TuneCP5_13TeV-madgraphMLM-pythia8':  233325.02221679688,
-       'ZJetsToNuNu_HT-600To800_TuneCP5_13TeV-madgraphMLM-pythia8':   13479.285751342773,
-       'ZJetsToNuNu_HT-800To1200_TuneCP5_13TeV-madgraphMLM-pythia8':  2724.645004272461,
-       'ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8':  136.23207068443298,
-       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':   2.5148895382881165,},
+       'ZJetsToNuNu_HT-400To600_TuneCP5_13TeV-madgraphMLM-pythia8':   233325.02221679688,
+       'ZJetsToNuNu_HT-600To800_TuneCP5_13TeV-madgraphMLM-pythia8':    13479.285751342773,
+       'ZJetsToNuNu_HT-800To1200_TuneCP5_13TeV-madgraphMLM-pythia8':    2724.645004272461,
+       'ZJetsToNuNu_HT-1200To2500_TuneCP5_13TeV-madgraphMLM-pythia8':    136.23207068443298,
+       'ZJetsToNuNu_HT-2500ToInf_TuneCP5_13TeV-madgraphMLM-pythia8':       2.5148895382881165,
+        'TTJets_TuneCP5_13TeV-madgraphMLM-pythia8': 9437788.830200195,
+        'WJetsToLNu_TuneCP5_13TeV-madgraphMLM-pythia8':    9537355436664.0,
+    },
     
 }
 
@@ -370,19 +432,20 @@ def getXSweight(dataset, IOV):
                     xs = xsdb[process]
                     if 'herwig' in process:
                         if "madgraphMLM" in process:
-                            print("Number of gen events for ", year, " ", process, ": ", num_gen_herwig[year][process])
-                            weight = xs * lum * 1000 / num_gen_herwig[year][process]
+                            print("Number of gen events for ", year, " ", process, ": ", sumw_herwig[year][process])
+                            weight = xs * lum * 1000 / sumw_herwig[year][process]
                         else:
                             weight = xs * lum * 1000 / num_gen_herwig_flat[year][process]
                     else:
                         if "QCD" in process and process in sumw_qcd_mg[year].keys():
                             print("Sumw of events for ", year, " ", process, ": ", sumw_qcd_mg[year][process])
                             weight = xs * lum * 1000 / sumw_qcd_mg[year][process]
-                        elif process in num_gen_bg[year].keys():
-                            print("Number of gen events for ", year, " ", process, ": ", num_gen_bg[year][process])
-                            weight = xs * lum * 1000 / num_gen_bg[year][process]
+                        elif process in sumw_bg[year].keys():
+                            print("Number of gen events for ", year, " ", process, ": ", sumw_bg[year][process])
+                            weight = xs * lum * 1000 / sumw_bg[year][process]
                         else:
                             print("Don't have xs + sumw values for process", process)
+                            weight = 1.
                     return weight
 
 

@@ -59,47 +59,56 @@ if arg.mctype == 'herwig':
     
 
 from python.plugins import *
-from python.dijetProcessor import makeDijetHists
+from python.dijetProcessor import DijetProcessor
 import pickle
 
 #### WE'RE MISSING 2016B ver2 -- AK8 PF HLT is missing need to use AK4 trigger isntead
 ### Run coffea processor and make plots
         
 def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, range=arg.datasetRange, mctype = arg.mctype, jk=arg.jk, jk_range = arg.jkRange):
-    processor = makeDijetHists(data = data, jet_systematics = jet_syst, jk = jk, jk_range = jk_range)
-    if jk:
-        if jk_range != None:
-            jkstring = "JK" + str(jk_range[0]) + "_" + str(jk_range[1])
-        else:
-            jkstring = "JK" 
+    if jk_range != None:
+        jk= True
+        jkstring = "JK" + str(jk_range[0]) + "_" + str(jk_range[1])
+    elif jk and jk_range == None:
+        jkstring = "JK" 
     else: jkstring = ""
-    datastring = "JetHT" if processor.do_gen == False else "QCDsim"
+    processor = DijetProcessor(data = data, jet_systematics = jet_syst, jk = jk, jk_range = jk_range)
     if year == 2016 or year == 2017 or year == 2018:
         year_str = str(year)
     elif year == "2016" or year == "2016APV" or year == "2017" or year == "2018":
         year_str = year
     else:
         year_str = "All"
-    if processor.do_gen==True and arg.winterfell:
-        filename = "QCD_flat_files.json"
-    elif processor.do_gen==True:
+    if data==False:
+        # filename = "fileset_QCD.json"
         if mctype == "MG":
             filename = "fileset_MG_pythia8_wRedirs.json"
+            datastr = "QCD_MG"
         elif mctype == "herwig":
             filename = "fileset_HERWIG_wRedirs.json"
-        elif mctype == "pythia":
-            filename = "fileset_QCD_wRedirs.json"
+            datastr = "QCD_herwig"
+        elif mctype == "Wjets":
+            filename = "fileset_Wjets_MG_wRedirs.json"
+            datastr = "WjetsMG"
+        elif mctype == "Zjets":
+            filename = "fileset_Zjets_MG_wRedirs.json"
+            datastr = "WjetsMG"
+        elif mctype == "TTjets":
+            filename = "fileset_TTjets_MG_wRedirs.json"
+            datastr = "TTjetsMG"
+        # else:
+        #     filename = "fileset_QCD.json"
     else:
-        # filename = "datasets_UL_NANOAOD.json"
         filename = "fileset_JetHT_wRedirs.json"
+        datastr = "JetHT"
     if arg.testing and not data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest_wXS_HTplots_{}_rap{}_{}_{}_{}_{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0],jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHistsTest_fixFakes_{}_{}_{}.pkl'.format(datastr,jkstring, year_str)
     elif arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest_wXS_HTplots_{}_rap{}_{}_{}.pkl'.format(datastring, processor.ycut, jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHistsTest_fixFakes_{}_{}_{}.pkl'.format(datastr, jkstring, year_str)
     elif not arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHists_wXS_HTplots_{}_rap{}_{}{}.pkl'.format(datastring, processor.ycut, jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHists_fixFakes_{}_{}{}.pkl'.format(datastr, jkstring, year_str)
     else:
-        fname = 'coffeaOutput/dijet/dijetHists_wXS_HTplots_{}_rap{}_{}_{}_{}_{}.pkl'.format(datastring, processor.ycut, mctype, jet_syst[0], jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHists_fixFakes_{}_{}_{}.pkl'.format(datastr, jkstring, year_str)
     if range!=None:
         print("Range input: ", range)
         fname=fname[:-4]+"_"+str(range[0])+"_"+str(range[1])+".pkl"
