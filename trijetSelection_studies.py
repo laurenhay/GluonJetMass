@@ -40,6 +40,7 @@ parser.add_argument('--mctype', choices=['herwig', 'pythia', 'MG'], default="MG"
 parser.add_argument('--data', action='store_true') 
 parser.add_argument('--dask', action='store_true', help='Run on dask')
 parser.add_argument('--testing', action='store_true', help='Testing; run on only a subset of data')
+parser.add_argument('--allPlots', action='store_true', help="Make all available hists in processor (doMinimal=False)")
 parser.add_argument('--verbose', type=bool, help='Have processor output status; set false if making log files', default='True')
 parser.add_argument('--allUncertaintySources', action='store_true', help='Run processor for each unc. source separately')
 parser.add_argument('--jetSyst', default=unc_srcs, nargs='+')
@@ -61,13 +62,16 @@ if arg.mctype == 'herwig':
     arg.jetSyst = ['nominal']
     
 ### Run coffea processor and make plots
-def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, range=arg.datasetRange, mctype = arg.mctype, jk=arg.jk, jk_range = arg.jkRange):
-    processor = TrijetProcessor(data = arg.data, btag = arg.btag, jet_systematics = jet_syst, jk=jk, jk_range = jk_range)
+def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, range=arg.datasetRange, mctype = arg.mctype, jk=arg.jk, jk_range = arg.jkRange, allPlots=arg.allPlots):
+    processor = TrijetProcessor(data = arg.data, btag = arg.btag, jet_systematics = jet_syst, jk=jk, jk_range = jk_range, do_minimal = not allPlots)
     if jk:
         if jk_range != None:
             jkstring = "JK" + str(jk_range[0]) + "_" + str(jk_range[1])
         else:
             jkstring = "JK" 
+            
+    elif allPlots:
+        jkstring = "NominalAllPlots_"
     else: jkstring = ""
     if year == 2016 or year == 2017 or year == 2018:
         year_str = str(year)
@@ -97,9 +101,9 @@ def runTrijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=a
         datastr = "JetHT"
 
     if arg.testing:
-        fname = 'coffeaOutput/trijet/trijetHistsTest_fixFakes_{}_rap{}_{}{}.pkl'.format(datastr, processor.ycut, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHistsTest_ISRFSR_{}_rap{}_{}{}.pkl'.format(datastr, processor.ycut, jkstring, year_str)
     else:
-        fname = 'coffeaOutput/trijet/trijetHists_fixFakes_{}_rap{}_{}{}.pkl'.format(datastr, processor.ycut, jkstring, year_str)
+        fname = 'coffeaOutput/trijet/trijetHists_ISRFSR_{}_rap{}_{}{}.pkl'.format(datastr, processor.ycut, jkstring, year_str)
     if range!=None:
         print("Range input: ", range)
         fname=fname[:-4]+"_"+range[0]+"_"+range[1]+".pkl"

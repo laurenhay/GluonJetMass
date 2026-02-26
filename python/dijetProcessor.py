@@ -68,7 +68,8 @@ class DijetProcessor(processor.ProcessorABC):
         pt_bin = hist.axis.Variable(ptgen_edges, name="ptreco", label=r"$p_{T,RECO}$ [GeV]")     
         pt_gen_bin = hist.axis.Variable(ptgen_edges, name="ptgen", label=r"$p_{T,GEN}$ [GeV]") 
         y_bin = hist.axis.Regular(25, -4.0, 4.0, name="rapidity", label=r"$y$")
-        rho_gen_edges = np.array([-10, -8, -7, -6, -5, -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5, 0])
+        #rho_gen_edges = np.array([-10, -8, -7, -6, -5, -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5, 0])
+        rho_gen_edges = np.array([-10, -8, -7, -6, -5, -4.4, -4, -3.6, -3.2, -2.8, -2.4, -2, -1.6, -1.2, -0.8, -0.4, 0])
         rho_edges = np.sort(np.append(rho_gen_edges,[(rho_gen_edges[i]+rho_gen_edges[i+1])/2 for i in range(len(rho_gen_edges)-1)]))
         rho_gen_bin = hist.axis.Variable(rho_gen_edges, name="mpt_gen", label=r"$-\log_10(\rho^2)_{GEN}$")
         rho_bin = hist.axis.Variable(rho_edges, name="mpt_reco", label=r"$-\log_10(\rho^2)$")
@@ -124,8 +125,8 @@ class DijetProcessor(processor.ProcessorABC):
             'sdmass_ak8corr':            hist.Hist(dataset_axis,jk_axis, fine_pt_bin, fine_mass_bin, storage="weight", label="Events"),
             'sdmass_ak4corr':            hist.Hist(dataset_axis,jk_axis, fine_pt_bin, fine_mass_bin, storage="weight", label="Events"),
                 #####remove for now to save space running on dask
-            # 'HT_nocuts':                 hist.Hist(dataset_axis,syst_cat, fine_pt_bin, storage="weight", label="Events"),
-            # 'HT_wXS':                    hist.Hist(dataset_axis,syst_cat,fine_pt_bin, storage="weight", label="Events"),
+            'HT_nocuts':                 hist.Hist(dataset_axis,syst_cat, fine_pt_bin, storage="weight", label="Events"),
+            'HT_wXS':                    hist.Hist(dataset_axis,syst_cat,fine_pt_bin, storage="weight", label="Events"),
             'HT_aftercuts':              hist.Hist(dataset_axis, syst_cat, fine_pt_bin, storage="weight", label="Events"),
             'MET_over_sumET_pt_reco':    hist.Hist(dataset_axis, syst_cat, frac_axis, pt_bin, storage="weight", label="Events"),
             'MET_pt_reco':               hist.Hist(dataset_axis, syst_cat, fine_pt_bin, pt_bin, storage="weight", label="Events"),
@@ -407,7 +408,11 @@ class DijetProcessor(processor.ProcessorABC):
                         weights_obj.add("Q2muF", weight=q2muFNom, weightUp=q2muFUp,weightDown=q2muFDown) 
                         q2muRNom, q2muRUp, q2muRDown = GetQ2muR(events_corr)
                         weights_obj.add("Q2muR", weight=q2muRNom, weightUp=q2muRUp, weightDown=q2muRDown) 
-
+                    if "PSWeight" in events_corr.fields and 'herwig' not in dataset:                
+                        ISRNom, ISRUp, ISRDown = GetPSWeights(events_corr, shower="ISR")
+                        weights_obj.add("ISR", weight=ISRNom, weightUp=ISRUp, weightDown=ISRDown,)
+                        FSRNom, FSRUp, FSRDown = GetPSWeights(events_corr, shower="FSR")
+                        weights_obj.add("FSR", weight=FSRNom, weightUp=FSRUp, weightDown=FSRDown,)
                 ###################################
                 #### Add MET filters
                 ###################################
@@ -430,8 +435,8 @@ class DijetProcessor(processor.ProcessorABC):
                         print("Len of HT ", len(HT))
                         print("HT (sum of jet pts) ", HT)
                         print("len of events ", len(events_jk))
-                        # out["HT_nocuts"].fill(dataset=datastr, systematic=jetsyst, pt=HT)
-                        # out["HT_wXS"].fill(dataset=datastr, systematic=jetsyst, pt=HT, weight=weights)
+                        out["HT_nocuts"].fill(dataset=datastr, systematic=jetsyst, pt=HT)
+                        out["HT_wXS"].fill(dataset=datastr, systematic=jetsyst, pt=HT, weight=weights)
                     #### pt_cut_gen = ak.all(events_corr.GenJetAK8[:,:2].pt > 200., axis = -1) ### 80% of reco pt cut --> for now removing pt cut
                     sel.add("twoGenJet", (ak.num(events_corr.GenJetAK8) > 1))
                     GenJetAK8 = events_corr.GenJetAK8
@@ -705,9 +710,9 @@ class DijetProcessor(processor.ProcessorABC):
                     if not self.do_minimal and jetsyst=="nominal":
                         HT = ak.sum(events_corr[sel.all("final_seq")].GenJetAK8.pt, axis=-1)
                         #### plots for checking MET/sumET
-                        out["MET_over_sumET_pt_reco"].fill(dataset=datastr,systematic=jetsyst, frac=events_corr[sel.all("final_seq")].MET.pt/events_corr[sel.all("final_seq")].MET.sumEt, ptreco=events_corr[sel.all("final_seq")].FatJet[:,0].pt, weight=dijet_weights)
-                        out["MET_pt_reco"].fill(dataset=datastr,systematic=jetsyst, pt=events_corr[sel.all("final_seq")].MET.pt, ptreco=events_corr[sel.all("final_seq")].FatJet[:,0].pt, weight=dijet_weights)
-                        out["HT_aftercuts"].fill(dataset=datastr, systematic=jetsyst, pt=HT, weight=dijet_weights)
+                        out["MET_over_sumET_pt_reco"].fill(dataset=datastr,systematic=jetsyst, frac=events_corr[sel.all("final_seq")].MET.pt/events_corr[sel.all("final_seq")].MET.sumEt, ptreco=events_corr[sel.all("final_seq")].FatJet[:,0].pt, weight=final_weights)
+                        out["MET_pt_reco"].fill(dataset=datastr,systematic=jetsyst, pt=events_corr[sel.all("final_seq")].MET.pt, ptreco=events_corr[sel.all("final_seq")].FatJet[:,0].pt, weight=final_weights)
+                        out["HT_aftercuts"].fill(dataset=datastr, systematic=jetsyst, pt=HT, weight=final_weights)
                         # out["ptreco_mreco_fine_u"].fill(dataset=datastr,systematic=jetsyst, jk=jk_index, pt=dijet.pt, mass=dijet.mass, weight=dijet_weights )
                         # out["ptreco_mreco_fine_g"].fill(dataset=datastr,systematic=jetsyst, jk=jk_index, pt=dijet.pt, mass=dijet.msoftdrop, weight=dijet_weights)
                     #### Final MC plots -- filling nominal weights
@@ -783,11 +788,11 @@ class DijetProcessor(processor.ProcessorABC):
                     if not self.do_minimal and jetsyst=="nominal":
                         HT = ak.sum(events_corr[sel.all("final_seq")].FatJet.pt, axis=-1)
                         #### plots for checking MET/sumET
-                        out["MET_over_sumET_pt_reco"].fill(dataset=datastr,systematic=jetsyst, frac=events_corr[sel.all("final_seq")].MET.pt/events_corr[sel.all("final_seq")].MET.sumEt, ptreco=events_corr[sel.all("final_seq")].FatJet[:,0].pt, weight=reco_weights)
-                        out["MET_pt_reco"].fill(dataset=datastr,systematic=jetsyst, pt=events_corr[sel.all("final_seq")].MET.pt, ptreco=events_corr[sel.all("final_seq")].FatJet[:,0].pt, weight=reco_weights)
+                        out["MET_over_sumET_pt_reco"].fill(dataset=datastr,systematic=jetsyst, frac=events_corr[sel.all("final_seq")].MET.pt/events_corr[sel.all("final_seq")].MET.sumEt, ptreco=events_corr[sel.all("final_seq")].FatJet[:,0].pt, weight=final_weights)
+                        out["MET_pt_reco"].fill(dataset=datastr,systematic=jetsyst, pt=events_corr[sel.all("final_seq")].MET.pt, ptreco=events_corr[sel.all("final_seq")].FatJet[:,0].pt, weight=final_weights)
                         #### plots for checking whether jet veto is needed
                         out["jet_pt_eta_phi"].fill(dataset=datastr,systematic=jetsyst, ptreco=dijet.pt, phi=dijet.phi, eta=dijet.eta, weight=dijet_weights)
-                        out["HT_aftercuts"].fill(dataset=datastr, systematic=jetsyst, pt=HT, weight=reco_weights)
+                        out["HT_aftercuts"].fill(dataset=datastr, systematic=jetsyst, pt=HT, weight=final_weights)
                         # out["ptreco_mreco_fine_u"].fill(dataset=datastr,systematic=jetsyst, jk=jk_index, pt=dijet.pt, mass=dijet.mass, 
                         #                             weight=dijet_weights )
                         # out["ptreco_mreco_fine_g"].fill(dataset=datastr,systematic=jetsyst, jk=jk_index, pt=dijet.pt, mass=dijet.msoftdrop, 

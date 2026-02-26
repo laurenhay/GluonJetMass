@@ -119,7 +119,16 @@ def applyjmrSF(IOV, FatJet, var = ''):
     FatJet = ak.with_field(FatJet, FatJet.msoftdrop * jmrnom, 'msoftdrop')
 
     return FatJet
-
+    
+def GetPSWeights(df, shower = "ISR"):
+    """ Return nominal, up, down weights for ISR or FSR """
+    if shower == "ISR":
+        ones = ak.ones_like(df.event)
+        return ones, df.PSWeight[:,0], df.PSWeight[:,2]
+    elif shower == "FSR":
+        ones = ak.ones_like(df.event)
+        return ones, df.PSWeight[:,1], df.PSWeight[:,3]
+        
 def GetL1PreFiringWeight(events):
     # original code https://gitlab.cern.ch/gagarwal/ttbardileptonic/-/blob/master/TTbarDileptonProcessor.py#L50
     ## Reference: https://twiki.cern.ch/twiki/bin/viewauth/CMS/L1PrefiringWeightRecipe

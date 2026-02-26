@@ -38,6 +38,7 @@ parser.add_argument('--data', action='store_true', help="Run on data")
 parser.add_argument('--dask', action='store_true', help='Run on dask')
 parser.add_argument('--testing', action='store_true', help='Testing; run on only a subset of data')
 parser.add_argument('--verbose', type=bool, help='Have processor output status; set false if making log files', default='True')
+parser.add_argument('--allPlots', action='store_true', help='Have processor make all plots (doMinimal=False)')
 parser.add_argument('--allUncertaintySources', action='store_true', help='Run processor for each unc. source separately')
 parser.add_argument('--jetSyst', default=unc_srcs, nargs='+')
 # parser.add_argument('--syst', default=['PUSF', 'L1PreFiringWeight'], nargs='+')
@@ -65,14 +66,17 @@ import pickle
 #### WE'RE MISSING 2016B ver2 -- AK8 PF HLT is missing need to use AK4 trigger isntead
 ### Run coffea processor and make plots
         
-def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, range=arg.datasetRange, mctype = arg.mctype, jk=arg.jk, jk_range = arg.jkRange):
+def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=arg.casa, winterfell=arg.winterfell, testing=arg.testing, dask=arg.dask, verbose=arg.verbose, range=arg.datasetRange, mctype = arg.mctype, jk=arg.jk, jk_range = arg.jkRange, allPlots=arg.allPlots):
     if jk_range != None:
         jk= True
         jkstring = "JK" + str(jk_range[0]) + "_" + str(jk_range[1])
     elif jk and jk_range == None:
-        jkstring = "JK" 
+        jkstring = "JK_" 
+    elif allPlots:
+        jkstring = "NominalAllPlots_"
     else: jkstring = ""
-    processor = DijetProcessor(data = data, jet_systematics = jet_syst, jk = jk, jk_range = jk_range)
+    print("Not all plots ", ~allPlots)
+    processor = DijetProcessor(data = data, jet_systematics = jet_syst, jk = jk, jk_range = jk_range, do_minimal = not allPlots)
     if year == 2016 or year == 2017 or year == 2018:
         year_str = str(year)
     elif year == "2016" or year == "2016APV" or year == "2017" or year == "2018":
@@ -101,14 +105,10 @@ def runDijetAnalysis(data=arg.data, jet_syst=arg.jetSyst, year=arg.year, casa=ar
     else:
         filename = "fileset_JetHT_wRedirs.json"
         datastr = "JetHT"
-    if arg.testing and not data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest_fixFakes_{}_{}_{}.pkl'.format(datastr,jkstring, year_str)
-    elif arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHistsTest_fixFakes_{}_{}_{}.pkl'.format(datastr, jkstring, year_str)
-    elif not arg.testing and data:
-        fname = 'coffeaOutput/dijet/dijetHists_fixFakes_{}_{}{}.pkl'.format(datastr, jkstring, year_str)
+    if arg.testing:
+        fname = 'coffeaOutput/dijet/dijetHistsTest_ISRFSR_{}_{}{}.pkl'.format(datastr,jkstring, year_str)
     else:
-        fname = 'coffeaOutput/dijet/dijetHists_fixFakes_{}_{}_{}.pkl'.format(datastr, jkstring, year_str)
+        fname = 'coffeaOutput/dijet/dijetHists_ISRFSR_{}_{}{}.pkl'.format(datastr, jkstring, year_str)
     if range!=None:
         print("Range input: ", range)
         fname=fname[:-4]+"_"+str(range[0])+"_"+str(range[1])+".pkl"

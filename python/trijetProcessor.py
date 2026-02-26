@@ -126,7 +126,8 @@ class TrijetProcessor(processor.ProcessorABC):
         ptgen_edges = np.array([0,200,290,400,480,570,680,760,820,13000]) 
         pt_bin = hist.axis.Variable(ptgen_edges, name="ptreco", label=r"p_{T,RECO} (GeV)")  
         pt_gen_bin = hist.axis.Variable(ptgen_edges, name="ptgen", label=r"p_{T,GEN} (GeV)")
-        rho_gen_edges = np.array([-10, -8, -7, -6, -5, -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5, 0])
+        #rho_gen_edges = np.array([-10, -8, -7, -6, -5, -4.5, -4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5, 0])
+        rho_gen_edges = np.array([-10, -8, -7, -6, -5, -4.4, -4, -3.6, -3.2, -2.8, -2.4, -2, -1.6, -1.2, -0.8, -0.4, 0])
         rho_edges = np.sort(np.append(rho_gen_edges,[(rho_gen_edges[i]+rho_gen_edges[i+1])/2 for i in range(len(rho_gen_edges)-1)]))
         rho_gen_bin = hist.axis.Variable(rho_gen_edges, name="mpt_gen", label=r"$-\log_10(\rho^2)_{GEN}$")
         rho_bin = hist.axis.Variable(rho_edges, name="mpt_reco", label=r"$-\log_10(\rho^2)$")
@@ -450,7 +451,12 @@ class TrijetProcessor(processor.ProcessorABC):
                         weights_obj.add("Q2muF", weight=q2muFNom, weightUp=q2muFUp,weightDown=q2muFDown) 
                         q2muRNom, q2muRUp, q2muRDown = GetQ2muR(events_corr)
                         weights_obj.add("Q2muR", weight=q2muRNom, weightUp=q2muRUp, weightDown=q2muRDown) 
-                   
+                                        #### Apply L1 prefiring weights
+                    if "PSWeight" in events_corr.fields:                
+                        ISRNom, ISRUp, ISRDown = GetPSWeights(events_corr, shower="ISR")
+                        weights_obj.add("ISR", weight=ISRNom, weightUp=ISRUp, weightDown=ISRDown)
+                        FSRNom, FSRUp, FSRDown = GetPSWeights(events_corr, shower="FSR")
+                        weights_obj.add("FSR", weight=FSRNom, weightUp=FSRUp, weightDown=FSRDown)
                 ###################################
                 #### Apply MET filters
                 ###################################
@@ -633,7 +639,7 @@ class TrijetProcessor(processor.ProcessorABC):
                 #### Apply final selections and jet veto map
                 #######################
                 if len(events_corr[sel.all("final_seq")])<1:
-                        print("no more events after final sel)
+                        print("no more events after final sel")
                         return out
                 
                 #### Check eta phi map after cuts but before jet veto
